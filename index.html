@@ -1,0 +1,1919 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#4b0d1b">
+<title>Ma Cave à Vin – Configurable</title>
+<link rel="manifest" href="manifest.webmanifest?v=1.0">
+<style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:#0d0b0b;color:#fff}
+header{background:#4b0d1b;padding:17px 16px 15px;position:static;z-index:auto}
+h1{margin:0 0 12px;font-size:23px}
+.topstats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:#ffffff10;border-radius:11px;padding:8px 10px}
+.metric b{font-size:22px;display:block}
+.metric span{font-size:12px;opacity:.8}
+.statline{margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.yearbox{margin-top:8px;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.yearbox::-webkit-scrollbar{display:none}
+main{padding:14px;max-width:760px;margin:auto}
+.search{width:100%;padding:13px;border-radius:12px;border:1px solid #686363;background:#242121;color:white;font-size:16px}
+.tabs{display:flex;gap:8px;margin:12px 0}
+.tab{flex:1;min-width:0;padding:11px 4px;border:0;border-radius:11px;background:#494646;color:white}
+.tab.active{background:#7a1837}
+#grid{display:grid;grid-template-columns:repeat(var(--bpl,5),minmax(56px,1fr));gap:7px;width:100%;overflow-x:auto;padding:3px 3px 7px}
+.slot{width:100%;min-width:0;min-height:96px;border:0;border-radius:11px;padding:0 6px 7px;text-align:left;color:white;overflow:hidden;position:relative}
+.slot.empty{background:#373434;color:#aaa;padding-top:7px}
+.pos{font-size:10px;opacity:.72;display:block;white-space:nowrap}
+.name{font-size:11px;font-weight:700;display:block;margin:4px 0;line-height:1.14;overflow:hidden}
+.dim{opacity:.15}
+.maturity-gauge,.maturity-bar.four-zone{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;height:7px;margin-top:7px}
+.maturity-gauge i,.maturity-bar.four-zone i{display:block;border-radius:2px;opacity:.28}
+.maturity-gauge .z1,.maturity-bar .z1{background:#59ad62}
+.maturity-gauge .z2,.maturity-bar .z2{background:#d2c83e}
+.maturity-gauge .z3,.maturity-bar .z3{background:#df8b34}
+.maturity-gauge .z4,.maturity-bar .z4{background:#d64a4a}
+.maturity-gauge i.active,.maturity-bar.four-zone i.active{opacity:1;outline:1px solid #fff9;outline-offset:1px}
+.actions{display:flex;gap:8px;margin:18px 0}
+.actions button,.filelabel{background:#302d2d;color:white;border:1px solid #625d5d;border-radius:10px;padding:11px;flex:1;text-align:center;font-size:14px}
+.filelabel input{display:none}
+.valuebox{border-top:1px solid #403b3b;padding:18px 0 28px}
+.valuebox h2{font-size:16px;margin:0 0 10px}
+#valueByCasier{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:7px}
+#valueByCasier div{background:#211e1e;border-radius:10px;padding:9px}
+#valueByCasier span{display:block;font-size:11px;opacity:.7}
+#valueByCasier b{font-size:14px}
+.totalvalue{margin-top:10px;display:flex;align-items:end;justify-content:space-between;padding:2px}
+.totalvalue span{opacity:.75}
+.totalvalue b{font-size:22px}
+dialog{width:min(92vw,520px);border:0;border-radius:16px;background:#171414;color:white;padding:0;max-height:90vh;overflow:auto}
+dialog::backdrop{background:#000b}
+.dlg{padding:18px}
+.dlg h2{margin:0 0 4px}
+.where{opacity:.67;margin:0 0 14px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{font-size:13px}
+.wide{grid-column:1/-1}
+.form input,.form select,#pick{width:100%;padding:10px;margin-top:4px;border-radius:8px;border:1px solid #686363;background:#292626;color:white;font:inherit}
+.maturity-panel{grid-column:1/-1;background:#211e1e;border-radius:10px;padding:10px}
+.maturity-panel small{opacity:.72}
+.maturity-bar.four-zone{height:10px;background:transparent;border-radius:0;overflow:visible}
+.dlgactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.dlgactions button{padding:11px 13px;border:0;border-radius:9px;font:inherit}
+.primary{background:#841b3d;color:white}
+.danger{background:#752323;color:white}
+.secondary{background:#484444;color:white}
+.maturity-legend{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:10px 0 10px;font-size:9px;text-align:center;color:#cfc8c8}
+.maturity-legend span{white-space:nowrap}
+.maturity-legend i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:3px}
+.maturity-legend .z1{background:#59ad62}
+.maturity-legend .z2{background:#d2c83e}
+.maturity-legend .z3{background:#df8b34}
+.maturity-legend .z4{background:#d64a4a}
+.photos-panel{margin:0 0 12px;padding:11px;background:#181515;border:1px solid #373232;border-radius:12px}
+.photos-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.photos-head b{display:block;font-size:14px}
+.photos-head small{display:block;font-size:11px;opacity:.65;margin-top:2px}
+.photo-upload{background:#7a1837;color:#fff;border-radius:9px;padding:9px 11px;font-size:12px;white-space:nowrap}
+.photo-upload input{display:none}
+.photo-slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.photo-slot{min-width:0;min-height:54px;padding:9px;border:1px solid #4c4646;border-radius:10px;background:#272323;color:#fff;text-align:left}
+.photo-slot.has-photo{background:#3b222b;border-color:#713148}
+.photo-label{display:block;font-size:11px;opacity:.65}
+.photo-state{display:block;font-size:12px;font-weight:700;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-dialog{width:min(96vw,720px);background:#0e0c0c;padding:0}
+.photo-viewer{padding:12px}
+.photo-viewer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.photo-viewer-head small{display:block;opacity:.65;margin-top:2px}
+#photoViewerImg{display:block;width:100%;max-height:75vh;object-fit:contain;border-radius:10px;background:#000}
+@media(max-width:380px){
+  #grid{gap:5px}.slot{padding:6px 4px;min-height:88px}.name{font-size:11px}.pos,.year{font-size:10px}
+}
+.topstats .metric{
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+header{
+  position:static;
+  top:auto;
+  z-index:auto;
+}
+.slot{
+  padding-top:28px;
+  overflow:hidden;
+  isolation:isolate;
+}
+.slot.empty{
+  padding-top:7px;
+}
+.slot::before,
+.slot::after{
+  content:none;
+  display:none;
+}
+.maturity-gauge,
+.maturity-bar.four-zone{
+  position:relative;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:2px;
+  height:8px;
+  margin-top:9px;
+  overflow:visible;
+  isolation:isolate;
+}
+.maturity-gauge i,
+.maturity-bar.four-zone i{
+  display:block;
+  height:8px;
+  border-radius:2px;
+  opacity:1;
+  outline:none;
+}
+.maturity-gauge .z1,.maturity-bar .z1{background:#59ad62}
+.maturity-gauge .z2,.maturity-bar .z2{background:#e1ce31}
+.maturity-gauge .z3,.maturity-bar .z3{background:#e58a2f}
+.maturity-gauge .z4,.maturity-bar .z4{background:#df4545}
+.maturity-cursor{
+  position:absolute;
+  top:50%;
+  width:13px;
+  height:13px;
+  border-radius:50%;
+  background:#fff;
+  border:2px solid #333;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.85);
+  pointer-events:none;
+  z-index:1;
+}
+.maturity-cursor.unknown-cursor{
+  border-color:#777;
+}
+.photos-panel{
+  margin-top:4px;
+  margin-bottom:18px;
+}
+@media(max-width:380px){
+  #grid{gap:5px}
+  .slot{min-height:88px}
+  .name{font-size:11px}
+  .pos{font-size:10px}
+}
+.top-casier-tabs{
+  margin:10px 0 0;
+}
+.top-casier-tabs .tab{
+  padding:8px 5px;
+  background:#ffffff13;
+  border:1px solid transparent;
+}
+.top-casier-tabs .tab.active{
+  background:#7a1837;
+  border-color:#a22b50;
+}
+.top-casier-tabs .tab b{
+  display:block;
+  font-size:12px;
+  line-height:1.15;
+}
+.top-casier-tabs .tab small{
+  display:block;
+  margin-top:3px;
+  font-size:10px;
+  opacity:.72;
+}
+.slot{
+  padding-top:28px;
+}
+.slot.empty{
+  padding-top:7px;
+}
+.slot.empty{
+  background:#373434 !important;
+  background-color:#373434 !important;
+  color:#aaa !important;
+}
+.result-panel{
+  margin:8px 0 10px;
+  padding:9px;
+  border:1px solid #393333;
+  border-radius:11px;
+  background:#171414;
+}
+.result-title{
+  font-size:12px;
+  font-weight:800;
+  margin-bottom:7px;
+}
+.result-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:310px;
+  overflow:auto;
+}
+.result-item{
+  display:grid !important;
+  grid-template-columns:72px minmax(0,1fr) !important;
+  align-items:stretch;
+  min-height:62px;
+  width:100%;
+  padding:0 !important;
+  overflow:hidden;
+  border:1px solid #403939;
+  border-radius:9px;
+  background:transparent !important;
+  color:#fff;
+  text-align:left;
+}
+.result-main{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-width:0;
+  padding:9px 10px;
+  text-align:left;
+}
+.result-main b{
+  display:block;
+  font-size:12px;
+  line-height:1.2;
+}
+.result-main small{
+  display:block;
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.25;
+  opacity:.78;
+}
+#grid{
+  touch-action:pan-y;
+}
+.slot .domain{
+  display:block;
+  margin:-1px 0 2px;
+  font-size:8px;
+  line-height:1.08;
+  font-weight:600;
+  opacity:.76;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.result-domain{
+  display:block;
+  margin-top:2px;
+  font-size:10px;
+  line-height:1.15;
+  font-weight:650;
+  opacity:.82;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.result-gauge{
+  display:block;
+  margin-top:2px;
+}
+.result-gauge .maturity-gauge{
+  width:100%;
+  margin-top:6px;
+}
+.slot{
+  min-height:118px !important;
+  height:118px !important;
+  padding-bottom:25px !important;
+}
+.slot .pos{
+  margin-top:4px;
+}
+.slot .name{
+  display:block;
+  margin-top:3px;
+  line-height:1.08;
+}
+.slot .domain{
+  display:block;
+  margin-top:2px;
+  font-size:8px;
+  line-height:1.05;
+  max-height:17px;
+  overflow:hidden;
+  white-space:normal;
+}
+.slot .maturity-gauge{
+  position:absolute !important;
+  left:6px !important;
+  right:6px !important;
+  bottom:7px !important;
+  width:auto !important;
+  margin:0 !important;
+}
+.slot .maturity-gauge .maturity-cursor{
+  z-index:3;
+}
+.slot{
+  position:relative!important;
+  overflow:hidden!important;
+  padding:0!important;
+  min-height:118px!important;
+  height:118px!important;
+  background:transparent!important;
+  background-color:transparent!important;
+}
+.slot-main{
+  position:absolute!important;
+  top:28px!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  display:block!important;
+  padding:7px 6px 25px!important;
+  text-align:left!important;
+}
+.slot-main .pos,
+.slot-main .name,
+.slot-main .domain{
+  position:relative!important;
+  z-index:1!important;
+}
+.slot-main .maturity-gauge{
+  position:absolute!important;
+  left:6px!important;
+  right:6px!important;
+  bottom:7px!important;
+  width:auto!important;
+  margin:0!important;
+}
+.slot.empty{
+  padding:7px 6px!important;
+  background:#373434!important;
+  background-color:#373434!important;
+  color:#aaa!important;
+}
+.result-item{
+  display:grid!important;
+  grid-template-columns:72px minmax(0,1fr)!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:transparent!important;
+  background-color:transparent!important;
+}
+.result-main{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  min-width:0!important;
+  padding:9px 10px!important;
+  text-align:left!important;
+}
+.result-list{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+.result-item{
+  flex:0 0 auto!important;
+  flex-shrink:0!important;
+  height:auto!important;
+  min-height:88px!important;
+}
+.result-main{
+  height:auto!important;
+  min-height:88px!important;
+}
+.result-gauge{
+  display:block!important;
+  width:100%!important;
+  margin-top:7px!important;
+  flex:0 0 auto!important;
+}
+.result-gauge .maturity-gauge{
+  display:grid!important;
+  width:100%!important;
+  margin-top:0!important;
+  margin-bottom:2px!important;
+}
+
+/* ==========================================================
+   COULEURS — SYSTÈME UNIQUE V5.4.28
+   Aucun ancien système de couleur ne subsiste au-dessus.
+   ========================================================== */
+
+/* Tous les boutons sont seulement des conteneurs. */
+button.year-chip,
+button.slot,
+button.result-item{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+}
+
+/* ---------------- MILLÉSIMES ---------------- */
+.age-color.ageUnknown{background-color:#777777!important;color:#fff!important;}
+.age-color.age0{background-color:#1F5F2E!important;color:#fff!important;}
+.age-color.age1{background-color:#3E7A36!important;color:#fff!important;}
+.age-color.age2{background-color:#7E9836!important;color:#201700!important;}
+.age-color.age3{background-color:#C9A936!important;color:#201700!important;}
+.age-color.age4{background-color:#D98632!important;color:#201700!important;}
+.age-color.age5{background-color:#C65B3A!important;color:#fff!important;}
+.age-color.age6{background-color:#B33A3A!important;color:#fff!important;}
+.age-color.age7{background-color:#8D2D42!important;color:#fff!important;}
+.age-color.age8{background-color:#74263A!important;color:#fff!important;}
+.age-color.age9{background-color:#5F2132!important;color:#fff!important;}
+.age-color.age10{background-color:#4D1C29!important;color:#fff!important;}
+.age-color.age11{background-color:#3E1721!important;color:#fff!important;}
+.age-color.age12{background-color:hsl(345 68% 13.75%)!important;color:#fff!important;}
+.age-color.age13{background-color:hsl(345 68% 13.5%)!important;color:#fff!important;}
+.age-color.age14{background-color:hsl(345 68% 13.25%)!important;color:#fff!important;}
+.age-color.age15{background-color:hsl(345 68% 13%)!important;color:#fff!important;}
+.age-color.age16{background-color:hsl(345 68% 12.75%)!important;color:#fff!important;}
+.age-color.age17{background-color:hsl(345 68% 12.5%)!important;color:#fff!important;}
+.age-color.age18{background-color:hsl(345 68% 12.25%)!important;color:#fff!important;}
+.age-color.age19{background-color:hsl(345 68% 12%)!important;color:#fff!important;}
+.age-color.age20{background-color:hsl(345 68% 11.75%)!important;color:#fff!important;}
+.age-color.age21{background-color:hsl(345 68% 11.5%)!important;color:#fff!important;}
+.age-color.age22{background-color:hsl(345 68% 11.25%)!important;color:#fff!important;}
+.age-color.age23{background-color:hsl(345 68% 11%)!important;color:#fff!important;}
+.age-color.age24{background-color:hsl(345 68% 10.75%)!important;color:#fff!important;}
+.age-color.age25{background-color:hsl(345 68% 10.5%)!important;color:#fff!important;}
+.age-color.age26{background-color:hsl(345 68% 10.25%)!important;color:#fff!important;}
+.age-color.age27{background-color:hsl(345 68% 10%)!important;color:#fff!important;}
+.age-color.age28{background-color:hsl(345 68% 9.75%)!important;color:#fff!important;}
+.age-color.age29{background-color:hsl(345 68% 9.5%)!important;color:#fff!important;}
+.age-color.age30{background-color:hsl(345 68% 9.25%)!important;color:#fff!important;}
+.age-color.age31{background-color:hsl(345 68% 9%)!important;color:#fff!important;}
+
+.age-color{
+  background-image:none!important;
+  opacity:1!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  box-shadow:none!important;
+}
+
+/* Boutons d'année du haut */
+.year-chip{
+  min-width:58px;
+  flex:0 0 auto;
+  padding:0!important;
+  border:1px solid #555!important;
+  border-radius:9px;
+  overflow:hidden!important;
+  background:transparent!important;
+  color:#fff;
+  text-align:center;
+  white-space:nowrap;
+}
+.year-chip-fill{
+  width:100%;
+  min-height:54px;
+  padding:7px 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+}
+.year-chip-fill b{
+  display:block;
+  font-size:12px;
+  line-height:1.15;
+}
+.year-chip-fill small{
+  display:block;
+  margin-top:3px;
+  font-size:10px;
+  opacity:.80;
+}
+
+/* Millésime dans les cases */
+.slot.occupied .vintage-strip{
+  position:absolute!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  height:28px!important;
+  padding:6px 4px 5px!important;
+  margin:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  line-height:1!important;
+  color:inherit;
+  border:0!important;
+  border-radius:0!important;
+  z-index:2!important;
+}
+
+/* Millésime dans recherche / tri année */
+.result-year-zone{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:8px 5px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  line-height:1.05!important;
+  text-align:center!important;
+}
+
+/* ---------------- 4 TYPES DE VIN ---------------- */
+.wine-color.red{
+  background-color:#A71930!important;
+  color:#fff!important;
+}
+.wine-color.rose{
+  background-color:#F06A94!important;
+  color:#241018!important;
+}
+.wine-color.white{
+  background-color:#E6B92E!important;
+  color:#211800!important;
+}
+.wine-color.spark{
+  background-color:#FFF2A6!important;
+  color:#211800!important;
+}
+.wine-color{
+  background-image:none!important;
+  opacity:1!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+}
+
+/* ---------------- CASES DU CASIER ---------------- */
+.slot{
+  position:relative!important;
+  width:100%!important;
+  min-width:0!important;
+  height:118px!important;
+  min-height:118px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  text-align:left!important;
+}
+.slot-main{
+  position:absolute!important;
+  top:28px!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  padding:7px 6px 25px!important;
+  display:block!important;
+}
+.slot.empty{
+  padding:7px 6px!important;
+  background:#373434!important;
+  color:#aaa!important;
+}
+.slot-main .maturity-gauge{
+  position:absolute!important;
+  left:6px!important;
+  right:6px!important;
+  bottom:7px!important;
+  width:auto!important;
+  margin:0!important;
+}
+
+/* ---------------- RÉSULTATS ---------------- */
+.result-item{
+  display:grid!important;
+  grid-template-columns:72px minmax(0,1fr)!important;
+  width:100%!important;
+  min-height:88px!important;
+  height:auto!important;
+  flex:0 0 auto!important;
+  flex-shrink:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #403939!important;
+  border-radius:9px!important;
+  background:transparent!important;
+  text-align:left!important;
+}
+.result-main{
+  min-width:0!important;
+  min-height:88px!important;
+  padding:9px 10px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+}
+.result-gauge{
+  display:block!important;
+  width:100%!important;
+  margin-top:7px!important;
+}
+.result-gauge .maturity-gauge{
+  display:grid!important;
+  width:100%!important;
+  margin:0 0 2px!important;
+}
+
+/* Texte lisible sur chaque famille */
+.slot-main.red .pos,.slot-main.red .name,.slot-main.red .domain,
+.result-main.red,.result-main.red b,.result-main.red small,.result-main.red .result-domain{
+  color:#fff!important;
+}
+.slot-main.rose .pos,.slot-main.rose .name,.slot-main.rose .domain,
+.result-main.rose,.result-main.rose b,.result-main.rose small,.result-main.rose .result-domain{
+  color:#241018!important;
+}
+.slot-main.white .pos,.slot-main.white .name,.slot-main.white .domain,
+.result-main.white,.result-main.white b,.result-main.white small,.result-main.white .result-domain,
+.slot-main.spark .pos,.slot-main.spark .name,.slot-main.spark .domain,
+.result-main.spark,.result-main.spark b,.result-main.spark small,.result-main.spark .result-domain{
+  color:#211800!important;
+}
+
+/* =========================================================
+   V6.0 — RECHERCHE PAR MATURITÉ
+   ========================================================= */
+.maturity-filters{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:6px;
+  margin:10px 0 10px;
+}
+.maturity-filter{
+  -webkit-appearance:none;
+  appearance:none;
+  min-width:0;
+  min-height:45px;
+  padding:6px 3px;
+  border:1px solid #4b4545;
+  border-radius:9px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:#1b1717;
+  font-size:9px;
+  line-height:1.05;
+  font-weight:850;
+  text-align:center;
+  opacity:.86;
+}
+.maturity-filter small{
+  display:block;
+  margin-top:3px;
+  font-size:8px;
+  font-weight:700;
+  opacity:.72;
+}
+.maturity-filter.z1{background:#5fc478}
+.maturity-filter.z2{background:#a99e12}
+.maturity-filter.z3{background:#df7a24}
+.maturity-filter.z4{background:#ff7777}
+.maturity-filter.active{
+  opacity:1;
+  outline:2px solid #fff;
+  outline-offset:2px;
+  box-shadow:0 0 0 2px #111;
+}
+
+
+/* V6.1 — curseur de maturité plus fin uniquement dans les casiers */
+.slot-main .maturity-gauge .maturity-cursor{
+  width:6px!important;
+  height:13px!important;
+  border-radius:4px!important;
+  border-width:2px!important;
+}
+
+
+/* V6.3 — 5e filtre maturité non renseignée */
+.maturity-filter.z0{
+  background:#777777;
+  color:#fff;
+}
+.maturity-filter.z0 span{
+  line-height:1.05;
+}
+
+
+/* V6.4 — les 5 filtres maturité restent sur une seule ligne */
+.maturity-filters{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:5px!important;
+}
+.maturity-filter{
+  min-width:0!important;
+  padding:6px 2px!important;
+  font-size:8.5px!important;
+}
+.maturity-filter.z0{
+  grid-column:5!important;
+}
+.maturity-filter.z0 span{
+  font-size:8px!important;
+  line-height:1.0!important;
+}
+.maturity-filter small{
+  font-size:7.5px!important;
+}
+
+
+/* =========================================================
+   V6.5 — même indication de sélection partout
+   Cadre blanc identique pour Casier / Année / Maturité
+   ========================================================= */
+
+/* Le fond du casier actif ne change plus : seul le cadre indique la sélection */
+.top-casier-tabs .tab.active{
+  background:#ffffff13!important;
+  border-color:transparent!important;
+}
+
+/* Cadre commun */
+.top-casier-tabs .tab.active,
+.year-chip.active,
+.maturity-filter.active{
+  outline:2px solid rgba(255,255,255,.96)!important;
+  outline-offset:3px!important;
+  box-shadow:0 0 0 2px rgba(0,0,0,.72)!important;
+}
+
+/* Ne pas modifier la couleur du millésime sélectionné */
+.year-chip.active{
+  background:transparent!important;
+}
+
+/* La maturité conserve exactement sa couleur */
+.maturity-filter.active{
+  opacity:1!important;
+}
+
+
+/* =========================================================
+   V6.6 — HISTORIQUE DES BOUTEILLES BUES
+   ========================================================= */
+.consumed-btn{
+  background:#76501f!important;
+  color:#fff!important;
+}
+.consumption-panel{
+  margin:0 0 12px;
+  padding:12px;
+  background:#181515;
+  border:1px solid #373232;
+  border-radius:12px;
+}
+.consumption-head h2{
+  margin:0;
+  font-size:16px;
+}
+.consumption-head small{
+  display:block;
+  margin-top:2px;
+  color:#aaa;
+  font-size:10px;
+}
+.consumption-period{
+  margin-top:11px;
+}
+.consumption-period>label,
+.consumption-custom label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:10px;
+  color:#bbb;
+}
+.consumption-period select,
+.consumption-custom input{
+  width:100%;
+  min-height:40px;
+  padding:8px 9px;
+  border:1px solid #514b4b;
+  border-radius:8px;
+  background:#252222;
+  color:#fff;
+  font:inherit;
+}
+.consumption-custom{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+}
+.consumption-custom[hidden]{
+  display:none!important;
+}
+.consumption-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+.consumption-summary>div{
+  padding:10px 7px;
+  border-radius:9px;
+  background:#252121;
+  text-align:center;
+}
+.consumption-summary b{
+  display:block;
+  font-size:18px;
+}
+.consumption-summary span{
+  display:block;
+  margin-top:2px;
+  color:#bbb;
+  font-size:9px;
+}
+.consumption-types{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px;
+  margin-top:8px;
+}
+.consumption-type{
+  min-width:0;
+  padding:6px 2px;
+  border-radius:7px;
+  text-align:center;
+  font-size:8px;
+  font-weight:800;
+}
+.consumption-type.red{background:#A71930;color:#fff}
+.consumption-type.rose{background:#F06A94;color:#241018}
+.consumption-type.white{background:#E6B92E;color:#211800}
+.consumption-type.spark{background:#FFF2A6;color:#211800}
+.consumption-type small{
+  display:block;
+  margin-top:2px;
+  font-size:8px;
+  opacity:.78;
+}
+.consumption-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+  max-height:430px;
+  overflow-y:auto;
+}
+.consumption-empty{
+  padding:16px 8px;
+  color:#aaa;
+  text-align:center;
+  font-size:11px;
+}
+.consumed-card{
+  overflow:hidden;
+  border:1px solid #454040;
+  border-radius:10px;
+}
+.consumed-card-head{
+  padding:9px 10px;
+}
+.consumed-card-head b{
+  display:block;
+  font-size:13px;
+  line-height:1.15;
+}
+.consumed-card-head .consumed-domain{
+  display:block;
+  margin-top:2px;
+  font-size:9px;
+  font-weight:650;
+  opacity:.82;
+}
+.consumed-card-head .consumed-meta{
+  display:block;
+  margin-top:4px;
+  font-size:9px;
+  opacity:.75;
+}
+.consumed-dates{
+  background:#171414;
+}
+.consumed-entry{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  padding:7px 9px;
+  border-top:1px solid #302c2c;
+}
+.consumed-entry:first-child{
+  border-top:0;
+}
+.consumed-entry-info{
+  min-width:0;
+}
+.consumed-entry-info b{
+  display:block;
+  font-size:10px;
+}
+.consumed-entry-info small{
+  display:block;
+  margin-top:2px;
+  color:#aaa;
+  font-size:8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.restore-consumed{
+  -webkit-appearance:none;
+  appearance:none;
+  border:1px solid #5b5656;
+  border-radius:7px;
+  padding:6px 7px;
+  background:#302c2c;
+  color:#fff;
+  font-size:9px;
+  font-weight:750;
+}
+
+
+/* V6.7 — appréciation conservée uniquement dans l’historique */
+.rating-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:4px;
+  font-size:15px;
+  vertical-align:middle;
+}
+
+.consumed-entry-actions{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.consumed-rating-edit{
+  display:flex;
+  gap:3px;
+}
+.consumed-rating-edit button{
+  -webkit-appearance:none;
+  appearance:none;
+  width:27px;
+  height:27px;
+  padding:0;
+  border:1px solid #514b4b;
+  border-radius:6px;
+  background:#302c2c;
+  color:#fff;
+  font-size:13px;
+}
+.consumed-rating-edit button.active.good{background:#347b46}
+.consumed-rating-edit button.active.bad{background:#8e3038}
+.consumed-rating-edit button.active.neutral{background:#666}
+
+
+/* =========================================================
+   V6.8 — fiche bouteille : consultation puis édition
+   ========================================================= */
+.bottle-info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0 12px;
+}
+.bottle-info{
+  min-width:0;
+  padding:9px 10px;
+  border:1px solid #494343;
+  border-radius:9px;
+  background:#252222;
+}
+.bottle-info.wide{
+  grid-column:1 / -1;
+}
+.bottle-info span{
+  display:block;
+  margin-bottom:3px;
+  color:#aaa;
+  font-size:9px;
+}
+.bottle-info b{
+  display:block;
+  overflow-wrap:anywhere;
+  font-size:14px;
+  line-height:1.2;
+}
+.view-maturity{
+  margin:10px 0 12px;
+  padding:10px;
+  border:1px solid #454040;
+  border-radius:10px;
+  background:#211e1e;
+}
+.view-maturity-years{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:7px;
+  color:#bbb;
+  font-size:9px;
+}
+.view-maturity-years b{
+  color:#fff;
+}
+#viewMaturityStatus{
+  display:block;
+  margin-bottom:8px;
+  font-size:13px;
+}
+#viewMaturityBar{
+  width:100%;
+}
+#bottleEdit[hidden],
+#bottleView[hidden],
+#viewActions[hidden],
+#editActions[hidden]{
+  display:none!important;
+}
+#viewActions{
+  grid-template-columns:1fr 1fr;
+}
+#viewActions #remove{
+  grid-column:1 / -1;
+}
+#viewActions #cancel{
+  grid-column:1 / -1;
+}
+#editActions{
+  grid-template-columns:1fr;
+}
+
+
+/* =========================================================
+   V6.9 — classement des vins bus par appréciation
+   ========================================================= */
+.ranking-open{
+  width:100%;
+  min-height:44px;
+  margin-top:10px;
+  border:1px solid #575050;
+  border-radius:9px;
+  background:#2b2727;
+  color:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.ranking-dialog{
+  width:min(94vw,620px);
+}
+.ranking-dlg{
+  max-width:620px;
+}
+.ranking-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.ranking-head h2{
+  margin:0;
+}
+.ranking-head small{
+  display:block;
+  margin-top:3px;
+  color:#aaa;
+  font-size:9px;
+}
+.ranking-help{
+  margin:10px 0;
+  padding:8px 9px;
+  border:1px solid #464040;
+  border-radius:8px;
+  background:#211e1e;
+  color:#bbb;
+  font-size:9px;
+}
+.ranking-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  max-height:65vh;
+  overflow-y:auto;
+}
+.ranking-empty{
+  padding:18px 8px;
+  color:#aaa;
+  text-align:center;
+  font-size:11px;
+}
+.ranking-card{
+  display:grid;
+  grid-template-columns:54px minmax(0,1fr) 70px;
+  align-items:stretch;
+  overflow:hidden;
+  border:1px solid #454040;
+  border-radius:10px;
+  background:#1c1919;
+}
+.ranking-position{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 4px;
+  background:#2a2525;
+  font-size:17px;
+  font-weight:900;
+}
+.ranking-main{
+  min-width:0;
+  padding:9px 10px;
+}
+.ranking-main b{
+  display:block;
+  font-size:12px;
+  line-height:1.15;
+}
+.ranking-main .ranking-domain{
+  display:block;
+  margin-top:2px;
+  font-size:9px;
+  font-weight:650;
+  opacity:.80;
+}
+.ranking-main .ranking-counts{
+  display:block;
+  margin-top:5px;
+  color:#bbb;
+  font-size:9px;
+}
+.ranking-score{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:7px 5px;
+  font-size:10px;
+  font-weight:800;
+  text-align:center;
+}
+.ranking-score b{
+  font-size:17px;
+  line-height:1;
+}
+.ranking-score.positive{
+  background:#347b46;
+  color:#fff;
+}
+.ranking-score.neutral{
+  background:#555;
+  color:#fff;
+}
+.ranking-score.negative{
+  background:#8e3038;
+  color:#fff;
+}
+
+
+/* V6.10 — vote replié dans l'historique */
+.vote-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:4px;
+}
+.vote-open{
+  -webkit-appearance:none;
+  appearance:none;
+  min-height:28px;
+  padding:4px 7px;
+  border:1px solid #514b4b;
+  border-radius:6px;
+  background:#302c2c;
+  color:#fff;
+  font-size:9px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.vote-open .rating-icon{
+  margin-left:3px;
+  font-size:12px;
+}
+.consumed-rating-edit[hidden]{
+  display:none!important;
+}
+.vote-wrap .consumed-rating-edit{
+  position:static!important;
+  display:flex;
+  gap:3px;
+  padding:4px;
+  border:1px solid #5a5353;
+  border-radius:8px;
+  background:#201d1d;
+  box-shadow:none;
+}
+
+
+/* =========================================================
+   V7.1 — ajout par recherche dans la base
+   ========================================================= */
+.add-dlg{
+  max-width:520px;
+}
+.add-search-label{
+  display:block;
+  margin-top:12px;
+  color:#bbb;
+  font-size:11px;
+}
+#pickSearch{
+  width:100%;
+  margin-top:5px;
+  padding:11px 12px;
+  border:1px solid #686363;
+  border-radius:9px;
+  background:#292626;
+  color:#fff;
+  font:inherit;
+}
+.pick-results{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:42vh;
+  margin-top:9px;
+  overflow-y:auto;
+}
+.pick-empty{
+  padding:16px 8px;
+  color:#aaa;
+  text-align:center;
+  font-size:11px;
+}
+.pick-result{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  min-height:52px;
+  padding:8px 10px;
+  border:2px solid transparent;
+  border-radius:9px;
+  text-align:left;
+  font:inherit;
+}
+.pick-result.active{
+  border-color:#fff!important;
+  box-shadow:0 0 0 2px rgba(0,0,0,.72)!important;
+}
+.pick-result b{
+  display:block;
+  font-size:12px;
+  line-height:1.15;
+}
+.pick-result span{
+  display:block;
+  margin-top:3px;
+  font-size:9px;
+  font-weight:650;
+  opacity:.82;
+}
+#useRef:disabled{
+  opacity:.42;
+}
+
+/* Fiche : édition d'une bouteille ou de toute la référence */
+#viewActions{
+  grid-template-columns:1fr 1fr!important;
+}
+#editOneBottle,
+#editAllBottles{
+  min-width:0;
+  padding-left:8px!important;
+  padding-right:8px!important;
+  font-size:11px!important;
+}
+#editAllBottles[hidden]{
+  display:none!important;
+}
+#viewActions #consumed{
+  grid-column:1 / -1;
+}
+#viewActions #remove,
+#viewActions #cancel{
+  grid-column:1 / -1;
+}
+
+
+/* =========================================================
+   V7.2 — ajout vocal guidé
+   ========================================================= */
+.voice-add-btn{
+  width:100%;
+  background:#5d3d7a!important;
+  color:#fff!important;
+}
+.voice-dialog{
+  width:min(94vw,520px);
+}
+.voice-instruction{
+  margin-top:10px;
+  padding:11px;
+  border:1px solid #4a4444;
+  border-radius:10px;
+  background:#211e1e;
+}
+.voice-instruction>b{
+  display:block;
+  margin-bottom:8px;
+}
+.voice-order{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+}
+.voice-order span{
+  padding:6px 7px;
+  border-radius:7px;
+  background:#302b2b;
+  font-size:10px;
+  font-weight:800;
+}
+.voice-instruction p{
+  margin:10px 0 3px;
+  color:#aaa;
+  font-size:9px;
+}
+.voice-instruction strong{
+  display:block;
+  font-size:11px;
+  line-height:1.35;
+}
+.voice-start{
+  width:100%;
+  min-height:48px;
+  margin-top:10px;
+  border:0;
+  border-radius:10px;
+  background:#7a1837;
+  color:#fff;
+  font-size:13px;
+  font-weight:850;
+}
+.voice-start.listening{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+.voice-status{
+  min-height:28px;
+  padding:8px 2px 2px;
+  color:#bbb;
+  font-size:10px;
+}
+.voice-transcript{
+  margin-top:8px;
+}
+.voice-transcript>span{
+  display:block;
+  margin-bottom:4px;
+  color:#999;
+  font-size:9px;
+}
+#voiceTranscript{
+  min-height:44px;
+  padding:9px;
+  border:1px solid #4a4444;
+  border-radius:8px;
+  background:#252222;
+  font-size:11px;
+  line-height:1.35;
+}
+.voice-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+.voice-fields label{
+  color:#bbb;
+  font-size:10px;
+}
+.voice-fields input{
+  width:100%;
+  margin-top:4px;
+  padding:9px;
+  border:1px solid #686363;
+  border-radius:8px;
+  background:#292626;
+  color:#fff;
+  font:inherit;
+}
+.voice-match{
+  margin-top:9px;
+  padding:9px;
+  border:1px solid #4c4646;
+  border-radius:8px;
+  background:#201d1d;
+  font-size:10px;
+  line-height:1.35;
+}
+.voice-match.exact{
+  border-color:#5c8d61;
+}
+.voice-match.similar{
+  border-color:#a58d45;
+}
+
+
+/* V7.3 — numéro de version visible en haut à droite */
+header{
+  position:relative;
+}
+.app-version{
+  position:absolute;
+  top:6px;
+  right:8px;
+  z-index:20;
+  font-size:9px;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:.2px;
+  color:rgba(255,255,255,.62);
+  pointer-events:none;
+  user-select:none;
+}
+
+
+/* =========================================================
+   V7.5 — sélection multiple des emplacements vides
+   Double-tap = sélectionner / désélectionner
+   ========================================================= */
+.slot.empty{
+  touch-action:manipulation;
+}
+.slot.empty.multi-selected{
+  outline:3px solid rgba(255,255,255,.96)!important;
+  outline-offset:-3px!important;
+  box-shadow:0 0 0 2px rgba(0,0,0,.75)!important;
+  background:#565151!important;
+}
+.slot.empty.multi-selected .name{
+  color:#fff!important;
+  font-weight:850!important;
+}
+
+
+/* =========================================================
+   V7.6 — suppression des références inutilisées
+   ========================================================= */
+.pick-result-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 38px;
+  gap:6px;
+  align-items:stretch;
+}
+.pick-result-row .pick-result{
+  min-width:0;
+}
+.pick-result-row .pick-result small{
+  display:block;
+  margin-top:4px;
+  font-size:8px;
+  font-weight:650;
+  opacity:.68;
+}
+.delete-ref{
+  -webkit-appearance:none;
+  appearance:none;
+  width:38px;
+  min-height:52px;
+  padding:0;
+  border:1px solid #5a4b4b;
+  border-radius:9px;
+  background:#3a2527;
+  color:#fff;
+  font-size:16px;
+}
+.delete-ref:active{
+  background:#6e292f;
+}
+
+
+/* V7.7 — poubelle seulement pour les références totalement inutilisées */
+.pick-result-row.no-delete{
+  grid-template-columns:minmax(0,1fr)!important;
+}
+
+/* =========================================================
+   Cave configurable v1.0
+   ========================================================= */
+.top-casier-tabs{
+  overflow-x:auto!important;
+  padding:3px 3px 5px!important;
+  scrollbar-width:none;
+}
+.top-casier-tabs::-webkit-scrollbar{display:none}
+.top-casier-tabs .tab{
+  flex:0 0 94px!important;
+}
+.config-dialog{
+  width:min(92vw,500px);
+}
+.config-intro{
+  margin:5px 0 14px;
+  color:#bbb;
+  font-size:11px;
+  line-height:1.35;
+}
+.config-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:9px;
+}
+.config-grid label{
+  color:#bbb;
+  font-size:11px;
+}
+.config-grid input{
+  width:100%;
+  margin-top:4px;
+  padding:11px;
+  border:1px solid #686363;
+  border-radius:8px;
+  background:#292626;
+  color:#fff;
+  font:inherit;
+}
+.config-capacity{
+  margin-top:11px;
+  padding:10px;
+  border-radius:9px;
+  background:#292525;
+  font-size:11px;
+  font-weight:800;
+  text-align:center;
+}
+.config-error{
+  margin-top:9px;
+  padding:10px;
+  border:1px solid #9a3e48;
+  border-radius:9px;
+  background:#3b2024;
+  color:#fff;
+  font-size:10px;
+  line-height:1.4;
+}
+.config-note{
+  margin-top:9px;
+  color:#aaa;
+  font-size:9px;
+  line-height:1.4;
+}
+.actions{
+  flex-wrap:wrap;
+}
+.actions button,.actions .filelabel{
+  min-width:105px;
+}
+
+</style>
+</head>
+<body>
+<header>
+  <span class="app-version">v1.0</span>
+  <h1>🍷 Ma Cave à Vin</h1>
+  <div class="topstats">
+    <div class="metric"><b id="count">—</b><span>contenants</span></div>
+    <div class="metric"><b id="free">—</b><span>places libres</span></div>
+  </div>
+  <div id="casierTabs" class="tabs top-casier-tabs" aria-label="Choisir un casier"></div>
+  <div id="yearStats" class="yearbox" aria-label="Répartition par millésime"></div>
+</header>
+
+<main>
+  <input id="search" class="search" placeholder="Rechercher un vin, domaine, millésime…">
+
+  <div id="maturityFilters" class="maturity-filters" aria-label="Rechercher par maturité">
+    <button type="button" class="maturity-filter z1" data-zone="1">
+      <span>Jeune</span><small id="matCount1">0 bt</small>
+    </button>
+    <button type="button" class="maturity-filter z2" data-zone="2">
+      <span>À boire</span><small id="matCount2">0 bt</small>
+    </button>
+    <button type="button" class="maturity-filter z3" data-zone="3">
+      <span>Fin maturité</span><small id="matCount3">0 bt</small>
+    </button>
+    <button type="button" class="maturity-filter z4" data-zone="4">
+      <span>Surmaturité</span><small id="matCount4">0 bt</small>
+    </button>
+    <button type="button" class="maturity-filter z0" data-zone="0">
+      <span>Non renseigné</span><small id="matCount0">0 bt</small>
+    </button>
+  </div>
+
+  <div id="resultPanel" class="result-panel" hidden>
+    <div id="resultTitle" class="result-title"></div>
+    <div id="resultList" class="result-list"></div>
+  </div>
+
+
+  <div id="grid"></div>
+
+
+  <section class="valuebox">
+    <h2>Valeur estimée de la cave</h2>
+    <div id="valueByCasier"></div>
+    <div class="totalvalue"><span>Total</span><b id="valueTotal">—</b></div>
+  </section>
+
+  <section class="consumption-panel">
+    <div class="consumption-head">
+      <div>
+        <h2>🍷 Bouteilles bues</h2>
+        <small>Historique de consommation</small>
+      </div>
+    </div>
+
+    <div class="consumption-period">
+      <label>
+        Période
+        <select id="consumptionPeriod">
+          <option value="current">Ce mois</option>
+          <option value="previous">Mois précédent</option>
+          <option value="3">3 derniers mois</option>
+          <option value="6">6 derniers mois</option>
+          <option value="12">12 derniers mois</option>
+          <option value="all">Tout l’historique</option>
+          <option value="custom">Période personnalisée</option>
+        </select>
+      </label>
+
+      <div id="consumptionCustom" class="consumption-custom" hidden>
+        <label>Du<input id="consumptionFrom" type="month"></label>
+        <label>Au<input id="consumptionTo" type="month"></label>
+      </div>
+    </div>
+
+    <div class="consumption-summary">
+      <div><b id="consumptionCount">0</b><span>bouteilles bues</span></div>
+      <div><b id="consumptionValue">0,00 €</b><span>valeur consommée</span></div>
+    </div>
+
+    <div id="consumptionTypes" class="consumption-types"></div>
+    <div id="consumptionList" class="consumption-list"></div>
+
+    <button type="button" id="openConsumedRanking" class="ranking-open">
+      🏆 Classement des vins bus
+    </button>
+  </section>
+
+  <section class="photos-panel">
+    <div class="photos-head">
+      <div>
+        <b>Photos du casier <span id="photoCasier">1</span></b>
+        <small>2 photos conservées : actuelle + précédente</small>
+      </div>
+      <label class="photo-upload">
+        Nouvelle photo
+        <input id="photoInput" type="file" accept="image/*">
+      </label>
+    </div>
+    <div class="photo-slots">
+      <button id="photoCurrent" class="photo-slot" type="button">
+        <span class="photo-label">Actuelle</span>
+        <span class="photo-state">Aucune photo</span>
+      </button>
+      <button id="photoPrevious" class="photo-slot" type="button">
+        <span class="photo-label">Précédente</span>
+        <span class="photo-state">Aucune photo</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button id="openConfig">⚙️ Configuration</button>
+    <button id="export">Sauvegarder</button>
+    <label class="filelabel">Restaurer<input id="import" type="file" accept="application/json"></label>
+  </div>
+
+</main>
+
+
+<dialog id="configDialog" class="config-dialog">
+  <div class="dlg">
+    <h2 id="configTitle">Configurer ma cave</h2>
+    <p class="config-intro">
+      Indique la structure physique de la cave. Tu pourras la modifier plus tard.
+    </p>
+
+    <div class="config-grid">
+      <label>
+        Nombre de casiers
+        <input id="cfgCasiers" type="number" min="1" max="20" inputmode="numeric">
+      </label>
+      <label>
+        Lignes par casier
+        <input id="cfgLignes" type="number" min="1" max="50" inputmode="numeric">
+      </label>
+      <label>
+        Bouteilles par ligne
+        <input id="cfgPositions" type="number" min="1" max="12" inputmode="numeric">
+      </label>
+    </div>
+
+    <div id="configCapacity" class="config-capacity"></div>
+    <div id="configError" class="config-error" hidden></div>
+
+    <div class="config-note">
+      Agrandir la cave ne supprime rien. Une réduction est refusée si elle ferait
+      disparaître un emplacement contenant une bouteille.
+    </div>
+
+    <div class="dlgactions">
+      <button type="button" id="configSave" class="primary">Enregistrer la configuration</button>
+      <button type="button" id="configCancel" class="secondary">Annuler</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="addDialog">
+  <div class="dlg add-dlg">
+    <h2>Ajouter une bouteille</h2>
+    <p id="addHint">Recherche un vin déjà présent dans ta base ou crée une nouvelle référence.</p>
+
+    <label class="add-search-label">
+      Rechercher
+      <input id="pickSearch" type="search" autocomplete="off"
+             placeholder="Cuvée, domaine, millésime…">
+    </label>
+
+    <div id="pickResults" class="pick-results"></div>
+
+    <div class="dlgactions">
+      <button id="voiceAdd" class="voice-add-btn">🎤 Ajouter par la voix</button>
+      <button id="useRef" class="primary" disabled>Ajouter le vin sélectionné</button>
+      <button id="newRef" class="primary">Créer un nouveau vin</button>
+      <button id="cancelAdd" class="secondary">Annuler</button>
+    </div>
+  </div>
+</dialog>
+
+
+<dialog id="voiceDialog" class="voice-dialog">
+  <div class="dlg voice-dlg">
+    <h2>🎤 Ajouter par la voix</h2>
+
+    <div class="voice-instruction">
+      <b>Dites dans cet ordre :</b>
+      <div class="voice-order">
+        <span>1. Domaine</span>
+        <span>2. Cuvée</span>
+        <span>3. Année</span>
+        <span>4. Prix</span>
+      </div>
+      <p>Exemple :</p>
+      <strong>« Domaine Clos Marie, cuvée Simon, année 2021, prix 22 euros »</strong>
+    </div>
+
+    <button type="button" id="voiceStart" class="voice-start">🎤 Commencer la dictée</button>
+    <div id="voiceStatus" class="voice-status">Appuyez sur le micro puis dictez les 4 informations.</div>
+
+    <div class="voice-transcript">
+      <span>Transcription</span>
+      <div id="voiceTranscript">—</div>
+    </div>
+
+    <div class="voice-fields">
+      <label>Domaine<input id="voiceDomaine"></label>
+      <label>Cuvée<input id="voiceCuvee"></label>
+      <label>Année<input id="voiceYear" inputmode="numeric"></label>
+      <label>Prix (€)<input id="voicePrice" inputmode="decimal"></label>
+    </div>
+
+    <div id="voiceMatch" class="voice-match" hidden></div>
+
+    <div class="dlgactions">
+      <button type="button" id="voiceContinue" class="primary" disabled>Continuer</button>
+      <button type="button" id="voiceCancel" class="secondary">Annuler</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dialog">
+  <div class="dlg">
+    <h2 id="dialogTitle"></h2>
+    <p id="where" class="where"></p>
+
+    <div id="bottleView" class="bottle-view">
+      <div class="bottle-info-grid">
+        <div class="bottle-info wide">
+          <span>Vin / Cuvée</span>
+          <b id="v_vin">—</b>
+        </div>
+        <div class="bottle-info wide">
+          <span>Domaine</span>
+          <b id="v_domaine">—</b>
+        </div>
+        <div class="bottle-info">
+          <span>Millésime</span>
+          <b id="v_millesime">—</b>
+        </div>
+        <div class="bottle-info">
+          <span>Couleur</span>
+          <b id="v_couleur">—</b>
+        </div>
+        <div class="bottle-info">
+          <span>Format</span>
+          <b id="v_format">—</b>
+        </div>
+        <div class="bottle-info">
+          <span>Prix</span>
+          <b id="v_prix">—</b>
+        </div>
+      </div>
+
+      <div id="viewMaturity" class="view-maturity" hidden>
+        <div class="view-maturity-years">
+          <span>À partir de <b id="v_maturiteDebut">—</b></span>
+          <span>Jusqu’à <b id="v_maturiteFin">—</b></span>
+        </div>
+        <b id="viewMaturityStatus"></b>
+        <div id="viewMaturityBar" class="maturity-bar four-zone"></div>
+      </div>
+    </div>
+
+    <div id="bottleEdit" hidden>
+      <div class="form">
+        <label class="wide">Vin / Cuvée<input id="f_vin"></label>
+        <label class="wide">Domaine<input id="f_domaine"></label>
+        <label>Millésime<input id="f_millesime" inputmode="numeric"></label>
+        <label>Couleur
+          <select id="f_couleur">
+            <option>Rouge</option><option>Blanc</option><option>Rosé</option><option>Effervescent</option>
+          </select>
+        </label>
+        <label>Format<input id="f_format" placeholder="75 cl"></label>
+        <label>Prix (€)<input id="f_prix" inputmode="decimal"></label>
+        <label>Maturité : à partir de<input id="f_maturiteDebut" inputmode="numeric" placeholder="2026"></label>
+        <label>À boire avant / jusqu'à<input id="f_maturiteFin" inputmode="numeric" placeholder="2031"></label>
+        <div class="maturity-panel">
+          <b id="maturityStatus">Maturité non renseignée</b>
+          <div id="maturityBar" class="maturity-bar four-zone"></div>
+          <small>La jauge évolue automatiquement avec la date du téléphone.</small>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewActions" class="dlgactions">
+      <button id="editOneBottle" class="primary">✏️ Éditer cette bouteille</button>
+      <button id="editAllBottles" class="primary">✏️ Éditer toutes les bouteilles</button>
+      <button id="consumed" class="consumed-btn">🍷 Bue</button>
+      <button id="remove" class="danger">Sortir cette bouteille</button>
+      <button id="cancel" class="secondary">Fermer</button>
+    </div>
+
+    <div id="editActions" class="dlgactions" hidden>
+      <button id="save" class="primary">Enregistrer la référence</button>
+      <button id="cancelEdit" class="secondary">Annuler les modifications</button>
+    </div>
+  </div>
+</dialog>
+
+
+
+<dialog id="rankingDialog" class="ranking-dialog">
+  <div class="dlg ranking-dlg">
+    <div class="ranking-head">
+      <div>
+        <h2>🏆 Classement des vins bus</h2>
+        <small id="rankingPeriodLabel"></small>
+      </div>
+      <button type="button" id="rankingClose" class="secondary">Fermer</button>
+    </div>
+
+    <div class="ranking-help">
+      Score global = (👍 − 👎) ÷ toutes les bouteilles bues de ce vin × 100
+    </div>
+
+    <div id="rankingList" class="ranking-list"></div>
+  </div>
+</dialog>
+
+<dialog id="photoDialog" class="photo-dialog">
+  <div class="photo-viewer">
+    <div class="photo-viewer-head">
+      <div>
+        <b id="photoViewerTitle">Photo du casier</b>
+        <small id="photoViewerDate"></small>
+      </div>
+      <button id="photoClose" class="secondary" type="button">Fermer</button>
+    </div>
+    <img id="photoViewerImg" alt="Photo du casier">
+  </div>
+</dialog>
+
+<script src="app.js?v=1.0"></script>
+</body>
+</html>

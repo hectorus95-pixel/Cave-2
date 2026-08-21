@@ -1,0 +1,10 @@
+{
+  "name": "Ma Cave à Vin – Configurable",
+  "short_name": "Ma Cave",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0b0b",
+  "theme_color": "#4b0d1b",
+  "lang": "fr"
+}
