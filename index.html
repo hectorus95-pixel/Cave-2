@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable</title>
-<link rel="manifest" href="manifest.webmanifest?v=1.0">
+<link rel="manifest" href="manifest.webmanifest?v=2.0">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1578,16 +1578,35 @@ header{
   min-width:105px;
 }
 
+
+/* =========================================================
+   V2.0 — plusieurs caves + ventes
+   ========================================================= */
+.cave-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 3px 7px;margin-top:9px;scrollbar-width:none}.cave-tabs::-webkit-scrollbar{display:none}
+.cave-tab{flex:0 0 92px;min-width:92px;padding:7px 5px;border:1px solid transparent;border-radius:10px;background:#ffffff12;color:#fff;text-align:center}
+.cave-tab b{display:block;font-size:14px}.cave-tab span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;opacity:.8}.cave-tab small{display:block;margin-top:2px;font-size:8px;opacity:.7}
+.cave-tab.active{outline:2px solid rgba(255,255,255,.96);outline-offset:2px;box-shadow:0 0 0 2px rgba(0,0,0,.7)}
+#valueByCave{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:7px}#valueByCave div{background:#211e1e;border-radius:10px;padding:9px}#valueByCave span{display:block;font-size:10px;opacity:.72}#valueByCave b{font-size:14px}
+.cave-count-label{display:block;color:#bbb;font-size:11px}.cave-count-label input{width:100%;margin-top:4px;padding:10px;border:1px solid #686363;border-radius:8px;background:#292626;color:#fff;font:inherit}
+.cfg-caves-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}.cave-config-card{padding:10px;border:1px solid #474141;border-radius:10px;background:#211e1e}.cave-config-title{font-size:12px;font-weight:850;margin-bottom:8px}.cave-name-row{display:grid;grid-template-columns:2fr 1fr;gap:7px}.cave-dims-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}.cave-config-card label{color:#bbb;font-size:9px}.cave-config-card input{width:100%;margin-top:3px;padding:8px 7px;border:1px solid #5c5656;border-radius:7px;background:#2a2727;color:#fff;font:inherit}
+.slot.occupied.exit-selected{outline:3px solid #fff!important;outline-offset:-3px!important;box-shadow:0 0 0 2px #000!important}.exit-check{position:absolute;right:4px;top:3px;z-index:8;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#111;font-size:12px;font-weight:900}
+.batch-exit-list{display:flex;flex-direction:column;gap:5px;max-height:38vh;overflow:auto}.batch-exit-list>div{padding:7px 8px;border-radius:7px;background:#272323}.batch-exit-list b{display:block;font-size:11px}.batch-exit-list small{display:block;margin-top:2px;color:#aaa;font-size:8px}
+.sell-btn{background:#376d45!important;color:#fff!important}.sale-dialog{width:min(95vw,650px)}.sale-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sale-meta label,.sale-common label,.sale-row label{color:#bbb;font-size:10px}.sale-meta input,.sale-common input,.sale-row input{width:100%;margin-top:4px;padding:9px;border:1px solid #625c5c;border-radius:8px;background:#292626;color:#fff;font:inherit}.sale-common{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:end;margin-top:10px}.sale-common button{min-height:40px}.sale-rows{display:flex;flex-direction:column;gap:7px;max-height:42vh;overflow:auto;margin-top:10px}.sale-row{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:7px;align-items:stretch}.sale-wine{padding:8px;border-radius:8px}.sale-wine b{display:block;font-size:11px}.sale-wine span,.sale-wine small{display:block;margin-top:2px;font-size:8px;opacity:.8}.sale-preview{margin-top:9px;padding:9px;border-radius:8px;background:#252121}.sale-preview b,.sale-preview span{display:block}.sale-preview b{font-size:13px}.sale-preview span{margin-top:2px;color:#bbb;font-size:9px}
+.sales-panel{margin:0 0 12px;padding:12px;background:#181515;border:1px solid #373232;border-radius:12px}.sales-head h2{margin:0;font-size:16px}.sales-head small{color:#aaa;font-size:10px}.sales-period{margin-top:10px}.sales-period>label,.sales-custom label{display:flex;flex-direction:column;gap:4px;color:#bbb;font-size:10px}.sales-period select,.sales-custom input{width:100%;min-height:40px;padding:8px;border:1px solid #514b4b;border-radius:8px;background:#252222;color:#fff;font:inherit}.sales-custom{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.sales-custom[hidden]{display:none!important}.sales-summary{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.sales-summary>div{padding:9px 5px;border-radius:8px;background:#252121;text-align:center}.sales-summary b{display:block;font-size:15px}.sales-summary span{display:block;margin-top:2px;color:#aaa;font-size:8px}.sales-unknown{min-height:12px;margin-top:4px;color:#d5a6a6;font-size:8px;text-align:right}.sales-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:480px;overflow:auto}.sales-empty{padding:15px;color:#aaa;text-align:center;font-size:10px}.sale-history-card{overflow:hidden;border:1px solid #454040;border-radius:9px}.sale-history-head{display:flex;justify-content:space-between;gap:8px;padding:8px 9px;background:#262222}.sale-history-head b{display:block;font-size:11px}.sale-history-head small{display:block;margin-top:2px;color:#aaa;font-size:8px}.sale-history-head strong{font-size:12px}.sale-history-lines{background:#171414}.sale-history-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:7px 9px;border-top:1px solid #302c2c}.sale-history-line b{display:block;font-size:10px}.sale-history-line small{display:block;margin-top:2px;color:#999;font-size:8px}.sale-money{text-align:right;font-size:8px}.sale-money span,.sale-money b{display:block}.sale-money b{margin-top:2px;font-size:10px}.sale-history-total{padding:6px 9px;background:#211e1e;text-align:right;font-size:8px}.sale-history-total b{font-size:9px}
+#viewActions #sellBottle{grid-column:1 / -1}
+@media(max-width:430px){.cave-name-row{grid-template-columns:1fr 90px}.cave-dims-row{grid-template-columns:repeat(3,minmax(0,1fr))}.sale-row{grid-template-columns:minmax(0,1fr) 92px}}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v1.0</span>
+  <span class="app-version">v2.0</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
     <div class="metric"><b id="free">—</b><span>places libres</span></div>
   </div>
+  <div id="caveTabs" class="cave-tabs" aria-label="Choisir une cave"></div>
   <div id="casierTabs" class="tabs top-casier-tabs" aria-label="Choisir un casier"></div>
   <div id="yearStats" class="yearbox" aria-label="Répartition par millésime"></div>
 </header>
@@ -1623,8 +1642,8 @@ header{
 
 
   <section class="valuebox">
-    <h2>Valeur estimée de la cave</h2>
-    <div id="valueByCasier"></div>
+    <h2>Valeur estimée des caves</h2>
+    <div id="valueByCave"></div>
     <div class="totalvalue"><span>Total</span><b id="valueTotal">—</b></div>
   </section>
 
@@ -1669,6 +1688,29 @@ header{
     </button>
   </section>
 
+  <section class="sales-panel">
+    <div class="sales-head"><div><h2>💶 Ventes</h2><small>Chiffre d’affaires et bénéfice réalisé</small></div></div>
+    <div class="sales-period">
+      <label>Période
+        <select id="salesPeriod">
+          <option value="current">Ce mois</option><option value="previous">Mois précédent</option>
+          <option value="3">3 derniers mois</option><option value="6">6 derniers mois</option>
+          <option value="12">12 derniers mois</option><option value="all">Tout l’historique</option>
+          <option value="custom">Période personnalisée</option>
+        </select>
+      </label>
+      <div id="salesCustom" class="sales-custom" hidden><label>Du<input id="salesFrom" type="month"></label><label>Au<input id="salesTo" type="month"></label></div>
+    </div>
+    <div class="sales-summary">
+      <div><b id="salesCount">0</b><span>bouteilles vendues</span></div>
+      <div><b id="salesRevenue">0,00 €</b><span>chiffre d’affaires</span></div>
+      <div><b id="salesCost">0,00 €</b><span>coût d’achat connu</span></div>
+      <div><b id="salesProfit">+0,00 €</b><span>bénéfice calculé</span></div>
+    </div>
+    <div id="salesUnknown" class="sales-unknown"></div>
+    <div id="salesList" class="sales-list"></div>
+  </section>
+
   <section class="photos-panel">
     <div class="photos-head">
       <div>
@@ -1703,38 +1745,16 @@ header{
 
 <dialog id="configDialog" class="config-dialog">
   <div class="dlg">
-    <h2 id="configTitle">Configurer ma cave</h2>
-    <p class="config-intro">
-      Indique la structure physique de la cave. Tu pourras la modifier plus tard.
-    </p>
-
-    <div class="config-grid">
-      <label>
-        Nombre de casiers
-        <input id="cfgCasiers" type="number" min="1" max="20" inputmode="numeric">
-      </label>
-      <label>
-        Lignes par casier
-        <input id="cfgLignes" type="number" min="1" max="50" inputmode="numeric">
-      </label>
-      <label>
-        Bouteilles par ligne
-        <input id="cfgPositions" type="number" min="1" max="12" inputmode="numeric">
-      </label>
-    </div>
-
+    <h2 id="configTitle">Configurer mes caves</h2>
+    <p class="config-intro">Choisis le nombre de caves, puis donne à chacune un nom, un code court et sa structure.</p>
+    <label class="cave-count-label">Nombre de caves
+      <input id="cfgCaveCount" type="number" min="1" max="12" inputmode="numeric" value="1">
+    </label>
+    <div id="cfgCavesList" class="cfg-caves-list"></div>
     <div id="configCapacity" class="config-capacity"></div>
     <div id="configError" class="config-error" hidden></div>
-
-    <div class="config-note">
-      Agrandir la cave ne supprime rien. Une réduction est refusée si elle ferait
-      disparaître un emplacement contenant une bouteille.
-    </div>
-
-    <div class="dlgactions">
-      <button type="button" id="configSave" class="primary">Enregistrer la configuration</button>
-      <button type="button" id="configCancel" class="secondary">Annuler</button>
-    </div>
+    <div class="config-note">Tu peux agrandir librement. Une cave ne peut être supprimée ou réduite que si les emplacements concernés sont vides.</div>
+    <div class="dlgactions"><button type="button" id="configSave" class="primary">Enregistrer la configuration</button><button type="button" id="configCancel" class="secondary">Annuler</button></div>
   </div>
 </dialog>
 
@@ -1869,6 +1889,7 @@ header{
     <div id="viewActions" class="dlgactions">
       <button id="editOneBottle" class="primary">✏️ Éditer cette bouteille</button>
       <button id="editAllBottles" class="primary">✏️ Éditer toutes les bouteilles</button>
+      <button id="sellBottle" class="sell-btn">💶 Vendre</button>
       <button id="consumed" class="consumed-btn">🍷 Bue</button>
       <button id="remove" class="danger">Sortir cette bouteille</button>
       <button id="cancel" class="secondary">Fermer</button>
@@ -1882,6 +1903,21 @@ header{
 </dialog>
 
 
+
+<dialog id="batchExitDialog" class="batch-exit-dialog">
+  <div class="dlg"><h2>Sortie groupée</h2><p id="batchExitCount" class="where"></p><div id="batchExitList" class="batch-exit-list"></div>
+    <div class="dlgactions"><button id="batchSell" class="sell-btn">💶 Vendre la sélection</button><button id="batchRemove" class="danger">Sortir sans vente</button><button id="batchCancel" class="secondary">Annuler</button></div>
+  </div>
+</dialog>
+
+<dialog id="saleDialog" class="sale-dialog">
+  <div class="dlg"><h2>💶 Enregistrer une vente</h2>
+    <div class="sale-meta"><label>Client<input id="saleClient" placeholder="Nom du client"></label><label>Date<input id="saleDate" type="date"></label></div>
+    <div class="sale-common"><label>Prix commun / bouteille (€)<input id="saleCommonPrice" inputmode="decimal" placeholder="Ex. 20"></label><button id="saleApplyCommon" type="button" class="secondary">Appliquer à toutes</button></div>
+    <div id="saleRows" class="sale-rows"></div><div id="salePreview" class="sale-preview"></div>
+    <div class="dlgactions"><button id="saleConfirm" class="sell-btn">Valider la vente</button><button id="saleCancel" class="secondary">Annuler</button></div>
+  </div>
+</dialog>
 
 <dialog id="rankingDialog" class="ranking-dialog">
   <div class="dlg ranking-dlg">
@@ -1914,6 +1950,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=1.0"></script>
+<script src="app.js?v=2.0"></script>
 </body>
 </html>

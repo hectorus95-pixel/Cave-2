@@ -7,33 +7,59 @@ const SEED_REFS=[];
 const KI='ma-cave-configurable-v1-inv',
       KR='ma-cave-configurable-v1-refs',
       KC='ma-cave-configurable-v1-consumed',
-      KCFG='ma-cave-configurable-v1-config';
+      KCFG='ma-cave-configurable-v1-config',
+      KSALES='ma-cave-configurable-v2-sales';
 
-const DEFAULT_CONFIG={casiers:3,lignes:15,positions:5};
+const DEFAULT_DIMENSIONS={casiers:3,lignes:15,positions:5};
+const DEFAULT_CONFIG={
+  caves:[{
+    id:'cave1',
+    name:'Cave 1',
+    code:'C1',
+    ...DEFAULT_DIMENSIONS
+  }]
+};
 
 let config=load(KCFG,null);
 let inv=load(KI,SEED_INV);
 let refs=load(KR,SEED_REFS);
 let consumed=load(KC,[]);
+let sales=load(KSALES,[]);
 if(!Array.isArray(consumed)) consumed=[];
+if(!Array.isArray(sales)) sales=[];
 consumed.forEach(e=>{
   if(!['good','bad','neutral'].includes(e.rating)) e.rating='neutral';
 });
+sales.forEach(e=>{
+  if(e.profit===undefined){
+    e.costPrice=Number(e.costPrice??e.prixAchat??0)||0;
+    e.salePrice=Number(e.salePrice??e.prixVente??0)||0;
+    e.costKnown=e.costKnown!==undefined ? !!e.costKnown : e.costPrice>0;
+    e.profit=e.costKnown ? e.salePrice-e.costPrice : null;
+  }
+});
+
+config=normalizeConfig(config);
+let activeCaveId=config?.caves?.[0]?.id||'';
 let activeCasier=1;
 let selected=null;
 let pendingAddRefId='';
 let editScope=null; // 'single' | 'all' | 'new'
 let selectedEmptyKeys=new Set();
+let selectedOccupiedKeys=new Set();
 let addTargets=[];
+let exitTargets=[];
+let saleTargets=[];
 let emptyTapTimers=new Map();
+let occupiedTapTimers=new Map();
 let voiceRecognition=null;
 let voiceExactRefId='';
 let voiceSimilarRefId='';
 let dialogHistory=false;
 
-config=normalizeConfig(config);
 if(config){
   inv=buildInventory(config,inv);
+  activeCaveId=config.caves[0].id;
 }
 
 const $=s=>document.querySelector(s);
@@ -48,146 +74,260 @@ function load(key,seed){
   }catch(e){ return structuredClone(seed); }
 }
 
-function normalizeConfig(raw){
+function makeCaveId(index){
+  return `cave${index+1}_${Math.random().toString(36).slice(2,6)}`;
+}
+
+function cleanCaveCode(value,index=0){
+  let code=normalizeSearchText(value||'')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g,'')
+    .slice(0,3);
+  if(!code) code=`C${index+1}`.slice(0,3);
+  return code;
+}
+
+function normalizeCave(raw,index=0){
   if(!raw) return null;
-  const c={
+  const cave={
+    id:String(raw.id||makeCaveId(index)),
+    name:String(raw.name||`Cave ${index+1}`).trim()||`Cave ${index+1}`,
+    code:cleanCaveCode(raw.code,index),
     casiers:Number(raw.casiers),
     lignes:Number(raw.lignes),
     positions:Number(raw.positions)
   };
   if(
-    !Number.isInteger(c.casiers) || c.casiers<1 || c.casiers>20 ||
-    !Number.isInteger(c.lignes) || c.lignes<1 || c.lignes>50 ||
-    !Number.isInteger(c.positions) || c.positions<1 || c.positions>12
+    !Number.isInteger(cave.casiers) || cave.casiers<1 || cave.casiers>20 ||
+    !Number.isInteger(cave.lignes) || cave.lignes<1 || cave.lignes>50 ||
+    !Number.isInteger(cave.positions) || cave.positions<1 || cave.positions>12
   ) return null;
-  return c;
+  return cave;
 }
 
-function positionKey(c,l,p){
-  return `${c}-${l}-${p}`;
+function normalizeConfig(raw){
+  if(!raw) return null;
+
+  // Migration automatique de la v1 : l'ancienne cave devient la Cave 1.
+  if(!Array.isArray(raw.caves)){
+    const legacy=normalizeCave({
+      id:'cave1',
+      name:'Cave 1',
+      code:'C1',
+      casiers:raw.casiers,
+      lignes:raw.lignes,
+      positions:raw.positions
+    },0);
+    return legacy ? {caves:[legacy]} : null;
+  }
+
+  if(raw.caves.length<1 || raw.caves.length>12) return null;
+  const caves=raw.caves.map((c,i)=>normalizeCave(c,i));
+  if(caves.some(c=>!c)) return null;
+
+  // IDs et codes doivent être uniques.
+  const ids=new Set(),codes=new Set();
+  for(const c of caves){
+    if(ids.has(c.id)) c.id=makeCaveId(ids.size);
+    ids.add(c.id);
+    if(codes.has(c.code)) return null;
+    codes.add(c.code);
+  }
+  return {caves};
+}
+
+function caveById(id){
+  return config?.caves?.find(c=>c.id===id)||null;
+}
+function activeCave(){
+  return caveById(activeCaveId)||config?.caves?.[0]||null;
+}
+function caveIndex(id){
+  const i=config?.caves?.findIndex(c=>c.id===id);
+  return i>=0?i:999;
+}
+
+function positionKey(caveId,c,l,p){
+  return `${caveId}|${c}|${l}|${p}`;
+}
+
+function positionLabel(cave,c,l,p){
+  return `${cave?.code||'CAV'} · C${c}-L${l}-P${p}`;
 }
 
 function buildInventory(cfg,oldInv=[]){
-  const oldMap=new Map(
-    (Array.isArray(oldInv)?oldInv:[]).map(x=>[
-      positionKey(Number(x.casier),Number(x.ligne),Number(x.position)),
-      x
-    ])
-  );
+  const firstId=cfg.caves[0].id;
+  const oldMap=new Map();
+  (Array.isArray(oldInv)?oldInv:[]).forEach(x=>{
+    const caveId=x.caveId||firstId;
+    oldMap.set(positionKey(caveId,Number(x.casier),Number(x.ligne),Number(x.position)),x);
+  });
 
   const fresh=[];
-  for(let c=1;c<=cfg.casiers;c++){
-    for(let l=1;l<=cfg.lignes;l++){
-      for(let p=1;p<=cfg.positions;p++){
-        const old=oldMap.get(positionKey(c,l,p));
-        fresh.push({
-          casier:c,
-          ligne:l,
-          position:p,
-          emplacement:`C${c}-L${l}-P${p}`,
-          refId:old?.refId||null
-        });
+  cfg.caves.forEach(cave=>{
+    for(let c=1;c<=cave.casiers;c++){
+      for(let l=1;l<=cave.lignes;l++){
+        for(let p=1;p<=cave.positions;p++){
+          const old=oldMap.get(positionKey(cave.id,c,l,p));
+          fresh.push({
+            caveId:cave.id,
+            casier:c,
+            ligne:l,
+            position:p,
+            emplacement:positionLabel(cave,c,l,p),
+            refId:old?.refId||null
+          });
+        }
       }
     }
-  }
+  });
   return fresh;
 }
 
+function caveCapacity(cave){
+  return cave.casiers*cave.lignes*cave.positions;
+}
 function configCapacity(cfg){
-  return cfg.casiers*cfg.lignes*cfg.positions;
+  return cfg.caves.reduce((s,c)=>s+caveCapacity(c),0);
+}
+
+function configEditorValues(){
+  return $$('.cave-config-card').map((card,i)=>({
+    id:card.dataset.caveId||makeCaveId(i),
+    name:card.querySelector('[data-field="name"]').value,
+    code:card.querySelector('[data-field="code"]').value,
+    casiers:Number(card.querySelector('[data-field="casiers"]').value),
+    lignes:Number(card.querySelector('[data-field="lignes"]').value),
+    positions:Number(card.querySelector('[data-field="positions"]').value)
+  }));
+}
+
+function renderConfigEditors(caves){
+  $('#cfgCavesList').innerHTML=caves.map((c,i)=>`
+    <section class="cave-config-card" data-cave-id="${esc(c.id||makeCaveId(i))}">
+      <div class="cave-config-title">Cave ${i+1}</div>
+      <div class="cave-name-row">
+        <label>Nom
+          <input data-field="name" maxlength="40" value="${esc(c.name||`Cave ${i+1}`)}" placeholder="Ex. Cave principale">
+        </label>
+        <label>Code (3 car. max)
+          <input data-field="code" maxlength="3" value="${esc(c.code||`C${i+1}`)}" placeholder="CP">
+        </label>
+      </div>
+      <div class="cave-dims-row">
+        <label>Casiers<input data-field="casiers" type="number" min="1" max="20" inputmode="numeric" value="${Number(c.casiers)||3}"></label>
+        <label>Lignes<input data-field="lignes" type="number" min="1" max="50" inputmode="numeric" value="${Number(c.lignes)||15}"></label>
+        <label>Bouteilles / ligne<input data-field="positions" type="number" min="1" max="12" inputmode="numeric" value="${Number(c.positions)||5}"></label>
+      </div>
+    </section>
+  `).join('');
+}
+
+function syncConfigCaveCount(){
+  let n=Math.max(1,Math.min(12,Number($('#cfgCaveCount').value)||1));
+  $('#cfgCaveCount').value=n;
+  const current=configEditorValues();
+  while(current.length<n){
+    const i=current.length;
+    current.push({
+      id:makeCaveId(i),name:`Cave ${i+1}`,code:`C${i+1}`.slice(0,3),
+      ...DEFAULT_DIMENSIONS
+    });
+  }
+  current.length=n;
+  renderConfigEditors(current);
+  updateConfigCapacityPreview();
 }
 
 function readConfigForm(){
-  return normalizeConfig({
-    casiers:Number($('#cfgCasiers').value),
-    lignes:Number($('#cfgLignes').value),
-    positions:Number($('#cfgPositions').value)
-  });
+  const caves=configEditorValues().map((c,i)=>normalizeCave(c,i));
+  if(!caves.length || caves.some(c=>!c)) return null;
+  const codes=caves.map(c=>c.code);
+  if(new Set(codes).size!==codes.length) return null;
+  return {caves};
 }
 
 function updateConfigCapacityPreview(){
-  const c=readConfigForm();
-  $('#configCapacity').textContent=c
-    ? `${c.casiers} casier${c.casiers>1?'s':''} × ${c.lignes} ligne${c.lignes>1?'s':''} × ${c.positions} bouteille${c.positions>1?'s':''} = ${configCapacity(c)} emplacements`
-    : 'Valeurs autorisées : 1–20 casiers, 1–50 lignes, 1–12 bouteilles par ligne.';
+  const cfg=readConfigForm();
+  if(!cfg){
+    $('#configCapacity').textContent='Vérifie les dimensions et utilise un code différent pour chaque cave.';
+    return;
+  }
+  const details=cfg.caves.map(c=>`${c.code}: ${caveCapacity(c)}`).join(' · ');
+  $('#configCapacity').textContent=`${cfg.caves.length} cave${cfg.caves.length>1?'s':''} · ${details} · Total ${configCapacity(cfg)} emplacements`;
 }
 
 function openConfigDialog(firstRun=false){
-  const c=config||DEFAULT_CONFIG;
-  $('#configTitle').textContent=firstRun ? 'Configurer ma cave' : '⚙️ Configuration de la cave';
-  $('#cfgCasiers').value=c.casiers;
-  $('#cfgLignes').value=c.lignes;
-  $('#cfgPositions').value=c.positions;
+  const cfg=config||DEFAULT_CONFIG;
+  $('#configTitle').textContent=firstRun ? 'Configurer mes caves' : '⚙️ Configuration des caves';
+  $('#cfgCaveCount').value=cfg.caves.length;
+  renderConfigEditors(cfg.caves);
   $('#configError').hidden=true;
   $('#configError').innerHTML='';
   $('#configCancel').hidden=firstRun;
   updateConfigCapacityPreview();
 
-  if(firstRun){
-    $('#configDialog').showModal();
-  }else{
-    showDialog($('#configDialog'));
-  }
+  if(firstRun) $('#configDialog').showModal();
+  else showDialog($('#configDialog'));
 }
 
 function applyConfiguration(){
   const next=readConfigForm();
   if(!next){
     $('#configError').hidden=false;
-    $('#configError').textContent='Vérifie les trois nombres indiqués.';
+    $('#configError').textContent='Vérifie les noms, codes et dimensions. Chaque code doit être unique (3 caractères maximum).';
     return;
   }
 
   if(config){
-    const blocked=inv.filter(x=>
-      x.refId && (
-        x.casier>next.casiers ||
-        x.ligne>next.lignes ||
-        x.position>next.positions
-      )
-    );
-
+    const blocked=inv.filter(x=>{
+      if(!x.refId) return false;
+      const c=next.caves.find(n=>n.id===x.caveId);
+      return !c || x.casier>c.casiers || x.ligne>c.lignes || x.position>c.positions;
+    });
     if(blocked.length){
       const shown=blocked.slice(0,8).map(x=>x.emplacement).join(' · ');
       $('#configError').hidden=false;
-      $('#configError').innerHTML=
-        `<b>Réduction impossible.</b><br>
-         ${blocked.length} bouteille${blocked.length>1?'s seraient':' serait'} supprimée${blocked.length>1?'s':''} de la structure.<br>
-         Déplace d’abord : ${esc(shown)}${blocked.length>8?'…':''}`;
+      $('#configError').innerHTML=`<b>Réduction impossible.</b><br>${blocked.length} bouteille${blocked.length>1?'s seraient':' serait'} hors de la nouvelle structure.<br>Déplace d’abord : ${esc(shown)}${blocked.length>8?'…':''}`;
       return;
     }
   }
 
-  const oldCapacity=config ? configCapacity(config) : 0;
+  const oldCapacity=config?configCapacity(config):0;
   config=next;
   inv=buildInventory(config,inv);
-  activeCasier=Math.min(Math.max(1,activeCasier),config.casiers);
+  if(!caveById(activeCaveId)) activeCaveId=config.caves[0].id;
+  const ac=activeCave();
+  activeCasier=Math.min(Math.max(1,activeCasier),ac.casiers);
   clearEmptySelection();
-  addTargets=[];
-  pendingAddRefId='';
-  editScope=null;
-  persist();
-  render();
-  refreshPhotoButtons();
+  clearOccupiedSelection();
+  addTargets=[]; exitTargets=[]; saleTargets=[];
+  pendingAddRefId=''; editScope=null;
+  persist(); render(); refreshPhotoButtons();
 
   const newCapacity=configCapacity(config);
-  const message=oldCapacity
-    ? `Configuration enregistrée : ${newCapacity} emplacements.`
-    : `Cave créée : ${newCapacity} emplacements.`;
-
+  const message=oldCapacity?`Configuration enregistrée : ${config.caves.length} cave${config.caves.length>1?'s':''}, ${newCapacity} emplacements.`:`Caves créées : ${newCapacity} emplacements.`;
   if($('#configDialog').open){
-    if(dialogHistory) requestClose($('#configDialog'));
-    else $('#configDialog').close();
+    if(dialogHistory) requestClose($('#configDialog')); else $('#configDialog').close();
   }
   setTimeout(()=>alert(message),80);
 }
 
 function deriveConfigFromInventory(data){
-  if(!Array.isArray(data) || !data.length) return null;
-  const c=Math.max(...data.map(x=>Number(x.casier)||0));
-  const l=Math.max(...data.map(x=>Number(x.ligne)||0));
-  const p=Math.max(...data.map(x=>Number(x.position)||0));
-  return normalizeConfig({casiers:c,lignes:l,positions:p});
+  if(!Array.isArray(data)||!data.length) return null;
+  const caveIds=[...new Set(data.map(x=>x.caveId||'cave1'))];
+  const caves=caveIds.map((id,i)=>{
+    const rows=data.filter(x=>(x.caveId||'cave1')===id);
+    return normalizeCave({
+      id,
+      name:rows[0]?.caveName||`Cave ${i+1}`,
+      code:rows[0]?.caveCode||`C${i+1}`,
+      casiers:Math.max(...rows.map(x=>Number(x.casier)||1)),
+      lignes:Math.max(...rows.map(x=>Number(x.ligne)||1)),
+      positions:Math.max(...rows.map(x=>Number(x.position)||1))
+    },i);
+  });
+  return normalizeConfig({caves});
 }
 
 // Migration douce V2 -> V3
@@ -202,6 +342,7 @@ function persist(){
   localStorage.setItem(KI,JSON.stringify(inv));
   localStorage.setItem(KR,JSON.stringify(refs));
   localStorage.setItem(KC,JSON.stringify(consumed));
+  localStorage.setItem(KSALES,JSON.stringify(sales));
 }
 function save(){ persist(); render(); }
 
@@ -350,34 +491,47 @@ function allOccupied(){
 }
 function statsData(){
   const occ=allOccupied();
-  const byCasier={};
+  const byCave={};
+  const byCaveCasier={};
   const byYear={};
-  const valueCasier={};
+  const valueCave={};
 
-  for(let c=1;c<=(config?.casiers||0);c++){
-    byCasier[c]=0;
-    valueCasier[c]=0;
-  }
+  config.caves.forEach(c=>{
+    byCave[c.id]=0;
+    valueCave[c.id]=0;
+    byCaveCasier[c.id]={};
+    for(let i=1;i<=c.casiers;i++) byCaveCasier[c.id][i]=0;
+  });
 
   occ.forEach(x=>{
     const r=ref(x.refId);
-    byCasier[x.casier]=(byCasier[x.casier]||0)+1;
-    valueCasier[x.casier]=(valueCasier[x.casier]||0)+(Number(r?.prix)||0);
+    byCave[x.caveId]=(byCave[x.caveId]||0)+1;
+    valueCave[x.caveId]=(valueCave[x.caveId]||0)+(Number(r?.prix)||0);
+    if(!byCaveCasier[x.caveId]) byCaveCasier[x.caveId]={};
+    byCaveCasier[x.caveId][x.casier]=(byCaveCasier[x.caveId][x.casier]||0)+1;
     const y=String(r?.millesime||'Sans année');
     byYear[y]=(byYear[y]||0)+1;
   });
-  return {occ,byCasier,byYear,valueCasier};
+  return {occ,byCave,byCaveCasier,byYear,valueCave};
+}
+
+function renderCaveTabs(s){
+  const tabs=$('#caveTabs');
+  tabs.innerHTML=config.caves.map(c=>`
+    <button class="cave-tab ${c.id===activeCaveId?'active':''}" data-cave-id="${esc(c.id)}" title="${esc(c.name)}">
+      <b>${esc(c.code)}</b><span>${esc(c.name)}</span><small>${s.byCave[c.id]||0} bt</small>
+    </button>
+  `).join('');
 }
 
 function renderCasierTabs(s){
   const tabs=$('#casierTabs');
-  if(!tabs || !config) return;
-
-  tabs.innerHTML=Array.from({length:config.casiers},(_,i)=>{
+  const cave=activeCave();
+  if(!tabs||!cave) return;
+  const counts=s.byCaveCasier[cave.id]||{};
+  tabs.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
     const c=i+1;
-    return `<button class="tab ${c===activeCasier?'active':''}" data-c="${c}">
-      <b>Casier ${c}</b><small>${s.byCasier[c]||0} bt</small>
-    </button>`;
+    return `<button class="tab ${c===activeCasier?'active':''}" data-c="${c}"><b>Casier ${c}</b><small>${counts[c]||0} bt</small></button>`;
   }).join('');
 }
 
@@ -385,45 +539,29 @@ function renderStats(){
   const s=statsData();
   $('#count').textContent=s.occ.length;
   $('#free').textContent=inv.length-s.occ.length;
+  renderCaveTabs(s);
   renderCasierTabs(s);
 
   const maturityCounts={0:0,1:0,2:0,3:0,4:0};
   s.occ.forEach(x=>{
-    const r=ref(x.refId);
-    const mi=maturityInfo(r);
-    const z=mi.known ? mi.zone : 0;
-    if(maturityCounts[z]!==undefined){
-      maturityCounts[z]++;
-    }
+    const r=ref(x.refId),mi=maturityInfo(r),z=mi.known?mi.zone:0;
+    if(maturityCounts[z]!==undefined) maturityCounts[z]++;
   });
-  [1,2,3,4,0].forEach(z=>{
-    const el=$('#matCount'+z);
-    if(el) el.textContent=`${maturityCounts[z]} bt`;
-  });
+  [1,2,3,4,0].forEach(z=>{const el=$('#matCount'+z);if(el)el.textContent=`${maturityCounts[z]} bt`;});
 
   const years=Object.entries(s.byYear).sort((a,b)=>{
-    if(a[0]==='Sans année') return 1;
-    if(b[0]==='Sans année') return -1;
-    return Number(b[0])-Number(a[0]);
+    if(a[0]==='Sans année')return 1;if(b[0]==='Sans année')return -1;return Number(b[0])-Number(a[0]);
   });
   $('#yearStats').innerHTML=years.map(([y,n])=>{
     const ac=ageClass(y==='Sans année'?'':y);
-    return `<button type="button" class="year-chip" data-year="${esc(y)}">
-      <span class="year-chip-fill age-color ${ac}">
-        <b>${esc(y)}</b><small>${n} bt</small>
-      </span>
-    </button>`;
+    return `<button type="button" class="year-chip" data-year="${esc(y)}"><span class="year-chip-fill age-color ${ac}"><b>${esc(y)}</b><small>${n} bt</small></span></button>`;
   }).join('');
   $$('#yearStats .year-chip').forEach(btn=>btn.addEventListener('click',()=>showVintageResults(btn.dataset.year)));
 
-  $('#valueByCasier').innerHTML=Array.from({length:config.casiers},(_,i)=>{
-    const c=i+1;
-    return `<div><span>Casier ${c}</span><b>${euro(s.valueCasier[c]||0)}</b></div>`;
-  }).join('');
-
-  $('#valueTotal').textContent=euro(
-    s.occ.reduce((sum,x)=>sum+(Number(ref(x.refId)?.prix)||0),0)
-  );
+  $('#valueByCave').innerHTML=config.caves.map(c=>`
+    <div><span>${esc(c.code)} · ${esc(c.name)}</span><b>${euro(s.valueCave[c.id]||0)}</b></div>
+  `).join('');
+  $('#valueTotal').textContent=euro(s.occ.reduce((sum,x)=>sum+(Number(ref(x.refId)?.prix)||0),0));
 }
 
 
@@ -449,6 +587,7 @@ function refsWithLocations(filterFn){
     if(r && filterFn(r,p)) out.push({r,p});
   });
   return out.sort((a,b)=>
+    caveIndex(a.p.caveId)-caveIndex(b.p.caveId) ||
     a.p.casier-b.p.casier ||
     a.p.ligne-b.p.ligne ||
     a.p.position-b.p.position
@@ -470,12 +609,12 @@ function showResultPanel(title,items){
       <span class="result-main wine-color ${wc}">
         <b>${esc(r.vin)}${isMagnum?' · Magnum':''}</b>
         ${r.domaine?`<span class="result-domain">${esc(r.domaine)}</span>`:''}
-        <small>${r._searchLocations?esc(r._searchLocations):`Casier ${p.casier} · Ligne ${p.ligne} · Position ${p.position}`}</small>
+        <small>${r._searchLocations?esc(r._searchLocations):p.emplacement}</small>
         <span class="result-gauge">${maturityGaugeHtml(r)}</span>
       </span>
     `;
     btn.addEventListener('click',()=>{
-      activeCasier=p.casier; render(); refreshPhotoButtons();
+      activeCaveId=p.caveId; activeCasier=p.casier; render(); refreshPhotoButtons();
       const target=[...document.querySelectorAll('#grid .slot')].find(el=>el.dataset.line==p.ligne&&el.dataset.pos==p.position);
       if(target){ target.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>target.click(),250); }
     });
@@ -512,6 +651,7 @@ function groupedResultItems(matches){
 
   grouped.forEach(({r,positions})=>{
     positions.sort((a,b)=>
+      caveIndex(a.caveId)-caveIndex(b.caveId) ||
       a.casier-b.casier ||
       a.ligne-b.ligne ||
       a.position-b.position
@@ -519,7 +659,7 @@ function groupedResultItems(matches){
 
     const first=positions[0];
     const locations=positions
-      .map(p=>`C${p.casier}-L${p.ligne}-P${p.position}`)
+      .map(p=>p.emplacement)
       .join(' · ');
 
     items.push({
@@ -587,7 +727,7 @@ function showSearchResults(){
     const hay=[
       r.vin,r.domaine,r.producteur,r.appellation,r.millesime,
       r.couleur,r.format,p.emplacement,
-      `casier ${p.casier}`,`ligne ${p.ligne}`,`position ${p.position}`
+      caveById(p.caveId)?.name,caveById(p.caveId)?.code,`casier ${p.casier}`,`ligne ${p.ligne}`,`position ${p.position}`
     ].join(' ');
     return normalizeSearchText(hay).includes(q);
   });
@@ -595,7 +735,7 @@ function showSearchResults(){
   const items=groupedResultItems(matches);
 
   showResultPanel(
-    `${items.length} vin${items.length>1?'s':''} · ${matches.length} bouteille${matches.length>1?'s':''} dans ${config.casiers} casier${config.casiers>1?'s':''} pour « ${raw} »`,
+    `${items.length} vin${items.length>1?'s':''} · ${matches.length} bouteille${matches.length>1?'s':''} dans ${config.caves.length} cave${config.caves.length>1?'s':''} pour « ${raw} »`,
     items
   );
 }
@@ -632,7 +772,10 @@ function consumedSnapshot(x,r){
     prix:Number(r.prix)||0,
     maturiteDebut:r.maturiteDebut||'',
     maturiteFin:r.maturiteFin||'',
-    emplacement:x.emplacement||`C${x.casier}-L${x.ligne}-P${x.position}`,
+    caveId:x.caveId||activeCaveId,
+    caveName:caveById(x.caveId)?.name||'',
+    caveCode:caveById(x.caveId)?.code||'',
+    emplacement:x.emplacement||positionLabel(caveById(x.caveId),x.casier,x.ligne,x.position),
     casier:Number(x.casier)||0,
     ligne:Number(x.ligne)||0,
     position:Number(x.position)||0,
@@ -824,6 +967,134 @@ function renderConsumedRanking(){
   }).join('');
 }
 
+function saleRange(){
+  const mode=$('#salesPeriod')?.value||'current';
+  const now=new Date();
+  if(mode==='all') return {start:null,end:null};
+  if(mode==='custom'){
+    const from=$('#salesFrom').value,to=$('#salesTo').value;
+    if(!from||!to) return {start:null,end:null,invalid:true};
+    let [fy,fm]=from.split('-').map(Number),[ty,tm]=to.split('-').map(Number);
+    let a=new Date(fy,fm-1,1),b=new Date(ty,tm,1);
+    if(a>b){const t=a;a=new Date(ty,tm-1,1);b=new Date(fy,fm,1);}
+    return {start:a,end:b};
+  }
+  const first=new Date(now.getFullYear(),now.getMonth(),1),next=new Date(now.getFullYear(),now.getMonth()+1,1);
+  if(mode==='current') return {start:first,end:next};
+  if(mode==='previous') return {start:new Date(now.getFullYear(),now.getMonth()-1,1),end:first};
+  const months=Math.max(1,Number(mode)||1);
+  return {start:new Date(now.getFullYear(),now.getMonth()-(months-1),1),end:next};
+}
+function filteredSales(){
+  const range=saleRange();
+  if(range.invalid) return [];
+  return sales.filter(e=>{
+    const d=new Date(e.soldAt);if(Number.isNaN(d.getTime()))return false;
+    if(range.start&&d<range.start)return false;if(range.end&&d>=range.end)return false;return true;
+  }).sort((a,b)=>new Date(b.soldAt)-new Date(a.soldAt));
+}
+function initSalesPeriod(){
+  const m=localMonthValue();
+  if($('#salesFrom')&&!$('#salesFrom').value)$('#salesFrom').value=m;
+  if($('#salesTo')&&!$('#salesTo').value)$('#salesTo').value=m;
+  if($('#salesCustom'))$('#salesCustom').hidden=$('#salesPeriod')?.value!=='custom';
+}
+function saleTargetsData(){
+  return saleTargets.filter(x=>x?.refId&&ref(x.refId)).map(x=>({x,r:ref(x.refId)}));
+}
+function openSaleDialog(targets,direct=false){
+  saleTargets=(targets||[]).filter(x=>x?.refId&&ref(x.refId));
+  if(!saleTargets.length)return;
+  $('#saleClient').value='';
+  $('#saleDate').value=new Date().toISOString().slice(0,10);
+  $('#saleCommonPrice').value='';
+  $('#saleRows').innerHTML=saleTargetsData().map(({x,r})=>`
+    <div class="sale-row" data-sale-key="${esc(slotKey(x))}">
+      <div class="sale-wine wine-color ${wineClass(r.couleur)}">
+        <b>${esc(r.vin)}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
+        <span>${esc(r.domaine||'')} · ${esc(x.emplacement)}</span>
+        <small>Achat : ${Number(r.prix)>0?euro(r.prix):'non renseigné'}</small>
+      </div>
+      <label>Vente (€)<input class="sale-price" inputmode="decimal" placeholder="0,00"></label>
+    </div>
+  `).join('');
+  renderSalePreview();
+  if(direct||dialogHistory)$('#saleDialog').showModal();else showDialog($('#saleDialog'));
+}
+function renderSalePreview(){
+  let revenue=0,cost=0,profit=0,known=0,unknown=0;
+  saleTargetsData().forEach(({r},i)=>{
+    const input=$$('.sale-price')[i];
+    const sp=Number(String(input?.value||'').replace(',','.'))||0;
+    revenue+=sp;
+    const cp=Number(r.prix)||0;
+    if(cp>0){cost+=cp;profit+=sp-cp;known++;}else unknown++;
+  });
+  $('#salePreview').innerHTML=`<b>CA ${euro(revenue)}</b><span>Coût connu ${euro(cost)} · Bénéfice ${profit>=0?'+':''}${euro(profit)}${unknown?` · ${unknown} non calculable${unknown>1?'s':''}`:''}</span>`;
+}
+function confirmSale(){
+  const client=$('#saleClient').value.trim();
+  const date=$('#saleDate').value;
+  if(!client)return alert('Indique le client.');
+  if(!date)return alert('Indique la date de vente.');
+  const data=saleTargetsData();
+  const inputs=$$('.sale-price');
+  if(inputs.length!==data.length)return;
+  const prices=inputs.map(i=>{
+    const raw=i.value.trim();if(raw==='')return null;
+    const v=Number(raw.replace(',','.'));return Number.isFinite(v)&&v>=0?v:null;
+  });
+  if(prices.some(v=>v===null))return alert('Indique un prix de vente pour chaque bouteille.');
+
+  const tx=`sale_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+  const soldAt=new Date(`${date}T12:00:00`).toISOString();
+  data.forEach(({x,r},i)=>{
+    const cave=caveById(x.caveId),costPrice=Number(r.prix)||0,costKnown=costPrice>0,salePrice=prices[i];
+    sales.push({
+      id:`s${Date.now()}_${i}_${Math.random().toString(36).slice(2,5)}`,
+      transactionId:tx,soldAt,client,
+      refId:r.id||'',vin:r.vin||'',domaine:r.domaine||'',millesime:r.millesime||'',couleur:r.couleur||'',format:r.format||'',
+      costPrice,costKnown,salePrice,profit:costKnown?salePrice-costPrice:null,
+      caveId:x.caveId,caveName:cave?.name||'',caveCode:cave?.code||'',
+      casier:x.casier,ligne:x.ligne,position:x.position,emplacement:x.emplacement
+    });
+    x.refId=null;
+  });
+  const n=data.length;
+  clearOccupiedSelection();exitTargets=[];saleTargets=[];
+  persist();render();renderSales();
+  if($('#saleDialog').open)requestClose($('#saleDialog'));
+  setTimeout(()=>alert(`${n} bouteille${n>1?'s vendues':' vendue'} à ${client}.`),100);
+}
+function renderSales(){
+  if(!$('#salesList'))return;
+  const items=filteredSales();
+  let revenue=0,cost=0,profit=0,unknown=0;
+  items.forEach(e=>{revenue+=Number(e.salePrice)||0;if(e.costKnown){cost+=Number(e.costPrice)||0;profit+=Number(e.profit)||0;}else unknown++;});
+  $('#salesCount').textContent=items.length;
+  $('#salesRevenue').textContent=euro(revenue);
+  $('#salesCost').textContent=euro(cost);
+  $('#salesProfit').textContent=`${profit>=0?'+':''}${euro(profit)}`;
+  $('#salesUnknown').textContent=unknown?`${unknown} bénéfice${unknown>1?'s':''} non calculable${unknown>1?'s':''}`:'';
+  const list=$('#salesList');
+  if(!items.length){list.innerHTML='<div class="sales-empty">Aucune vente sur cette période.</div>';return;}
+  const txs=new Map();
+  items.forEach(e=>{const k=e.transactionId||e.id;if(!txs.has(k))txs.set(k,[]);txs.get(k).push(e);});
+  list.innerHTML=[...txs.values()].map(entries=>{
+    const first=entries[0],txRevenue=entries.reduce((s,e)=>s+(Number(e.salePrice)||0),0);
+    const known=entries.filter(e=>e.costKnown),txProfit=known.reduce((s,e)=>s+(Number(e.profit)||0),0);
+    return `<article class="sale-history-card">
+      <div class="sale-history-head"><div><b>${esc(first.client||'Client')}</b><small>${new Date(first.soldAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})} · ${entries.length} bt</small></div><strong>${euro(txRevenue)}</strong></div>
+      <div class="sale-history-lines">${entries.map(e=>`
+        <div class="sale-history-line">
+          <div><b>${esc(e.vin)}${e.millesime?` · ${esc(e.millesime)}`:''}</b><small>${esc(e.caveCode||'')} · ${esc(e.emplacement||'')}</small></div>
+          <div class="sale-money"><span>Vente ${euro(e.salePrice)}</span><span>Achat ${e.costKnown?euro(e.costPrice):'?'}</span><b>${e.costKnown?`${Number(e.profit)>=0?'+':''}${euro(e.profit)}`:'?'}</b></div>
+        </div>`).join('')}</div>
+      <div class="sale-history-total">Bénéfice transaction : <b>${known.length===entries.length?`${txProfit>=0?'+':''}${euro(txProfit)}`:`${txProfit>=0?'+':''}${euro(txProfit)} + ${entries.length-known.length} non calculable${entries.length-known.length>1?'s':''}`}</b></div>
+    </article>`;
+  }).join('');
+}
+
 function renderConsumption(){
   if(!$('#consumptionList')) return;
 
@@ -925,19 +1196,16 @@ function restoreConsumedBottle(id){
   const entry=consumed.find(e=>e.id===id);
   if(!entry) return;
 
+  const desiredCaveId=entry.caveId||config.caves[0].id;
   const original=inv.find(x=>
-    x.casier===entry.casier &&
-    x.ligne===entry.ligne &&
-    x.position===entry.position
+    x.caveId===desiredCaveId &&
+    x.casier===entry.casier && x.ligne===entry.ligne && x.position===entry.position
   );
 
   let target=(original && !original.refId) ? original : null;
-  if(!target){
-    target=inv.find(x=>x.casier===entry.casier && !x.refId);
-  }
-  if(!target){
-    target=inv.find(x=>!x.refId);
-  }
+  if(!target) target=inv.find(x=>x.caveId===desiredCaveId && x.casier===entry.casier && !x.refId);
+  if(!target) target=inv.find(x=>x.caveId===desiredCaveId && !x.refId);
+  if(!target) target=inv.find(x=>!x.refId);
   if(!target){
     alert('Aucune place libre pour remettre cette bouteille dans la cave.');
     return;
@@ -951,6 +1219,7 @@ function restoreConsumedBottle(id){
 
   target.refId=ensureRefForConsumed(entry);
   consumed=consumed.filter(e=>e.id!==id);
+  activeCaveId=target.caveId;
   activeCasier=target.casier;
   persist();
   render();
@@ -968,7 +1237,7 @@ function initConsumptionPeriod(){
 }
 
 function slotKey(x){
-  return `${x.casier}-${x.ligne}-${x.position}`;
+  return positionKey(x.caveId,x.casier,x.ligne,x.position);
 }
 
 function emptyTargetsFromSelection(){
@@ -981,8 +1250,55 @@ function clearEmptySelection(){
   emptyTapTimers.clear();
 }
 
+function occupiedTargetsFromSelection(){
+  return inv.filter(x=>selectedOccupiedKeys.has(slotKey(x)) && x.refId && ref(x.refId));
+}
+function clearOccupiedSelection(){
+  selectedOccupiedKeys.clear();
+  occupiedTapTimers.forEach(t=>clearTimeout(t));
+  occupiedTapTimers.clear();
+}
+function toggleOccupiedSelection(x){
+  if(!x.refId) return;
+  clearEmptySelection();
+  const key=slotKey(x);
+  if(selectedOccupiedKeys.has(key)) selectedOccupiedKeys.delete(key);
+  else selectedOccupiedKeys.add(key);
+  render();
+}
+function prepareExitTargets(x){
+  const selectedTargets=occupiedTargetsFromSelection();
+  if(selectedOccupiedKeys.has(slotKey(x)) && selectedTargets.length) exitTargets=selectedTargets;
+  else exitTargets=[x];
+  selected=x;
+}
+function handleOccupiedSlotClick(x,r){
+  const key=slotKey(x);
+  const existing=occupiedTapTimers.get(key);
+  if(existing){
+    clearTimeout(existing); occupiedTapTimers.delete(key); toggleOccupiedSelection(x); return;
+  }
+  const timer=setTimeout(()=>{
+    occupiedTapTimers.delete(key);
+    if(selectedOccupiedKeys.has(key)) openBatchExitDialog(x);
+    else editRef(x,r);
+  },280);
+  occupiedTapTimers.set(key,timer);
+}
+function openBatchExitDialog(x){
+  prepareExitTargets(x);
+  const items=exitTargets.map(p=>{
+    const r=ref(p.refId);
+    return `<div><b>${esc(r?.vin||'Vin')}</b><small>${esc(p.emplacement)}</small></div>`;
+  }).join('');
+  $('#batchExitCount').textContent=`${exitTargets.length} bouteille${exitTargets.length>1?'s':''} sélectionnée${exitTargets.length>1?'s':''}`;
+  $('#batchExitList').innerHTML=items;
+  showDialog($('#batchExitDialog'));
+}
+
 function toggleEmptySelection(x){
   if(x.refId) return;
+  clearOccupiedSelection();
   const key=slotKey(x);
   if(selectedEmptyKeys.has(key)) selectedEmptyKeys.delete(key);
   else selectedEmptyKeys.add(key);
@@ -1045,29 +1361,40 @@ function applyRefToAddTargets(refId){
 
 function render(){
   if(!config) return;
+  if(!caveById(activeCaveId)) activeCaveId=config.caves[0].id;
+  const activeDef=activeCave();
+  if(activeCasier>activeDef.casiers) activeCasier=activeDef.casiers;
 
   selectedEmptyKeys.forEach(key=>{
     const x=inv.find(p=>slotKey(p)===key);
     if(!x || x.refId) selectedEmptyKeys.delete(key);
   });
+  selectedOccupiedKeys.forEach(key=>{
+    const x=inv.find(p=>slotKey(p)===key);
+    if(!x || !x.refId) selectedOccupiedKeys.delete(key);
+  });
 
   renderStats();
   const q=$('#search').value.trim().toLowerCase();
+  const cave=activeCave();
+  if(!cave) return;
   const g=$('#grid');
-  g.style.setProperty('--bpl',config.positions);
+  g.style.setProperty('--bpl',cave.positions);
   g.innerHTML='';
-  inv.filter(x=>x.casier===activeCasier).forEach(x=>{
+  inv.filter(x=>x.caveId===activeCaveId && x.casier===activeCasier).forEach(x=>{
     const r=ref(x.refId);
     const hay=r?[r.vin,r.domaine,r.millesime,r.couleur,r.format,x.emplacement].join(' ').toLowerCase():'';
     const b=document.createElement('button');
     b.type='button';
     b.dataset.line=x.ligne; b.dataset.pos=x.position;
     const isMultiSelected=!r && selectedEmptyKeys.has(slotKey(x));
-    b.className=`slot ${r?'occupied':'empty'}${isMultiSelected?' multi-selected':''}`;
+    const isExitSelected=!!r && selectedOccupiedKeys.has(slotKey(x));
+    b.className=`slot ${r?'occupied':'empty'}${isMultiSelected?' multi-selected':''}${isExitSelected?' exit-selected':''}`;
     if(r){
       const wc=wineClass(r.couleur);
       const ac=ageClass(r.millesime);
       b.innerHTML=`
+        ${isExitSelected?'<span class="exit-check">✓</span>':''}
         <span class="vintage-strip age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
         <span class="slot-main wine-color ${wc}">
           <span class="pos">L${x.ligne}·P${x.position}</span>
@@ -1082,11 +1409,12 @@ function render(){
         <span class="name">${isMultiSelected?'✓ Sélectionnée':'＋ Vide'}</span>
       `;
     }
-    b.addEventListener('click',()=>r?editRef(x,r):handleEmptySlotClick(x));
+    b.addEventListener('click',()=>r?handleOccupiedSlotClick(x,r):handleEmptySlotClick(x));
     g.appendChild(b);
   });
   $$('.tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.c)===activeCasier));
   renderConsumption();
+  renderSales();
 }
 
 function pushDialogHistory(){
@@ -1099,12 +1427,14 @@ function showDialog(d){
   d.showModal();
 }
 function closeDialogsFromPop(){
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
   editScope=null;
   addTargets=[];
+  exitTargets=[];
+  saleTargets=[];
   voiceExactRefId='';
   voiceSimilarRefId='';
   if(voiceRecognition){
@@ -1132,6 +1462,8 @@ function backdropClose(e){
 $('#dialog').addEventListener('click',backdropClose);
 $('#addDialog').addEventListener('click',backdropClose);
 $('#voiceDialog').addEventListener('click',backdropClose);
+$('#batchExitDialog').addEventListener('click',backdropClose);
+$('#saleDialog').addEventListener('click',backdropClose);
 
 function fill(r){
   ['vin','domaine','millesime','couleur','format','prix','maturiteDebut','maturiteFin'].forEach(k=>{
@@ -1259,7 +1591,8 @@ function renderPickResults(){
   list.innerHTML=matches.map(r=>{
     const usedCount=inv.filter(p=>p.refId===r.id).length;
     const consumedCount=consumed.filter(e=>e.refId===r.id).length;
-    const canDelete=usedCount===0 && consumedCount===0;
+    const soldCount=sales.filter(e=>e.refId===r.id).length;
+    const canDelete=usedCount===0 && consumedCount===0 && soldCount===0;
 
     return `
       <div class="pick-result-row${canDelete?'':' no-delete'}">
@@ -1270,7 +1603,7 @@ function renderPickResults(){
           <span>${esc(r.domaine||'Domaine non renseigné')}${r.format?` · ${esc(r.format)}`:''}</span>
           <small>
             ${usedCount} bouteille${usedCount>1?'s':''} en cave
-            ${consumedCount?` · ${consumedCount} bue${consumedCount>1?'s':''}`:''}
+            ${consumedCount?` · ${consumedCount} bue${consumedCount>1?'s':''}`:''}${soldCount?` · ${soldCount} vendue${soldCount>1?'s':''}`:''}
           </small>
         </button>
 
@@ -1623,11 +1956,13 @@ function deleteReference(id){
 
   const usedCount=inv.filter(p=>p.refId===id).length;
   const consumedCount=consumed.filter(e=>e.refId===id).length;
+  const soldCount=sales.filter(e=>e.refId===id).length;
 
-  if(usedCount>0 || consumedCount>0){
+  if(usedCount>0 || consumedCount>0 || soldCount>0){
     const details=[];
     if(usedCount>0) details.push(`${usedCount} en cave`);
-    if(consumedCount>0) details.push(`${consumedCount} dans l’historique`);
+    if(consumedCount>0) details.push(`${consumedCount} dans l’historique des bouteilles bues`);
+    if(soldCount>0) details.push(`${soldCount} dans l’historique des ventes`);
     alert(`Impossible de supprimer cette référence : ${details.join(' · ')}.`);
     return;
   }
@@ -1796,6 +2131,38 @@ $('#cancelEdit').addEventListener('click',()=>{
   }
 });
 
+$('#sellBottle').addEventListener('click',()=>{
+  if(!selected||!selected.refId)return;
+  saleTargets=[selected];
+  $('#dialog').close();
+  openSaleDialog(saleTargets,true);
+});
+
+$('#batchSell').addEventListener('click',()=>{
+  const targets=exitTargets.slice();
+  $('#batchExitDialog').close();
+  openSaleDialog(targets,true);
+});
+$('#batchRemove').addEventListener('click',()=>{
+  const targets=exitTargets.filter(x=>x.refId);
+  if(!targets.length)return;
+  if(!confirm(`Sortir ${targets.length} bouteille${targets.length>1?'s':''} sans enregistrer de vente ?`))return;
+  targets.forEach(x=>x.refId=null);
+  clearOccupiedSelection();exitTargets=[];
+  persist();render();
+  requestClose($('#batchExitDialog'));
+});
+$('#batchCancel').addEventListener('click',()=>requestClose($('#batchExitDialog')));
+$('#saleCancel').addEventListener('click',()=>requestClose($('#saleDialog')));
+$('#saleConfirm').addEventListener('click',confirmSale);
+$('#saleApplyCommon').addEventListener('click',()=>{
+  const v=$('#saleCommonPrice').value.trim();
+  if(v==='')return;
+  $$('.sale-price').forEach(i=>i.value=v);
+  renderSalePreview();
+});
+$('#saleRows').addEventListener('input',e=>{if(e.target.classList.contains('sale-price'))renderSalePreview();});
+
 $('#consumed').addEventListener('click',()=>{
   if(!selected || !selected.refId) return;
   const r=ref(selected.refId);
@@ -1826,11 +2193,11 @@ $('#configSave').addEventListener('click',applyConfiguration);
 $('#configCancel').addEventListener('click',()=>{
   if(config) requestClose($('#configDialog'));
 });
-['cfgCasiers','cfgLignes','cfgPositions'].forEach(id=>{
-  $('#'+id).addEventListener('input',()=>{
-    $('#configError').hidden=true;
-    updateConfigCapacityPreview();
-  });
+$('#cfgCaveCount').addEventListener('change',syncConfigCaveCount);
+$('#cfgCaveCount').addEventListener('input',()=>{$('#configError').hidden=true;});
+$('#cfgCavesList').addEventListener('input',e=>{
+  if(e.target.matches('[data-field="code"]')) e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);
+  $('#configError').hidden=true;updateConfigCapacityPreview();
 });
 
 $('#search').addEventListener('input',showSearchResults);
@@ -1846,6 +2213,14 @@ $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
 
   showMaturityResults(zone);
 }));
+
+$('#caveTabs').addEventListener('click',async e=>{
+  const b=e.target.closest('.cave-tab');if(!b)return;
+  activeCaveId=b.dataset.caveId;
+  activeCasier=1;
+  $('#search').value='';clearMaturityFilter();clearYearFilter();hideResultPanel();
+  render();await refreshPhotoButtons();
+});
 
 $('#casierTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.tab');
@@ -1865,6 +2240,10 @@ $('#openConsumedRanking').addEventListener('click',()=>{
 });
 $('#rankingClose').addEventListener('click',()=>requestClose($('#rankingDialog')));
 $('#rankingDialog').addEventListener('click',backdropClose);
+
+$('#salesPeriod').addEventListener('change',()=>{initSalesPeriod();renderSales();});
+$('#salesFrom').addEventListener('change',renderSales);
+$('#salesTo').addEventListener('change',renderSales);
 
 $('#consumptionPeriod').addEventListener('change',()=>{
   initConsumptionPeriod();
@@ -1897,15 +2276,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:5,
-    app:'ma-cave-configurable',
+    version:6,
+    app:'ma-cave-configurable-v2',
     exportedAt:new Date().toISOString(),
-    config,inv,refs,consumed
+    config,inv,refs,consumed,sales
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v1.json';
+  a.download='sauvegarde-ma-cave-configurable-v2.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
@@ -1922,21 +2301,30 @@ $('#import').addEventListener('change',async e=>{
     inv=buildInventory(config,d.inv);
     refs=d.refs;
     consumed=Array.isArray(d.consumed)?d.consumed:[];
+    sales=Array.isArray(d.sales)?d.sales:[];
 
     consumed.forEach(e=>{
       if(!['good','bad','neutral'].includes(e.rating)) e.rating='neutral';
+    });
+    sales.forEach(e=>{
+      e.costPrice=Number(e.costPrice??0)||0;e.salePrice=Number(e.salePrice??0)||0;
+      e.costKnown=e.costKnown!==undefined?!!e.costKnown:e.costPrice>0;
+      e.profit=e.costKnown?e.salePrice-e.costPrice:null;
     });
     refs.forEach(r=>{
       if(r.maturiteDebut===undefined) r.maturiteDebut='';
       if(r.maturiteFin===undefined) r.maturiteFin='';
     });
 
+    activeCaveId=config.caves[0].id;
     activeCasier=1;
     clearEmptySelection();
+    clearOccupiedSelection();
     persist();
     render();
+    renderSales();
     refreshPhotoButtons();
-    alert('Sauvegarde restaurée avec la configuration de la cave.');
+    alert('Sauvegarde restaurée avec les caves, consommations et ventes.');
   }catch(err){ alert('Sauvegarde invalide.'); }
   e.target.value='';
 });
@@ -1984,12 +2372,12 @@ async function photoDelete(key){
     tx.onerror=()=>reject(tx.error);
   });
 }
-function photoKey(casier,slot){ return `c${casier}-${slot}`; }
+function photoKey(caveId,casier,slot){ return `${caveId}-c${casier}-${slot}`; }
 
 async function refreshPhotoButtons(){
-  $('#photoCasier').textContent=activeCasier;
-  const cur=await photoGet(photoKey(activeCasier,'current'));
-  const prev=await photoGet(photoKey(activeCasier,'previous'));
+  $('#photoCasier').textContent=`${activeCave()?.code||''} · ${activeCasier}`;
+  const cur=await photoGet(photoKey(activeCaveId,activeCasier,'current'));
+  const prev=await photoGet(photoKey(activeCaveId,activeCasier,'previous'));
   const set=(btn,obj,label)=>{
     btn.classList.toggle('has-photo',!!obj);
     btn.querySelector('.photo-state').textContent=obj ? `${label} · ${new Date(obj.date).toLocaleDateString('fr-FR')}` : 'Aucune photo';
@@ -2001,24 +2389,24 @@ async function saveNewPhoto(file){
   if(!file) return;
   if(!file.type.startsWith('image/')) return alert('Choisis une image.');
   try{
-    const cur=await photoGet(photoKey(activeCasier,'current'));
-    if(cur) await photoSet(photoKey(activeCasier,'previous'),cur);
+    const cur=await photoGet(photoKey(activeCaveId,activeCasier,'current'));
+    if(cur) await photoSet(photoKey(activeCaveId,activeCasier,'previous'),cur);
     const blob=file;
-    await photoSet(photoKey(activeCasier,'current'),{
+    await photoSet(photoKey(activeCaveId,activeCasier,'current'),{
       blob,
       name:file.name||'photo',
       type:file.type,
       date:new Date().toISOString()
     });
     await refreshPhotoButtons();
-    alert(`Photo du casier ${activeCasier} enregistrée.`);
+    alert(`Photo ${activeCave()?.code||''} · casier ${activeCasier} enregistrée.`);
   }catch(e){
     console.error(e);
     alert("Impossible d'enregistrer la photo. L'espace de stockage du navigateur est peut-être insuffisant.");
   }
 }
 async function showPhoto(slot){
-  const obj=await photoGet(photoKey(activeCasier,slot));
+  const obj=await photoGet(photoKey(activeCaveId,activeCasier,slot));
   if(!obj) return alert(slot==='current'?'Aucune photo actuelle.':'Aucune photo précédente.');
   const url=URL.createObjectURL(obj.blob);
   const img=$('#photoViewerImg');
@@ -2028,7 +2416,7 @@ async function showPhoto(slot){
   cleanup();
   img.src=url;
   img.dataset.url=url;
-  $('#photoViewerTitle').textContent=`Casier ${activeCasier} · ${slot==='current'?'Photo actuelle':'Photo précédente'}`;
+  $('#photoViewerTitle').textContent=`${activeCave()?.code||''} · Casier ${activeCasier} · ${slot==='current'?'Photo actuelle':'Photo précédente'}`;
   $('#photoViewerDate').textContent=new Date(obj.date).toLocaleString('fr-FR');
   showDialog($('#photoDialog'));
 }
@@ -2058,7 +2446,7 @@ $('#grid').addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-swipeStartX,dy=e.changedTouches[0].clientY-swipeStartY;
   swipeStartX=swipeStartY=null;
   if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.35)return;
-  if(dx<0&&config&&activeCasier<config.casiers) activeCasier++;
+  if(dx<0&&activeCave()&&activeCasier<activeCave().casiers) activeCasier++;
   else if(dx>0&&activeCasier>1) activeCasier--;
   else return;
   render(); refreshPhotoButtons();
@@ -2067,11 +2455,13 @@ $('#grid').addEventListener('touchend',e=>{
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 initConsumptionPeriod();
+initSalesPeriod();
 
 if(config){
   inv=buildInventory(config,inv);
   persist();
   render();
+  renderSales();
   refreshPhotoButtons();
 }else{
   $('#count').textContent='0';

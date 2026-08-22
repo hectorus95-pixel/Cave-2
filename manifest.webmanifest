@@ -1,6 +1,6 @@
 {
-  "name": "Ma Cave à Vin – Configurable",
-  "short_name": "Ma Cave",
+  "name": "Ma Cave à Vin – Multi-caves",
+  "short_name": "Mes Caves",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
