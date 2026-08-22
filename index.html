@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.0">
+<title>Ma Cave à Vin – Configurable v2.1</title>
+<link rel="manifest" href="manifest.webmanifest?v=2.1">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1596,11 +1596,20 @@ header{
 #viewActions #sellBottle{grid-column:1 / -1}
 @media(max-width:430px){.cave-name-row{grid-template-columns:1fr 90px}.cave-dims-row{grid-template-columns:repeat(3,minmax(0,1fr))}.sale-row{grid-template-columns:minmax(0,1fr) 92px}}
 
+
+/* =========================================================
+   V2.1 — modules Vente / Vrac + commentaires dégustation
+   ========================================================= */
+.module-config{margin:12px 0;padding:10px;border:1px solid #494343;border-radius:10px;background:#211e1e}.module-config>b{display:block;margin-bottom:7px;font-size:12px}.module-config label{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #373232}.module-config label:first-of-type{border-top:0}.module-config span{min-width:0}.module-config strong,.module-config small{display:block}.module-config strong{font-size:11px}.module-config small{margin-top:2px;color:#aaa;font-size:8px;line-height:1.3}.module-config input{width:22px;height:22px;flex:0 0 auto}
+.bulk-panel{margin:0 0 12px;padding:12px;background:#181515;border:1px solid #373232;border-radius:12px}.bulk-panel[hidden]{display:none!important}.bulk-head{display:flex;justify-content:space-between;gap:9px;align-items:center}.bulk-head h2{margin:0;font-size:16px}.bulk-head small{display:block;margin-top:2px;color:#aaa;font-size:9px}.bulk-head button{padding:8px 9px;border:0;border-radius:8px;background:#6b4a1e;color:#fff;font-size:10px;font-weight:800}.bulk-list{display:flex;flex-direction:column;gap:7px;margin-top:9px;max-height:390px;overflow:auto}.bulk-empty{padding:14px;color:#aaa;text-align:center;font-size:10px}.bulk-card{position:relative;width:100%;padding:9px 50px 9px 10px;border:1px solid #514a4a;border-radius:9px;text-align:left}.bulk-card b,.bulk-card span,.bulk-card small{display:block}.bulk-card b{font-size:11px}.bulk-card span{margin-top:2px;font-size:9px;font-weight:650;opacity:.85}.bulk-card small{margin-top:4px;font-size:8px;opacity:.72}.bulk-card .bulk-qty{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;font-weight:900;opacity:1}.bulk-dialog{width:min(94vw,560px)}.bulk-add-fields{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px}.bulk-add-fields label,.bulk-action-qty{color:#bbb;font-size:10px}.bulk-add-fields input,.bulk-action-qty input{width:100%;margin-top:4px;padding:9px;border:1px solid #625c5c;border-radius:8px;background:#292626;color:#fff;font:inherit}.bulk-add-fields .wide{grid-column:auto}.bulk-pick-results{display:flex;flex-direction:column;gap:6px;max-height:35vh;margin-top:8px;overflow:auto}.bulk-pick-result{width:100%;padding:8px 10px;border:2px solid transparent;border-radius:8px;text-align:left}.bulk-pick-result.active{border-color:#fff!important}.bulk-pick-result b,.bulk-pick-result span{display:block}.bulk-pick-result b{font-size:11px}.bulk-pick-result span{margin-top:2px;font-size:8px;opacity:.8}.bulk-action-info{padding:10px;border-radius:9px;background:#252121}.bulk-action-info b,.bulk-action-info span,.bulk-action-info small{display:block}.bulk-action-info b{font-size:12px}.bulk-action-info span{margin-top:2px;font-size:9px}.bulk-action-info small{margin-top:4px;color:#aaa;font-size:8px}.bulk-action-qty{display:block;margin-top:10px}.bulk-actions{display:grid!important;grid-template-columns:1fr 1fr}.bulk-actions #bulkActionClose{grid-column:1/-1}
+.annotated-filter{display:flex!important;flex-direction:row!important;align-items:center;gap:6px;margin-top:8px;padding:7px 8px;border-radius:8px;background:#252121;color:#ddd!important;font-size:9px!important}.annotated-filter input{width:17px;height:17px}.consumed-comment{display:block;margin-top:5px;padding:5px 6px;border-radius:6px;background:#2a2626;color:#ddd;font-size:9px;line-height:1.3}.comment-open{min-height:28px;padding:4px 6px;border:1px solid #514b4b;border-radius:6px;background:#302c2c;color:#fff;font-size:9px;font-weight:750}.comment-editor{margin-top:6px}.comment-editor[hidden]{display:none!important}.comment-editor textarea{width:100%;min-height:65px;padding:7px;border:1px solid #514b4b;border-radius:7px;background:#252222;color:#fff;font:inherit;font-size:10px;resize:vertical}.comment-editor>div{display:flex;gap:5px;margin-top:4px}.comment-editor button{padding:5px 7px;border:0;border-radius:6px;background:#494343;color:#fff;font-size:8px}.comment-editor button:first-child{background:#6e2340}
+@media(max-width:430px){.bulk-add-fields{grid-template-columns:1fr}.bulk-add-fields .wide{grid-column:1}.bulk-actions{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v2.0</span>
+  <span class="app-version">v2.1</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -1640,6 +1649,13 @@ header{
 
   <div id="grid"></div>
 
+  <section id="bulkPanel" class="bulk-panel" hidden>
+    <div class="bulk-head">
+      <div><h2>📦 Vrac</h2><small id="bulkCaveLabel"></small></div>
+      <button type="button" id="openBulkAdd">＋ Ajouter en vrac</button>
+    </div>
+    <div id="bulkList" class="bulk-list"></div>
+  </section>
 
   <section class="valuebox">
     <h2>Valeur estimée des caves</h2>
@@ -1673,6 +1689,7 @@ header{
         <label>Du<input id="consumptionFrom" type="month"></label>
         <label>Au<input id="consumptionTo" type="month"></label>
       </div>
+      <label class="annotated-filter"><input id="consumptionAnnotatedOnly" type="checkbox"> 📝 Afficher uniquement les vins annotés</label>
     </div>
 
     <div class="consumption-summary">
@@ -1688,7 +1705,7 @@ header{
     </button>
   </section>
 
-  <section class="sales-panel">
+  <section id="salesPanel" class="sales-panel">
     <div class="sales-head"><div><h2>💶 Ventes</h2><small>Chiffre d’affaires et bénéfice réalisé</small></div></div>
     <div class="sales-period">
       <label>Période
@@ -1751,6 +1768,11 @@ header{
       <input id="cfgCaveCount" type="number" min="1" max="12" inputmode="numeric" value="1">
     </label>
     <div id="cfgCavesList" class="cfg-caves-list"></div>
+    <section class="module-config">
+      <b>Modules optionnels</b>
+      <label><span><strong>💶 Vente</strong><small>Vendre des bouteilles, clients, bénéfices et historique.</small></span><input id="cfgModuleSales" type="checkbox"></label>
+      <label><span><strong>📦 Vrac</strong><small>Stocker des bouteilles hors casiers avec un emplacement écrit librement.</small></span><input id="cfgModuleBulk" type="checkbox"></label>
+    </section>
     <div id="configCapacity" class="config-capacity"></div>
     <div id="configError" class="config-error" hidden></div>
     <div class="config-note">Tu peux agrandir librement. Une cave ne peut être supprimée ou réduite que si les emplacements concernés sont vides.</div>
@@ -1904,6 +1926,40 @@ header{
 
 
 
+
+<dialog id="bulkAddDialog" class="bulk-dialog">
+  <div class="dlg">
+    <h2>📦 Ajouter en vrac</h2>
+    <p class="where">Cave : <b id="bulkAddCave"></b></p>
+    <div class="bulk-add-fields">
+      <label>Quantité<input id="bulkQty" type="number" min="1" max="999" inputmode="numeric" value="6"></label>
+      <label class="wide">Emplacement libre<input id="bulkLocation" maxlength="120" placeholder="Ex. Garage, carton 3, étagère du fond"></label>
+    </div>
+    <label class="add-search-label">Rechercher un vin existant<input id="bulkPickSearch" type="search" autocomplete="off" placeholder="Cuvée, domaine, millésime…"></label>
+    <div id="bulkPickResults" class="bulk-pick-results"></div>
+    <div class="dlgactions">
+      <button id="bulkUseRef" class="primary" disabled>Ajouter le vin sélectionné</button>
+      <button id="bulkNewRef" class="primary">Créer un nouveau vin</button>
+      <button id="bulkAddCancel" class="secondary">Annuler</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="bulkActionDialog" class="bulk-dialog">
+  <div class="dlg">
+    <h2 id="bulkActionTitle">Vin en vrac</h2>
+    <div id="bulkActionInfo" class="bulk-action-info"></div>
+    <label class="bulk-action-qty">Nombre de bouteilles concernées<input id="bulkActionQty" type="number" min="1" inputmode="numeric"></label>
+    <div class="dlgactions bulk-actions">
+      <button id="bulkActionDrink" class="consumed-btn">🍷 Bue</button>
+      <button id="bulkActionSell" class="sell-btn">💶 Vendre</button>
+      <button id="bulkActionEdit" class="primary">✏️ Éditer le vin</button>
+      <button id="bulkActionRemove" class="danger">Sortir sans vente</button>
+      <button id="bulkActionClose" class="secondary">Fermer</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="batchExitDialog" class="batch-exit-dialog">
   <div class="dlg"><h2>Sortie groupée</h2><p id="batchExitCount" class="where"></p><div id="batchExitList" class="batch-exit-list"></div>
     <div class="dlgactions"><button id="batchSell" class="sell-btn">💶 Vendre la sélection</button><button id="batchRemove" class="danger">Sortir sans vente</button><button id="batchCancel" class="secondary">Annuler</button></div>
@@ -1950,6 +2006,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.0"></script>
+<script src="app.js?v=2.1"></script>
 </body>
 </html>
