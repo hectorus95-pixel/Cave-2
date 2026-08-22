@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.3">
+<link rel="manifest" href="manifest.webmanifest?v=2.4">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1623,7 +1623,7 @@ header{
 </head>
 <body>
 <header>
-  <span class="app-version">v2.3</span>
+  <span class="app-version">v2.4</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -1912,8 +1912,8 @@ header{
         </label>
         <label>Format<input id="f_format" placeholder="75 cl"></label>
         <label>Prix (€)<input id="f_prix" inputmode="decimal"></label>
-        <label>Maturité : à partir de<input id="f_maturiteDebut" inputmode="numeric" placeholder="2026"></label>
-        <label>À boire avant / jusqu'à<input id="f_maturiteFin" inputmode="numeric" placeholder="2031"></label>
+        <label>Maturité : à partir de<input id="f_maturiteDebut" inputmode="numeric"></label>
+        <label>À boire avant / jusqu'à<input id="f_maturiteFin" inputmode="numeric"></label>
         <div class="maturity-panel">
           <b id="maturityStatus">Maturité non renseignée</b>
           <div id="maturityBar" class="maturity-bar four-zone"></div>
@@ -1947,7 +1947,7 @@ header{
     <p class="where">Cave : <b id="bulkAddCave"></b></p>
     <div class="bulk-add-fields">
       <label>Quantité<input id="bulkQty" type="number" min="1" max="999" inputmode="numeric" value="6"></label>
-      <label class="wide">Emplacement libre<input id="bulkLocation" maxlength="120" placeholder="Ex. Garage, carton 3, étagère du fond"></label>
+      <label class="wide">Emplacement (facultatif)<input id="bulkLocation" maxlength="120" placeholder="Ex. Garage, carton 3, étagère du fond"></label>
     </div>
     <label class="add-search-label">Rechercher un vin existant<input id="bulkPickSearch" type="search" autocomplete="off" placeholder="Cuvée, domaine, millésime…"></label>
     <div id="bulkPickResults" class="bulk-pick-results"></div>
@@ -2021,6 +2021,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.3"></script>
+<script src="app.js?v=2.4"></script>
 </body>
 </html>

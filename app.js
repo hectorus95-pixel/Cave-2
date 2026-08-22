@@ -40,7 +40,9 @@ bulk=bulk.filter(e=>e&&e.refId).map((e,i)=>({
   id:String(e.id||`bulk_${Date.now()}_${i}`),
   caveId:String(e.caveId||''),
   refId:String(e.refId||''),
-  locationText:String(e.locationText||e.emplacement||'Vrac').trim()||'Vrac',
+  locationText:e.locationText!==undefined
+    ? String(e.locationText||'').trim()
+    : String(e.emplacement||'').replace(/^.*?Vrac\s*·?\s*/i,'').trim(),
   addedAt:e.addedAt||new Date().toISOString(),
   bulk:true
 }));
@@ -540,12 +542,17 @@ function applyModuleVisibility(){
   if($('#bulkPanel')) $('#bulkPanel').hidden=!bulkOn;
 }
 
+function bulkLocationLabel(value){
+  const text=String(value||'').trim();
+  return text || 'Emplacement non renseigné';
+}
+
 function bulkTarget(item){
   const cave=caveById(item.caveId);
   return {
     ...item,
     bulk:true,
-    emplacement:`${cave?.code||'CAV'} · Vrac · ${item.locationText||'Vrac'}`,
+    emplacement:`${cave?.code||'CAV'} · Vrac · ${bulkLocationLabel(item.locationText)}`,
     casier:0,ligne:0,position:0
   };
 }
@@ -1325,14 +1332,16 @@ function restoreConsumedBottle(id){
       id:`bulk_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
       caveId:desiredCaveId,
       refId:rid,
-      locationText:entry.bulkLocation||String(entry.emplacement||'Vrac').replace(/^.*?Vrac\s*·?\s*/i,'')||'Vrac',
+      locationText:entry.bulkLocation!==undefined
+        ? String(entry.bulkLocation||'').trim()
+        : String(entry.emplacement||'').replace(/^.*?Vrac\s*·?\s*/i,'').replace(/^Emplacement non renseigné$/i,'').trim(),
       addedAt:new Date().toISOString(),
       bulk:true
     });
     consumed=consumed.filter(e=>e.id!==id);
     activeCaveId=desiredCaveId;
     persist();render();
-    alert(`Bouteille remise en vrac : ${entry.bulkLocation||entry.emplacement||'Vrac'}.`);
+    alert(`Bouteille remise en vrac : ${bulkLocationLabel(entry.bulkLocation)}.`);
     return;
   }
   const original=inv.find(x=>
@@ -1377,7 +1386,7 @@ function initConsumptionPeriod(){
 
 function createBulkEntries(refId,caveId,locationText,qty){
   const n=Math.max(1,Math.min(999,Number(qty)||1));
-  const loc=String(locationText||'Vrac').trim()||'Vrac';
+  const loc=String(locationText||'').trim();
   for(let i=0;i<n;i++){
     bulk.push({
       id:`bulk_${Date.now()}_${i}_${Math.random().toString(36).slice(2,6)}`,
@@ -1388,7 +1397,7 @@ function createBulkEntries(refId,caveId,locationText,qty){
 }
 
 function bulkGroupKey(x){
-  return `${x.caveId}|${x.refId}|${normalizeSearchText(x.locationText||'Vrac')}`;
+  return `${x.caveId}|${x.refId}|${normalizeSearchText(x.locationText||'')||'__sans_emplacement__'}`;
 }
 
 function renderBulk(){
@@ -1416,7 +1425,7 @@ function renderBulk(){
       <span class="bulk-qty">×${items.length}</span>
       <b>${esc(r.vin)}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
       <span>${esc(r.domaine||'')}</span>
-      <small>📍 ${esc(sample.locationText||'Vrac')} · ${euro((Number(r.prix)||0)*items.length)}</small>
+      <small>📍 ${esc(bulkLocationLabel(sample.locationText))} · ${euro((Number(r.prix)||0)*items.length)}</small>
     </button>`;
   }).join('');
 }
@@ -1446,7 +1455,7 @@ function openBulkAdd(){
 function bulkAddValues(){
   const qty=Math.max(1,Math.min(999,Number($('#bulkQty').value)||0));
   const location=$('#bulkLocation').value.trim();
-  if(!qty||!location){alert('Indique la quantité et un emplacement en texte.');return null;}
+  if(!qty){alert('Indique la quantité.');return null;}
   return {qty,location,caveId:activeCaveId};
 }
 
@@ -1461,20 +1470,20 @@ function openBulkVoiceAdd(){
     bulk:true,
     caveId:v.caveId,
     refId:null,
-    emplacement:`${caveById(v.caveId)?.code||''} · Vrac · ${v.location}`,
+    emplacement:`${caveById(v.caveId)?.code||''} · Vrac · ${bulkLocationLabel(v.location)}`,
     locationText:v.location
   };
   editScope='newbulkvoice';
 
   clearVoiceForm();
   $('#voiceStatus').textContent=
-    `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${v.location}. Appuyez sur le micro puis dictez Domaine, Cuvée, Année, Prix.`;
+    `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${bulkLocationLabel(v.location)}. Appuyez sur le micro puis dictez Domaine, Cuvée, Année, Prix.`;
 
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   $('#voiceStart').disabled=!SpeechRecognition;
   if(!SpeechRecognition){
     $('#voiceStatus').textContent=
-      `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${v.location}. La dictée vocale n’est pas disponible ici ; vous pouvez remplir les 4 champs manuellement.`;
+      `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${bulkLocationLabel(v.location)}. La dictée vocale n’est pas disponible ici ; vous pouvez remplir les 4 champs manuellement.`;
   }
 
   $('#bulkAddDialog').close();
@@ -1488,7 +1497,7 @@ function openBulkGroup(id){
   bulkActionIds=ids;
   const r=ref(seed.refId),cave=caveById(seed.caveId);
   $('#bulkActionTitle').textContent=r?.vin||'Vin en vrac';
-  $('#bulkActionInfo').innerHTML=`<b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b><span>${esc(r?.domaine||'')}</span><small>${esc(cave?.code||'')} · 📍 ${esc(seed.locationText)} · ${ids.length} bouteille${ids.length>1?'s':''}</small>`;
+  $('#bulkActionInfo').innerHTML=`<b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b><span>${esc(r?.domaine||'')}</span><small>${esc(cave?.code||'')} · 📍 ${esc(bulkLocationLabel(seed.locationText))} · ${ids.length} bouteille${ids.length>1?'s':''}</small>`;
   $('#bulkActionQty').max=ids.length;
   $('#bulkActionQty').value=ids.length;
   $('#bulkActionSell').hidden=!moduleEnabled('sales');
@@ -2254,7 +2263,9 @@ function continueVoiceBottle(){
     domaine,
     vin:cuvee,
     millesime:year,
-    prix:price
+    prix:price,
+    maturiteDebut:'',
+    maturiteFin:''
   } : {
     id:'',
     domaine,
@@ -2511,7 +2522,7 @@ $('#consumed').addEventListener('click',()=>{
   const snap=consumedSnapshot(source,r);
   snap.rating='neutral';
   snap.comment='';
-  if(selected.bulk){snap.bulk=true;snap.bulkLocation=selected.locationText||'Vrac';}
+  if(selected.bulk){snap.bulk=true;snap.bulkLocation=String(selected.locationText||'').trim();}
   consumed.push(snap);
   if(selected.bulk) removeBulkIds([selected.id]);
   else selected.refId=null;
