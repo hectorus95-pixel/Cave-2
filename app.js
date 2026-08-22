@@ -932,13 +932,34 @@ function consumptionRange(){
 function filteredConsumed(){
   const range=consumptionRange();
   if(range.invalid) return [];
+
   const annotatedOnly=!!$('#consumptionAnnotatedOnly')?.checked;
+  const q=normalizeSearchText($('#consumptionSearch')?.value||'');
+
   return consumed.filter(item=>{
     const d=new Date(item.drunkAt);
     if(Number.isNaN(d.getTime())) return false;
     if(range.start && d<range.start) return false;
     if(range.end && d>=range.end) return false;
     if(annotatedOnly && !String(item.comment||'').trim()) return false;
+
+    if(q){
+      const hay=normalizeSearchText([
+        item.vin,
+        item.domaine,
+        item.millesime,
+        item.couleur,
+        item.format,
+        item.caveName,
+        item.caveCode,
+        item.emplacement,
+        item.bulkLocation,
+        item.comment
+      ].filter(Boolean).join(' '));
+
+      if(!hay.includes(q)) return false;
+    }
+
     return true;
   }).sort((a,b)=>new Date(b.drunkAt)-new Date(a.drunkAt));
 }
@@ -1105,10 +1126,46 @@ function saleRange(){
 function filteredSales(){
   const range=saleRange();
   if(range.invalid) return [];
-  return sales.filter(e=>{
-    const d=new Date(e.soldAt);if(Number.isNaN(d.getTime()))return false;
-    if(range.start&&d<range.start)return false;if(range.end&&d>=range.end)return false;return true;
-  }).sort((a,b)=>new Date(b.soldAt)-new Date(a.soldAt));
+
+  const periodItems=sales.filter(e=>{
+    const d=new Date(e.soldAt);
+    if(Number.isNaN(d.getTime())) return false;
+    if(range.start && d<range.start) return false;
+    if(range.end && d>=range.end) return false;
+    return true;
+  });
+
+  const q=normalizeSearchText($('#salesSearch')?.value||'');
+  if(!q){
+    return periodItems.sort((a,b)=>new Date(b.soldAt)-new Date(a.soldAt));
+  }
+
+  // Si une bouteille ou le client correspond à la recherche, on conserve
+  // toute la transaction afin de ne pas casser l'affichage groupé de la vente.
+  const matchingTransactions=new Set();
+
+  periodItems.forEach(e=>{
+    const hay=normalizeSearchText([
+      e.client,
+      e.vin,
+      e.domaine,
+      e.millesime,
+      e.couleur,
+      e.format,
+      e.caveName,
+      e.caveCode,
+      e.emplacement,
+      e.bulkLocation
+    ].filter(Boolean).join(' '));
+
+    if(hay.includes(q)){
+      matchingTransactions.add(e.transactionId||e.id);
+    }
+  });
+
+  return periodItems
+    .filter(e=>matchingTransactions.has(e.transactionId||e.id))
+    .sort((a,b)=>new Date(b.soldAt)-new Date(a.soldAt));
 }
 function initSalesPeriod(){
   const m=localMonthValue();
@@ -2809,6 +2866,7 @@ $('#bulkActionClose').addEventListener('click',()=>requestClose($('#bulkActionDi
 
 
 $('#openConsumptionWindow').addEventListener('click',()=>{
+  $('#consumptionSearch').value='';
   renderConsumption();
   showDialog($('#consumptionDialog'));
 });
@@ -2817,6 +2875,7 @@ $('#consumptionDialog').addEventListener('click',backdropClose);
 
 $('#openSalesWindow').addEventListener('click',()=>{
   if(!moduleEnabled('sales'))return;
+  $('#salesSearch').value='';
   renderSales();
   showDialog($('#salesHistoryDialog'));
 });
@@ -2837,10 +2896,12 @@ $('#openConsumedRanking').addEventListener('click',()=>{
 $('#rankingClose').addEventListener('click',()=>requestClose($('#rankingDialog')));
 $('#rankingDialog').addEventListener('click',backdropClose);
 
+$('#salesSearch').addEventListener('input',renderSales);
 $('#salesPeriod').addEventListener('change',()=>{initSalesPeriod();renderSales();});
 $('#salesFrom').addEventListener('change',renderSales);
 $('#salesTo').addEventListener('change',renderSales);
 
+$('#consumptionSearch').addEventListener('input',renderConsumption);
 $('#consumptionPeriod').addEventListener('change',()=>{
   initConsumptionPeriod();
   renderConsumption();

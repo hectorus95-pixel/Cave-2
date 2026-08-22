@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.7">
+<link rel="manifest" href="manifest.webmanifest?v=2.8">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2052,11 +2052,45 @@ header{
   }
 }
 
+
+/* V2.8 — recherche sans accents dans les historiques */
+.history-search-label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:8px 0 12px;
+  font-size:12px;
+  font-weight:750;
+  color:#c9c3c3;
+}
+.history-search-label input{
+  width:100%;
+  min-height:46px;
+  box-sizing:border-box;
+  padding:10px 12px;
+  border:1px solid #514b4b;
+  border-radius:10px;
+  background:#292525;
+  color:#fff;
+  font:inherit;
+  font-size:15px;
+}
+.history-search-label input::placeholder{
+  color:#898383;
+}
+#salesHistoryDialog .history-search-label{
+  margin:10px 0 14px;
+}
+#salesHistoryDialog .history-search-label input{
+  min-height:50px;
+  font-size:16px;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v2.7</span>
+  <span class="app-version">v2.8</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2163,6 +2197,12 @@ header{
       </div>
     </div>
 
+    <label class="history-search-label">
+      Rechercher
+      <input id="consumptionSearch" type="search" autocomplete="off"
+             placeholder="Vin, domaine, année, commentaire, emplacement…">
+    </label>
+
     <div class="consumption-period">
       <label>
         Période
@@ -2207,6 +2247,11 @@ header{
     </div>
     <section id="salesPanel" class="sales-panel">
     <div class="sales-head sales-head-intro"><small>Suivi des transactions, chiffre d’affaires et bénéfice réellement réalisé.</small></div>
+    <label class="history-search-label">
+      Rechercher
+      <input id="salesSearch" type="search" autocomplete="off"
+             placeholder="Client, vin, domaine, année, emplacement…">
+    </label>
     <div class="sales-period">
       <label>Période
         <select id="salesPeriod">
@@ -2477,6 +2522,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.7"></script>
+<script src="app.js?v=2.8"></script>
 </body>
 </html>
