@@ -1450,6 +1450,37 @@ function bulkAddValues(){
   return {qty,location,caveId:activeCaveId};
 }
 
+function openBulkVoiceAdd(){
+  if(!moduleEnabled('bulk')) return;
+  const v=bulkAddValues();
+  if(!v) return;
+
+  bulkDraft=v;
+  pendingBulkRefId='';
+  selected={
+    bulk:true,
+    caveId:v.caveId,
+    refId:null,
+    emplacement:`${caveById(v.caveId)?.code||''} · Vrac · ${v.location}`,
+    locationText:v.location
+  };
+  editScope='newbulkvoice';
+
+  clearVoiceForm();
+  $('#voiceStatus').textContent=
+    `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${v.location}. Appuyez sur le micro puis dictez Domaine, Cuvée, Année, Prix.`;
+
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  $('#voiceStart').disabled=!SpeechRecognition;
+  if(!SpeechRecognition){
+    $('#voiceStatus').textContent=
+      `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${v.location}. La dictée vocale n’est pas disponible ici ; vous pouvez remplir les 4 champs manuellement.`;
+  }
+
+  $('#bulkAddDialog').close();
+  showDialog($('#voiceDialog'));
+}
+
 function openBulkGroup(id){
   const seed=bulk.find(x=>x.id===id);
   if(!seed) return;
@@ -2120,7 +2151,10 @@ function startVoiceRecognition(){
   recognition.interimResults=false;
   recognition.maxAlternatives=1;
 
-  $('#voiceStatus').textContent='Écoute en cours… Domaine, cuvée, année, prix.';
+  $('#voiceStatus').textContent=
+    editScope==='newbulkvoice' && bulkDraft
+      ? `Écoute en cours… ${bulkDraft.qty} bouteille${bulkDraft.qty>1?'s':''} en vrac · Domaine, cuvée, année, prix.`
+      : 'Écoute en cours… Domaine, cuvée, année, prix.';
   $('#voiceStart').classList.add('listening');
 
   recognition.onresult=e=>{
@@ -2174,9 +2208,30 @@ function continueVoiceBottle(){
   const price=Number(normalizeVoiceNumber($('#voicePrice').value))||0;
 
   if(voiceExactRefId){
-    // Référence exacte : on l'ajoute à tous les emplacements préparés.
-    const count=applyRefToAddTargets(voiceExactRefId);
     const r=ref(voiceExactRefId);
+
+    if(editScope==='newbulkvoice' && bulkDraft){
+      const count=createBulkEntries(
+        voiceExactRefId,
+        bulkDraft.caveId,
+        bulkDraft.location,
+        bulkDraft.qty
+      );
+
+      if(r && price>0 && !Number(r.prix)) r.prix=price;
+
+      bulkDraft=null;
+      editScope=null;
+      selected=null;
+      persist();
+      render();
+      requestClose($('#voiceDialog'));
+      setTimeout(()=>alert(`${count} bouteille${count>1?'s':''} ajoutée${count>1?'s':''} en vrac.`),120);
+      return;
+    }
+
+    // Ajout vocal normal dans les casiers.
+    const count=applyRefToAddTargets(voiceExactRefId);
     if(r && price>0 && !Number(r.prix)){
       r.prix=price;
     }
@@ -2212,9 +2267,12 @@ function continueVoiceBottle(){
     maturiteFin:''
   };
 
-  editScope='new';
+  const fromBulkVoice=editScope==='newbulkvoice' && !!bulkDraft;
+  editScope=fromBulkVoice?'newbulk':'new';
   $('#dialogTitle').textContent='Nouveau vin';
-  $('#where').textContent=selected.emplacement+' · nouvelle référence';
+  $('#where').textContent=fromBulkVoice
+    ? `${selected.emplacement} · ${bulkDraft.qty} bouteille${bulkDraft.qty>1?'s':''}`
+    : selected.emplacement+' · nouvelle référence';
   fill(draft);
   $('#bottleView').hidden=true;
   $('#bottleEdit').hidden=false;
@@ -2526,6 +2584,7 @@ $('#bulkPickResults').addEventListener('click',e=>{
   const b=e.target.closest('[data-bulk-pick]');if(!b)return;
   pendingBulkRefId=b.dataset.bulkPick;renderBulkPickResults();
 });
+$('#bulkVoiceAdd').addEventListener('click',openBulkVoiceAdd);
 $('#bulkUseRef').addEventListener('click',()=>{
   const v=bulkAddValues();if(!v||!pendingBulkRefId)return;
   const n=createBulkEntries(pendingBulkRefId,v.caveId,v.location,v.qty);

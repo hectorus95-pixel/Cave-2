@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.2">
+<link rel="manifest" href="manifest.webmanifest?v=2.3">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1612,11 +1612,18 @@ header{
 .consumed-rating-edit button.active.verygood{background:#1f6b37!important}
 .consumed-rating-edit button.active.verybad{background:#6f2029!important}
 
+
+/* V2.3 — ajout vocal en vrac */
+#bulkVoiceAdd{
+  width:100%;
+  flex-basis:100%;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v2.2</span>
+  <span class="app-version">v2.3</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -1945,6 +1952,7 @@ header{
     <label class="add-search-label">Rechercher un vin existant<input id="bulkPickSearch" type="search" autocomplete="off" placeholder="Cuvée, domaine, millésime…"></label>
     <div id="bulkPickResults" class="bulk-pick-results"></div>
     <div class="dlgactions">
+      <button id="bulkVoiceAdd" class="voice-add-btn">🎤 Ajouter par la voix</button>
       <button id="bulkUseRef" class="primary" disabled>Ajouter le vin sélectionné</button>
       <button id="bulkNewRef" class="primary">Créer un nouveau vin</button>
       <button id="bulkAddCancel" class="secondary">Annuler</button>
@@ -2013,6 +2021,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.2"></script>
+<script src="app.js?v=2.3"></script>
 </body>
 </html>
