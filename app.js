@@ -1902,6 +1902,49 @@ function showBottleView(r){
   $('#editActions').hidden=true;
 }
 
+
+function sameWineIdentity(a,b){
+  if(!a||!b) return false;
+  return (
+    normalizeSearchText(a.vin||'')===normalizeSearchText(b.vin||'') &&
+    normalizeSearchText(a.domaine||'')===normalizeSearchText(b.domaine||'') &&
+    String(a.millesime||'').trim()===String(b.millesime||'').trim() &&
+    normalizeSearchText(a.couleur||'')===normalizeSearchText(b.couleur||'') &&
+    normalizeSearchText(a.format||'')===normalizeSearchText(b.format||'')
+  );
+}
+
+function identityUnchanged(original,vals){
+  return sameWineIdentity(original,vals);
+}
+
+function currentIdenticalBottles(reference){
+  const out=[];
+  inv.forEach(x=>{
+    if(!x.refId) return;
+    const r=ref(x.refId);
+    if(r && sameWineIdentity(r,reference)) out.push({kind:'grid',item:x,ref:r});
+  });
+  bulk.forEach(x=>{
+    if(!x.refId) return;
+    const r=ref(x.refId);
+    if(r && sameWineIdentity(r,reference)) out.push({kind:'bulk',item:x,ref:r});
+  });
+  return out;
+}
+
+function applyMaturityToIdenticalBottles(reference,start,end){
+  const matches=currentIdenticalBottles(reference);
+  const refIds=new Set(matches.map(x=>x.ref.id));
+  refs.forEach(r=>{
+    if(refIds.has(r.id)){
+      r.maturiteDebut=start;
+      r.maturiteFin=end;
+    }
+  });
+  return matches.length;
+}
+
 function showBottleEdit(r,scope='all'){
   editScope=scope;
   fill(r);
@@ -2471,14 +2514,49 @@ $('#save').addEventListener('click',()=>{
   }
 
   const existed=!!selected.refId;
+  let maturityPropagation=null;
 
   if(existed){
     const originalId=selected.refId;
     const original=ref(originalId);
     const sameCount=inv.filter(p=>p.refId===originalId).length+bulk.filter(p=>p.refId===originalId).length;
 
+    const maturityChanged=
+      String(original?.maturiteDebut||'')!==String(vals.maturiteDebut||'') ||
+      String(original?.maturiteFin||'')!==String(vals.maturiteFin||'');
+
+    // Même si une ancienne modification a déjà séparé une bouteille dans une
+    // nouvelle référence, on retrouve les bouteilles identiques par
+    // domaine + cuvée + millésime + couleur + format, en ignorant la maturité.
+    const identicalBeforeSave =
+      editScope==='single' && identityUnchanged(original,vals)
+        ? currentIdenticalBottles(original)
+        : [];
+
+    if(editScope==='single' && maturityChanged && identicalBeforeSave.length>1){
+      const maturityLabel=
+        vals.maturiteDebut || vals.maturiteFin
+          ? `${vals.maturiteDebut||'…'} → ${vals.maturiteFin||'…'}`
+          : 'non renseignée';
+
+      const applyToAll=confirm(
+        `La maturité a été modifiée (${maturityLabel}).\n\n`+
+        `Appliquer cette maturité aux ${identicalBeforeSave.length} bouteilles identiques ?\n\n`+
+        `Oui = maturité pour toutes les bouteilles identiques.\n`+
+        `Annuler = maturité uniquement pour cette bouteille.`
+      );
+
+      if(applyToAll){
+        maturityPropagation={
+          reference:{...original},
+          start:vals.maturiteDebut,
+          end:vals.maturiteFin
+        };
+      }
+    }
+
     if(editScope==='single' && sameCount>1){
-      // Dupliquer la référence : seule cette bouteille reçoit les nouvelles informations.
+      // Dupliquer la référence : les autres champs restent propres à cette bouteille.
       const clone={
         ...original,
         ...vals,
@@ -2489,6 +2567,14 @@ $('#save').addEventListener('click',()=>{
     }else{
       // Une seule bouteille utilise cette référence, ou l'utilisateur a choisi "toutes".
       Object.assign(original,vals);
+    }
+
+    if(maturityPropagation){
+      applyMaturityToIdenticalBottles(
+        maturityPropagation.reference,
+        maturityPropagation.start,
+        maturityPropagation.end
+      );
     }
   }else{
     vals.id='r'+Date.now();
