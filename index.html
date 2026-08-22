@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.4">
+<link rel="manifest" href="manifest.webmanifest?v=2.5">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1619,11 +1619,74 @@ header{
   flex-basis:100%;
 }
 
+
+/* V2.5 — historiques dans des fenêtres dédiées */
+.history-launchers{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0;
+}
+.history-launch-btn{
+  min-height:44px;
+  border:1px solid #514b4b;
+  border-radius:9px;
+  background:#2a2626;
+  color:#fff;
+  font-weight:850;
+}
+.history-dialog{
+  width:min(96vw,680px);
+  max-height:94vh;
+  padding:0;
+}
+.history-dialog-inner{
+  max-height:92vh;
+  overflow:auto;
+  padding-top:8px;
+}
+.history-dialog-head{
+  position:sticky;
+  top:-8px;
+  z-index:10;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 0 10px;
+  background:#1d1a1a;
+}
+.history-dialog-head h2{margin:0;font-size:17px}
+.sale-transaction-summary{
+  width:100%;
+  color:#fff;
+  border:0;
+  cursor:pointer;
+}
+.sale-tx-summary-money{
+  text-align:right;
+  white-space:nowrap;
+}
+.sale-tx-summary-money strong{
+  display:block;
+  font-size:12px;
+}
+.sale-tx-summary-money small{
+  display:block;
+  margin-top:3px;
+}
+.sale-transaction-detail{
+  border-top:1px solid #413b3b;
+}
+.sale-transaction-detail[hidden]{
+  display:none!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v2.4</span>
+  <span class="app-version">v2.5</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -1677,7 +1740,52 @@ header{
     <div class="totalvalue"><span>Total</span><b id="valueTotal">—</b></div>
   </section>
 
-  <section class="consumption-panel">
+  
+  <section class="history-launchers">
+    <button id="openConsumptionWindow" type="button" class="history-launch-btn">🍷 Bouteilles bues</button>
+    <button id="openSalesWindow" type="button" class="history-launch-btn sell-btn">💶 Ventes</button>
+  </section>
+
+<section class="photos-panel">
+    <div class="photos-head">
+      <div>
+        <b>Photos du casier <span id="photoCasier">1</span></b>
+        <small>2 photos conservées : actuelle + précédente</small>
+      </div>
+      <label class="photo-upload">
+        Nouvelle photo
+        <input id="photoInput" type="file" accept="image/*">
+      </label>
+    </div>
+    <div class="photo-slots">
+      <button id="photoCurrent" class="photo-slot" type="button">
+        <span class="photo-label">Actuelle</span>
+        <span class="photo-state">Aucune photo</span>
+      </button>
+      <button id="photoPrevious" class="photo-slot" type="button">
+        <span class="photo-label">Précédente</span>
+        <span class="photo-state">Aucune photo</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button id="openConfig">⚙️ Configuration</button>
+    <button id="export">Sauvegarder</button>
+    <label class="filelabel">Restaurer<input id="import" type="file" accept="application/json"></label>
+  </div>
+
+</main>
+
+
+
+<dialog id="consumptionDialog" class="history-dialog">
+  <div class="dlg history-dialog-inner">
+    <div class="history-dialog-head">
+      <h2>🍷 Bouteilles bues</h2>
+      <button id="consumptionDialogClose" type="button" class="secondary">Fermer</button>
+    </div>
+    <section class="consumption-panel">
     <div class="consumption-head">
       <div>
         <h2>🍷 Bouteilles bues</h2>
@@ -1718,8 +1826,16 @@ header{
       🏆 Classement des vins bus
     </button>
   </section>
+  </div>
+</dialog>
 
-  <section id="salesPanel" class="sales-panel">
+<dialog id="salesHistoryDialog" class="history-dialog">
+  <div class="dlg history-dialog-inner">
+    <div class="history-dialog-head">
+      <h2>💶 Ventes</h2>
+      <button id="salesHistoryClose" type="button" class="secondary">Fermer</button>
+    </div>
+    <section id="salesPanel" class="sales-panel">
     <div class="sales-head"><div><h2>💶 Ventes</h2><small>Chiffre d’affaires et bénéfice réalisé</small></div></div>
     <div class="sales-period">
       <label>Période
@@ -1741,38 +1857,8 @@ header{
     <div id="salesUnknown" class="sales-unknown"></div>
     <div id="salesList" class="sales-list"></div>
   </section>
-
-  <section class="photos-panel">
-    <div class="photos-head">
-      <div>
-        <b>Photos du casier <span id="photoCasier">1</span></b>
-        <small>2 photos conservées : actuelle + précédente</small>
-      </div>
-      <label class="photo-upload">
-        Nouvelle photo
-        <input id="photoInput" type="file" accept="image/*">
-      </label>
-    </div>
-    <div class="photo-slots">
-      <button id="photoCurrent" class="photo-slot" type="button">
-        <span class="photo-label">Actuelle</span>
-        <span class="photo-state">Aucune photo</span>
-      </button>
-      <button id="photoPrevious" class="photo-slot" type="button">
-        <span class="photo-label">Précédente</span>
-        <span class="photo-state">Aucune photo</span>
-      </button>
-    </div>
-  </section>
-
-  <div class="actions">
-    <button id="openConfig">⚙️ Configuration</button>
-    <button id="export">Sauvegarder</button>
-    <label class="filelabel">Restaurer<input id="import" type="file" accept="application/json"></label>
   </div>
-
-</main>
-
+</dialog>
 
 <dialog id="configDialog" class="config-dialog">
   <div class="dlg">
@@ -2021,6 +2107,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.4"></script>
+<script src="app.js?v=2.5"></script>
 </body>
 </html>

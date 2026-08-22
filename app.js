@@ -537,6 +537,7 @@ function applyModuleVisibility(){
   const salesOn=moduleEnabled('sales');
   const bulkOn=moduleEnabled('bulk');
   if($('#salesPanel')) $('#salesPanel').hidden=!salesOn;
+  if($('#openSalesWindow')) $('#openSalesWindow').hidden=!salesOn;
   if($('#sellBottle')) $('#sellBottle').hidden=!salesOn;
   if($('#batchSell')) $('#batchSell').hidden=!salesOn;
   if($('#bulkPanel')) $('#bulkPanel').hidden=!bulkOn;
@@ -1191,27 +1192,83 @@ function renderSales(){
   if(!$('#salesList')||!moduleEnabled('sales'))return;
   const items=filteredSales();
   let revenue=0,cost=0,profit=0,unknown=0;
-  items.forEach(e=>{revenue+=Number(e.salePrice)||0;if(e.costKnown){cost+=Number(e.costPrice)||0;profit+=Number(e.profit)||0;}else unknown++;});
+  items.forEach(e=>{
+    revenue+=Number(e.salePrice)||0;
+    if(e.costKnown){
+      cost+=Number(e.costPrice)||0;
+      profit+=Number(e.profit)||0;
+    }else unknown++;
+  });
+
   $('#salesCount').textContent=items.length;
   $('#salesRevenue').textContent=euro(revenue);
   $('#salesCost').textContent=euro(cost);
   $('#salesProfit').textContent=`${profit>=0?'+':''}${euro(profit)}`;
-  $('#salesUnknown').textContent=unknown?`${unknown} bénéfice${unknown>1?'s':''} non calculable${unknown>1?'s':''}`:'';
+  $('#salesUnknown').textContent=unknown
+    ? `${unknown} bénéfice${unknown>1?'s':''} non calculable${unknown>1?'s':''}`
+    : '';
+
   const list=$('#salesList');
-  if(!items.length){list.innerHTML='<div class="sales-empty">Aucune vente sur cette période.</div>';return;}
+  if(!items.length){
+    list.innerHTML='<div class="sales-empty">Aucune vente sur cette période.</div>';
+    return;
+  }
+
   const txs=new Map();
-  items.forEach(e=>{const k=e.transactionId||e.id;if(!txs.has(k))txs.set(k,[]);txs.get(k).push(e);});
-  list.innerHTML=[...txs.values()].map(entries=>{
-    const first=entries[0],txRevenue=entries.reduce((s,e)=>s+(Number(e.salePrice)||0),0);
-    const known=entries.filter(e=>e.costKnown),txProfit=known.reduce((s,e)=>s+(Number(e.profit)||0),0);
-    return `<article class="sale-history-card">
-      <div class="sale-history-head"><div><b>${esc(first.client||'Client')}</b><small>${new Date(first.soldAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})} · ${entries.length} bt</small></div><strong>${euro(txRevenue)}</strong></div>
-      <div class="sale-history-lines">${entries.map(e=>`
-        <div class="sale-history-line">
-          <div><b>${esc(e.vin)}${e.millesime?` · ${esc(e.millesime)}`:''}</b><small>${esc(e.caveCode||'')} · ${esc(e.emplacement||'')}</small></div>
-          <div class="sale-money"><span>Vente ${euro(e.salePrice)}</span><span>Achat ${e.costKnown?euro(e.costPrice):'?'}</span><b>${e.costKnown?`${Number(e.profit)>=0?'+':''}${euro(e.profit)}`:'?'}</b></div>
-        </div>`).join('')}</div>
-      <div class="sale-history-total">Bénéfice transaction : <b>${known.length===entries.length?`${txProfit>=0?'+':''}${euro(txProfit)}`:`${txProfit>=0?'+':''}${euro(txProfit)} + ${entries.length-known.length} non calculable${entries.length-known.length>1?'s':''}`}</b></div>
+  items.forEach(e=>{
+    const k=e.transactionId||e.id;
+    if(!txs.has(k)) txs.set(k,[]);
+    txs.get(k).push(e);
+  });
+
+  list.innerHTML=[...txs.values()].map((entries,index)=>{
+    const first=entries[0];
+    const txRevenue=entries.reduce((s,e)=>s+(Number(e.salePrice)||0),0);
+    const known=entries.filter(e=>e.costKnown);
+    const txCost=known.reduce((s,e)=>s+(Number(e.costPrice)||0),0);
+    const txProfit=known.reduce((s,e)=>s+(Number(e.profit)||0),0);
+    const unknownCount=entries.length-known.length;
+    const detailId=`saleTxDetail${index}`;
+    const date=new Date(first.soldAt);
+    const dateLabel=Number.isNaN(date.getTime())
+      ? ''
+      : date.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+
+    return `<article class="sale-history-card sale-transaction-card">
+      <button type="button" class="sale-history-head sale-transaction-summary" data-sale-tx-toggle="${detailId}">
+        <div>
+          <b>${esc(first.client||'Client non renseigné')}</b>
+          <small>${esc(dateLabel)} · ${entries.length} bouteille${entries.length>1?'s':''}</small>
+        </div>
+        <div class="sale-tx-summary-money">
+          <strong>${euro(txRevenue)}</strong>
+          <small>Bénéfice ${known.length===entries.length
+            ? `${txProfit>=0?'+':''}${euro(txProfit)}`
+            : `${txProfit>=0?'+':''}${euro(txProfit)} + ?`}</small>
+        </div>
+      </button>
+
+      <div id="${detailId}" class="sale-transaction-detail" hidden>
+        <div class="sale-history-lines">${entries.map(e=>`
+          <div class="sale-history-line">
+            <div>
+              <b>${esc(e.vin)}${e.millesime?` · ${esc(e.millesime)}`:''}</b>
+              <small>${esc(e.caveCode||'')} · ${esc(e.emplacement||'')}</small>
+            </div>
+            <div class="sale-money">
+              <span>Vente ${euro(e.salePrice)}</span>
+              <span>Achat ${e.costKnown?euro(e.costPrice):'?'}</span>
+              <b>${e.costKnown?`${Number(e.profit)>=0?'+':''}${euro(e.profit)}`:'?'}</b>
+            </div>
+          </div>`).join('')}
+        </div>
+        <div class="sale-history-total">
+          Coût d’achat connu : <b>${euro(txCost)}</b><br>
+          Bénéfice transaction : <b>${known.length===entries.length
+            ? `${txProfit>=0?'+':''}${euro(txProfit)}`
+            : `${txProfit>=0?'+':''}${euro(txProfit)} + ${unknownCount} non calculable${unknownCount>1?'s':''}`}</b>
+        </div>
+      </div>
     </article>`;
   }).join('');
 }
@@ -1738,7 +1795,7 @@ function showDialog(d){
   d.showModal();
 }
 function closeDialogsFromPop(){
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -2627,6 +2684,29 @@ $('#bulkActionEdit').addEventListener('click',()=>{
   $('#bulkActionDialog').close();editRef(item,r);
 });
 $('#bulkActionClose').addEventListener('click',()=>requestClose($('#bulkActionDialog')));
+
+
+$('#openConsumptionWindow').addEventListener('click',()=>{
+  renderConsumption();
+  showDialog($('#consumptionDialog'));
+});
+$('#consumptionDialogClose').addEventListener('click',()=>requestClose($('#consumptionDialog')));
+$('#consumptionDialog').addEventListener('click',backdropClose);
+
+$('#openSalesWindow').addEventListener('click',()=>{
+  if(!moduleEnabled('sales'))return;
+  renderSales();
+  showDialog($('#salesHistoryDialog'));
+});
+$('#salesHistoryClose').addEventListener('click',()=>requestClose($('#salesHistoryDialog')));
+$('#salesHistoryDialog').addEventListener('click',backdropClose);
+
+$('#salesList').addEventListener('click',e=>{
+  const toggle=e.target.closest('[data-sale-tx-toggle]');
+  if(!toggle)return;
+  const detail=$('#'+toggle.dataset.saleTxToggle);
+  if(detail)detail.hidden=!detail.hidden;
+});
 
 $('#openConsumedRanking').addEventListener('click',()=>{
   renderConsumedRanking();
