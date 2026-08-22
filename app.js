@@ -32,7 +32,7 @@ if(!Array.isArray(consumed)) consumed=[];
 if(!Array.isArray(sales)) sales=[];
 if(!Array.isArray(bulk)) bulk=[];
 consumed.forEach(e=>{
-  if(!['good','bad','neutral'].includes(e.rating)) e.rating='neutral';
+  if(!['verygood','good','bad','verybad','neutral'].includes(e.rating)) e.rating='neutral';
   if(e.comment===undefined) e.comment='';
   e.bulk=!!e.bulk;
 });
@@ -947,15 +947,17 @@ function consumedGroupKey(e){
 }
 
 function ratingIcon(rating){
-  if(rating==='good') return '<span class="rating-icon" title="Très bon">👍</span>';
-  if(rating==='bad') return '<span class="rating-icon" title="Pas bon">👎</span>';
+  if(rating==='verygood') return '<span class="rating-icon" title="Excellent · +2">👍👍</span>';
+  if(rating==='good') return '<span class="rating-icon" title="Bon · +1">👍</span>';
+  if(rating==='bad') return '<span class="rating-icon" title="Nul · −1">👎</span>';
+  if(rating==='verybad') return '<span class="rating-icon" title="Très nul · −2">👎👎</span>';
   return '';
 }
 
 function setConsumedRating(id,rating){
   const entry=consumed.find(e=>e.id===id);
   if(!entry) return;
-  entry.rating=['good','bad'].includes(rating)?rating:'neutral';
+  entry.rating=['verygood','good','bad','verybad'].includes(rating)?rating:'neutral';
   persist();
   renderConsumption();
 }
@@ -1001,8 +1003,10 @@ function consumedRankingData(){
       groups.set(key,{
         sample:e,
         total:0,
+        verygood:0,
         good:0,
         bad:0,
+        verybad:0,
         neutral:0
       });
     }
@@ -1010,19 +1014,23 @@ function consumedRankingData(){
     const g=groups.get(key);
     g.total++;
 
-    const rating=['good','bad'].includes(e.rating)?e.rating:'neutral';
-    if(rating==='good') g.good++;
+    const rating=['verygood','good','bad','verybad'].includes(e.rating)?e.rating:'neutral';
+    if(rating==='verygood') g.verygood++;
+    else if(rating==='good') g.good++;
     else if(rating==='bad') g.bad++;
+    else if(rating==='verybad') g.verybad++;
     else g.neutral++;
   });
 
   return [...groups.values()].map(g=>{
-    const raw=g.good-g.bad;
+    const raw=(g.verygood*2)+g.good-g.bad-(g.verybad*2);
     const score=g.total ? (raw/g.total)*100 : 0;
     return {...g,raw,score};
   }).sort((a,b)=>{
     if(b.score!==a.score) return b.score-a.score;
+    if(b.verygood!==a.verygood) return b.verygood-a.verygood;
     if(b.good!==a.good) return b.good-a.good;
+    if(a.verybad!==b.verybad) return a.verybad-b.verybad;
     if(a.bad!==b.bad) return a.bad-b.bad;
     if(b.total!==a.total) return b.total-a.total;
     return String(a.sample.vin).localeCompare(String(b.sample.vin),'fr');
@@ -1056,7 +1064,7 @@ function renderConsumedRanking(){
           <b>${esc(e.vin)}${mill}${format}</b>
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
           <span class="ranking-counts">
-            ${g.total} bue${g.total>1?'s':''} · 👍 ${g.good} · 👎 ${g.bad} · neutre ${g.neutral}
+            ${g.total} bue${g.total>1?'s':''} · 👍👍 ${g.verygood} · 👍 ${g.good} · 👎 ${g.bad} · 👎👎 ${g.verybad} · neutre ${g.neutral}
           </span>
         </div>
         <div class="ranking-score ${scoreClass}">
@@ -1271,9 +1279,11 @@ function renderConsumption(){
                     Voter${ratingIcon(e.rating||'neutral')}
                   </button>
                   <div class="consumed-rating-edit" data-vote-choices="${esc(e.id)}" hidden>
-                    <button type="button" class="${(e.rating||'neutral')==='bad'?'active bad':''}" data-rating-id="${esc(e.id)}" data-rating-value="bad" title="Nul">👎</button>
-                    <button type="button" class="${(e.rating||'neutral')==='neutral'?'active neutral':''}" data-rating-id="${esc(e.id)}" data-rating-value="neutral" title="Neutre">•</button>
-                    <button type="button" class="${(e.rating||'neutral')==='good'?'active good':''}" data-rating-id="${esc(e.id)}" data-rating-value="good" title="Très bon">👍</button>
+                    <button type="button" class="${(e.rating||'neutral')==='verybad'?'active verybad':''}" data-rating-id="${esc(e.id)}" data-rating-value="verybad" title="Très nul · −2">👎👎</button>
+                    <button type="button" class="${(e.rating||'neutral')==='bad'?'active bad':''}" data-rating-id="${esc(e.id)}" data-rating-value="bad" title="Nul · −1">👎</button>
+                    <button type="button" class="${(e.rating||'neutral')==='neutral'?'active neutral':''}" data-rating-id="${esc(e.id)}" data-rating-value="neutral" title="Neutre · 0">•</button>
+                    <button type="button" class="${(e.rating||'neutral')==='good'?'active good':''}" data-rating-id="${esc(e.id)}" data-rating-value="good" title="Bon · +1">👍</button>
+                    <button type="button" class="${(e.rating||'neutral')==='verygood'?'active verygood':''}" data-rating-id="${esc(e.id)}" data-rating-value="verygood" title="Excellent · +2">👍👍</button>
                   </div>
                 </div>
                 <button type="button" class="restore-consumed" data-consumed-id="${esc(e.id)}" title="Remettre en cave">↩</button>
@@ -2640,7 +2650,7 @@ $('#import').addEventListener('change',async e=>{
     bulk=Array.isArray(d.bulk)?d.bulk:[];
 
     consumed.forEach(e=>{
-      if(!['good','bad','neutral'].includes(e.rating)) e.rating='neutral';
+      if(!['verygood','good','bad','verybad','neutral'].includes(e.rating)) e.rating='neutral';
       if(e.comment===undefined)e.comment='';
       e.bulk=!!e.bulk;
     });
