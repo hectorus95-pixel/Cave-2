@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.6">
+<link rel="manifest" href="manifest.webmanifest?v=2.7">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1682,11 +1682,381 @@ header{
   display:none!important;
 }
 
+
+/* =========================================================
+   V2.7 — fenêtre Ventes beaucoup plus lisible
+   ========================================================= */
+
+#salesHistoryDialog{
+  width:calc(100vw - 20px)!important;
+  max-width:900px!important;
+  height:calc(100vh - 28px)!important;
+  max-height:none!important;
+  margin:auto!important;
+  padding:0!important;
+  border-radius:18px!important;
+}
+
+#salesHistoryDialog .history-dialog-inner{
+  height:100%!important;
+  max-height:none!important;
+  overflow:auto!important;
+  box-sizing:border-box;
+  padding:14px 14px 24px!important;
+}
+
+#salesHistoryDialog .history-dialog-head{
+  top:-14px!important;
+  padding:14px 0 12px!important;
+  background:#1d1a1a!important;
+}
+
+#salesHistoryDialog .history-dialog-head h2{
+  font-size:24px!important;
+  line-height:1.1!important;
+}
+
+#salesHistoryDialog .history-dialog-head .secondary{
+  min-height:42px!important;
+  padding:8px 14px!important;
+  font-size:14px!important;
+}
+
+#salesHistoryDialog .sales-head-intro{
+  margin:4px 0 14px!important;
+  padding:0!important;
+}
+
+#salesHistoryDialog .sales-head-intro small{
+  font-size:13px!important;
+  line-height:1.4!important;
+  color:#bdb7b7!important;
+}
+
+#salesHistoryDialog .sales-period{
+  margin:0 0 14px!important;
+}
+
+#salesHistoryDialog .sales-period label{
+  font-size:13px!important;
+}
+
+#salesHistoryDialog .sales-period select,
+#salesHistoryDialog .sales-period input{
+  min-height:50px!important;
+  font-size:16px!important;
+  margin-top:6px!important;
+}
+
+#salesHistoryDialog .sales-summary{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:10px!important;
+  margin:14px 0!important;
+}
+
+#salesHistoryDialog .sales-summary .sales-kpi{
+  min-height:110px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+  padding:14px!important;
+  border:1px solid #423d3d!important;
+  border-radius:14px!important;
+  background:#272323!important;
+  box-sizing:border-box!important;
+}
+
+#salesHistoryDialog .sales-kpi span{
+  order:0!important;
+  display:block!important;
+  margin-bottom:8px!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+  color:#bdb7b7!important;
+}
+
+#salesHistoryDialog .sales-kpi b{
+  order:1!important;
+  font-size:27px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  color:#fff!important;
+}
+
+#salesHistoryDialog .sales-kpi b.positive,
+#salesHistoryDialog #salesProfit.positive{
+  color:#8fd89f!important;
+}
+
+#salesHistoryDialog .sales-kpi b.negative,
+#salesHistoryDialog #salesProfit.negative{
+  color:#ff9999!important;
+}
+
+#salesHistoryDialog .sales-unknown{
+  margin:8px 0 14px!important;
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+
+#salesHistoryDialog .sales-list{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:12px!important;
+}
+
+#salesHistoryDialog .sale-transaction-card{
+  margin:0!important;
+  border:1px solid #484242!important;
+  border-radius:14px!important;
+  overflow:hidden!important;
+  background:#231f1f!important;
+}
+
+#salesHistoryDialog .sale-transaction-summary{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1.4fr) 86px!important;
+  gap:12px!important;
+  padding:15px!important;
+  border:0!important;
+  background:#302b2b!important;
+  color:#fff!important;
+  text-align:left!important;
+  box-sizing:border-box!important;
+}
+
+#salesHistoryDialog .sale-tx-client{
+  min-width:0!important;
+}
+
+#salesHistoryDialog .sale-tx-label{
+  display:block!important;
+  margin-bottom:3px!important;
+  font-size:10px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.08em!important;
+  color:#9f9999!important;
+}
+
+#salesHistoryDialog .sale-tx-client b{
+  display:block!important;
+  font-size:19px!important;
+  line-height:1.15!important;
+  overflow-wrap:anywhere!important;
+}
+
+#salesHistoryDialog .sale-tx-client small{
+  display:block!important;
+  margin-top:6px!important;
+  font-size:12px!important;
+  color:#aaa!important;
+}
+
+#salesHistoryDialog .sale-tx-count{
+  text-align:center!important;
+  align-self:start!important;
+}
+
+#salesHistoryDialog .sale-tx-count b{
+  display:block!important;
+  font-size:30px!important;
+  line-height:1!important;
+}
+
+#salesHistoryDialog .sale-tx-count small{
+  display:block!important;
+  margin-top:4px!important;
+  font-size:11px!important;
+  color:#aaa!important;
+}
+
+#salesHistoryDialog .sale-tx-finance{
+  grid-column:1/-1!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:8px!important;
+}
+
+#salesHistoryDialog .sale-tx-finance>div{
+  padding:10px!important;
+  border-radius:10px!important;
+  background:#211e1e!important;
+}
+
+#salesHistoryDialog .sale-tx-finance span{
+  display:block!important;
+  margin-bottom:4px!important;
+  font-size:11px!important;
+  color:#aaa!important;
+}
+
+#salesHistoryDialog .sale-tx-finance b{
+  display:block!important;
+  font-size:19px!important;
+  line-height:1.1!important;
+}
+
+#salesHistoryDialog .positive{color:#8fd89f!important}
+#salesHistoryDialog .negative{color:#ff9999!important}
+#salesHistoryDialog .neutral{color:#fff!important}
+
+#salesHistoryDialog .sale-tx-open{
+  grid-column:1/-1!important;
+  display:flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  gap:8px!important;
+  margin-top:2px!important;
+  padding-top:8px!important;
+  border-top:1px solid #464040!important;
+  color:#c7c1c1!important;
+}
+
+#salesHistoryDialog .sale-tx-open span{
+  font-size:12px!important;
+  font-weight:800!important;
+}
+
+#salesHistoryDialog .sale-tx-open b{
+  font-size:18px!important;
+}
+
+#salesHistoryDialog .sale-transaction-detail{
+  padding:12px 14px 16px!important;
+  background:#1c1919!important;
+}
+
+#salesHistoryDialog .sale-tx-detail-summary{
+  display:grid!important;
+  grid-template-columns:1fr 1fr 1fr!important;
+  gap:8px!important;
+  margin-bottom:6px!important;
+}
+
+#salesHistoryDialog .sale-tx-detail-summary>div{
+  padding:10px!important;
+  border-radius:10px!important;
+  background:#282424!important;
+}
+
+#salesHistoryDialog .sale-tx-detail-summary span{
+  display:block!important;
+  min-height:28px!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  color:#aaa!important;
+}
+
+#salesHistoryDialog .sale-tx-detail-summary b{
+  display:block!important;
+  margin-top:5px!important;
+  font-size:15px!important;
+}
+
+#salesHistoryDialog .sale-tx-detail-note{
+  margin:0 0 10px!important;
+  font-size:9px!important;
+  color:#8f8989!important;
+}
+
+#salesHistoryDialog .sale-history-lines{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+}
+
+#salesHistoryDialog .sale-history-line{
+  display:grid!important;
+  grid-template-columns:26px minmax(0,1fr)!important;
+  gap:9px!important;
+  padding:11px!important;
+  border:1px solid #383333!important;
+  border-radius:10px!important;
+  background:#242020!important;
+}
+
+#salesHistoryDialog .sale-line-number{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding-top:2px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  color:#888!important;
+}
+
+#salesHistoryDialog .sale-line-wine b{
+  display:block!important;
+  font-size:14px!important;
+  line-height:1.2!important;
+}
+
+#salesHistoryDialog .sale-line-wine span{
+  display:block!important;
+  margin-top:3px!important;
+  font-size:11px!important;
+  color:#c0baba!important;
+}
+
+#salesHistoryDialog .sale-line-wine small{
+  display:block!important;
+  margin-top:5px!important;
+  font-size:10px!important;
+  line-height:1.25!important;
+  color:#888!important;
+}
+
+#salesHistoryDialog .sale-line-money{
+  grid-column:1/-1!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr 1fr!important;
+  gap:6px!important;
+}
+
+#salesHistoryDialog .sale-line-money>div{
+  padding:8px!important;
+  border-radius:8px!important;
+  background:#191717!important;
+}
+
+#salesHistoryDialog .sale-line-money span{
+  display:block!important;
+  font-size:9px!important;
+  color:#999!important;
+}
+
+#salesHistoryDialog .sale-line-money b{
+  display:block!important;
+  margin-top:3px!important;
+  font-size:13px!important;
+}
+
+@media (min-width:700px){
+  #salesHistoryDialog .sales-summary{
+    grid-template-columns:repeat(4,1fr)!important;
+  }
+  #salesHistoryDialog .sale-transaction-summary{
+    grid-template-columns:minmax(0,1.5fr) 110px minmax(280px,1fr) auto!important;
+    align-items:center!important;
+  }
+  #salesHistoryDialog .sale-tx-finance{
+    grid-column:auto!important;
+  }
+  #salesHistoryDialog .sale-tx-open{
+    grid-column:auto!important;
+    border-top:0!important;
+    padding-top:0!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v2.6</span>
+  <span class="app-version">v2.7</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -1836,7 +2206,7 @@ header{
       <button id="salesHistoryClose" type="button" class="secondary">Fermer</button>
     </div>
     <section id="salesPanel" class="sales-panel">
-    <div class="sales-head"><div><h2>💶 Ventes</h2><small>Chiffre d’affaires et bénéfice réalisé</small></div></div>
+    <div class="sales-head sales-head-intro"><small>Suivi des transactions, chiffre d’affaires et bénéfice réellement réalisé.</small></div>
     <div class="sales-period">
       <label>Période
         <select id="salesPeriod">
@@ -1849,10 +2219,10 @@ header{
       <div id="salesCustom" class="sales-custom" hidden><label>Du<input id="salesFrom" type="month"></label><label>Au<input id="salesTo" type="month"></label></div>
     </div>
     <div class="sales-summary">
-      <div><b id="salesCount">0</b><span>bouteilles vendues</span></div>
-      <div><b id="salesRevenue">0,00 €</b><span>chiffre d’affaires</span></div>
-      <div><b id="salesCost">0,00 €</b><span>coût d’achat connu</span></div>
-      <div><b id="salesProfit">+0,00 €</b><span>bénéfice calculé</span></div>
+      <div class="sales-kpi"><span>Bouteilles vendues</span><b id="salesCount">0</b></div>
+      <div class="sales-kpi"><span>Montant des ventes</span><b id="salesRevenue">0,00 €</b></div>
+      <div class="sales-kpi"><span>Coût d’achat total</span><b id="salesCost">0,00 €</b></div>
+      <div class="sales-kpi sales-kpi-profit"><span>Bénéfice réalisé</span><b id="salesProfit">+0,00 €</b></div>
     </div>
     <div id="salesUnknown" class="sales-unknown"></div>
     <div id="salesList" class="sales-list"></div>
@@ -2107,6 +2477,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.6"></script>
+<script src="app.js?v=2.7"></script>
 </body>
 </html>

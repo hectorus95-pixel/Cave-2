@@ -1190,22 +1190,28 @@ function confirmSale(){
 }
 function renderSales(){
   if(!$('#salesList')||!moduleEnabled('sales'))return;
+
   const items=filteredSales();
   let revenue=0,cost=0,profit=0,unknown=0;
+
   items.forEach(e=>{
     revenue+=Number(e.salePrice)||0;
     if(e.costKnown){
       cost+=Number(e.costPrice)||0;
       profit+=Number(e.profit)||0;
-    }else unknown++;
+    }else{
+      unknown++;
+    }
   });
 
   $('#salesCount').textContent=items.length;
   $('#salesRevenue').textContent=euro(revenue);
   $('#salesCost').textContent=euro(cost);
   $('#salesProfit').textContent=`${profit>=0?'+':''}${euro(profit)}`;
+  $('#salesProfit').className=profit>0?'positive':profit<0?'negative':'neutral';
+
   $('#salesUnknown').textContent=unknown
-    ? `${unknown} bénéfice${unknown>1?'s':''} non calculable${unknown>1?'s':''}`
+    ? `${unknown} bouteille${unknown>1?'s':''} : bénéfice non calculable car le prix d’achat manque.`
     : '';
 
   const list=$('#salesList');
@@ -1214,11 +1220,12 @@ function renderSales(){
     return;
   }
 
+  // Une transaction = un seul bloc. Les bouteilles ne sont visibles qu'en ouvrant le détail.
   const txs=new Map();
   items.forEach(e=>{
-    const k=e.transactionId||e.id;
-    if(!txs.has(k)) txs.set(k,[]);
-    txs.get(k).push(e);
+    const key=e.transactionId||e.id;
+    if(!txs.has(key)) txs.set(key,[]);
+    txs.get(key).push(e);
   });
 
   list.innerHTML=[...txs.values()].map((entries,index)=>{
@@ -1228,45 +1235,74 @@ function renderSales(){
     const txCost=known.reduce((s,e)=>s+(Number(e.costPrice)||0),0);
     const txProfit=known.reduce((s,e)=>s+(Number(e.profit)||0),0);
     const unknownCount=entries.length-known.length;
+    const avgSale=entries.length ? txRevenue/entries.length : 0;
+    const avgProfit=known.length ? txProfit/known.length : 0;
     const detailId=`saleTxDetail${index}`;
     const date=new Date(first.soldAt);
     const dateLabel=Number.isNaN(date.getTime())
       ? ''
       : date.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
 
+    const profitLabel=known.length===entries.length
+      ? `${txProfit>=0?'+':''}${euro(txProfit)}`
+      : `${txProfit>=0?'+':''}${euro(txProfit)} + ${unknownCount} non calculable${unknownCount>1?'s':''}`;
+
     return `<article class="sale-history-card sale-transaction-card">
-      <button type="button" class="sale-history-head sale-transaction-summary" data-sale-tx-toggle="${detailId}">
-        <div>
-          <b>${esc(first.client||'Client non renseigné')}</b>
-          <small>${esc(dateLabel)} · ${entries.length} bouteille${entries.length>1?'s':''}</small>
+      <button type="button" class="sale-transaction-summary" data-sale-tx-toggle="${detailId}">
+        <div class="sale-tx-client">
+          <span class="sale-tx-label">Client</span>
+          <b>${esc(first.client||'Non renseigné')}</b>
+          <small>${esc(dateLabel)}</small>
         </div>
-        <div class="sale-tx-summary-money">
-          <strong>${euro(txRevenue)}</strong>
-          <small>Bénéfice ${known.length===entries.length
-            ? `${txProfit>=0?'+':''}${euro(txProfit)}`
-            : `${txProfit>=0?'+':''}${euro(txProfit)} + ?`}</small>
+
+        <div class="sale-tx-count">
+          <span class="sale-tx-label">Quantité</span>
+          <b>${entries.length}</b>
+          <small>bouteille${entries.length>1?'s':''}</small>
+        </div>
+
+        <div class="sale-tx-finance">
+          <div>
+            <span>Montant de la vente</span>
+            <b>${euro(txRevenue)}</b>
+          </div>
+          <div>
+            <span>Bénéfice réalisé</span>
+            <b class="${txProfit>0?'positive':txProfit<0?'negative':'neutral'}">${profitLabel}</b>
+          </div>
+        </div>
+
+        <div class="sale-tx-open">
+          <span>Voir le détail</span>
+          <b>⌄</b>
         </div>
       </button>
 
       <div id="${detailId}" class="sale-transaction-detail" hidden>
-        <div class="sale-history-lines">${entries.map(e=>`
-          <div class="sale-history-line">
-            <div>
-              <b>${esc(e.vin)}${e.millesime?` · ${esc(e.millesime)}`:''}</b>
-              <small>${esc(e.caveCode||'')} · ${esc(e.emplacement||'')}</small>
-            </div>
-            <div class="sale-money">
-              <span>Vente ${euro(e.salePrice)}</span>
-              <span>Achat ${e.costKnown?euro(e.costPrice):'?'}</span>
-              <b>${e.costKnown?`${Number(e.profit)>=0?'+':''}${euro(e.profit)}`:'?'}</b>
-            </div>
-          </div>`).join('')}
+        <div class="sale-tx-detail-summary">
+          <div><span>Coût d’achat connu</span><b>${euro(txCost)}</b></div>
+          <div><span>Prix moyen / bouteille</span><b>${euro(avgSale)}</b></div>
+          <div><span>Bénéfice moyen*</span><b>${known.length?`${avgProfit>=0?'+':''}${euro(avgProfit)}`:'?'}</b></div>
         </div>
-        <div class="sale-history-total">
-          Coût d’achat connu : <b>${euro(txCost)}</b><br>
-          Bénéfice transaction : <b>${known.length===entries.length
-            ? `${txProfit>=0?'+':''}${euro(txProfit)}`
-            : `${txProfit>=0?'+':''}${euro(txProfit)} + ${unknownCount} non calculable${unknownCount>1?'s':''}`}</b>
+
+        <div class="sale-tx-detail-note">* calculé uniquement sur les bouteilles dont le prix d’achat est connu.</div>
+
+        <div class="sale-history-lines">
+          ${entries.map((e,i)=>`
+            <div class="sale-history-line">
+              <div class="sale-line-number">${i+1}</div>
+              <div class="sale-line-wine">
+                <b>${esc(e.vin||'Vin')}${e.millesime?` · ${esc(e.millesime)}`:''}</b>
+                ${e.domaine?`<span>${esc(e.domaine)}</span>`:''}
+                <small>${esc(e.caveCode||'')}${e.emplacement?` · ${esc(e.emplacement)}`:''}</small>
+              </div>
+              <div class="sale-line-money">
+                <div><span>Vente</span><b>${euro(e.salePrice)}</b></div>
+                <div><span>Achat</span><b>${e.costKnown?euro(e.costPrice):'?'}</b></div>
+                <div><span>Bénéfice</span><b class="${Number(e.profit)>0?'positive':Number(e.profit)<0?'negative':'neutral'}">${e.costKnown?`${Number(e.profit)>=0?'+':''}${euro(e.profit)}`:'?'}</b></div>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     </article>`;
