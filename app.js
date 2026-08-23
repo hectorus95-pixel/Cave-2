@@ -117,11 +117,19 @@ function normalizeCave(raw,index=0){
     lignes:Number(raw.lignes),
     positions:Number(raw.positions)
   };
+  const bulkOnly=
+    cave.casiers===0 &&
+    cave.lignes===0 &&
+    cave.positions===0;
+
+  if(bulkOnly) return cave;
+
   if(
     !Number.isInteger(cave.casiers) || cave.casiers<1 || cave.casiers>20 ||
-    !Number.isInteger(cave.lignes) || cave.lignes<0 || cave.lignes>50 ||
+    !Number.isInteger(cave.lignes) || cave.lignes<1 || cave.lignes>50 ||
     !Number.isInteger(cave.positions) || cave.positions<1 || cave.positions>12
   ) return null;
+
   return cave;
 }
 
@@ -239,9 +247,9 @@ function renderConfigEditors(caves){
         </label>
       </div>
       <div class="cave-dims-row">
-        <label>Casiers<input data-field="casiers" type="number" min="1" max="20" inputmode="numeric" value="${Number(c.casiers)||3}"></label>
+        <label>Casiers<input data-field="casiers" type="number" min="0" max="20" inputmode="numeric" value="${Number.isInteger(Number(c.casiers))?Number(c.casiers):3}"></label>
         <label>Lignes<input data-field="lignes" type="number" min="0" max="50" inputmode="numeric" value="${Number.isInteger(Number(c.lignes))?Number(c.lignes):15}"></label>
-        <label>Bouteilles / ligne<input data-field="positions" type="number" min="1" max="12" inputmode="numeric" value="${Number(c.positions)||5}"></label>
+        <label>Bouteilles / ligne<input data-field="positions" type="number" min="0" max="12" inputmode="numeric" value="${Number.isInteger(Number(c.positions))?Number(c.positions):5}"></label>
       </div>
     </section>
   `).join('');
@@ -280,10 +288,10 @@ function readConfigForm(){
 function updateConfigCapacityPreview(){
   const cfg=readConfigForm();
   if(!cfg){
-    $('#configCapacity').textContent='Vérifie les dimensions et utilise un code différent pour chaque cave.';
+    $('#configCapacity').textContent='Structure normale : valeurs supérieures à 0. Cave vrac uniquement : mets 0 / 0 / 0.';
     return;
   }
-  const details=cfg.caves.map(c=>c.lignes===0
+  const details=cfg.caves.map(c=>c.casiers===0&&c.lignes===0&&c.positions===0
     ? `${c.code}: vrac uniquement`
     : `${c.code}: ${caveCapacity(c)} emplacement${caveCapacity(c)>1?'s':''}`
   ).join(' · ');
@@ -341,7 +349,7 @@ function applyConfiguration(){
   inv=buildInventory(config,inv);
   if(!caveById(activeCaveId)) activeCaveId=config.caves[0].id;
   const ac=activeCave();
-  activeCasier=Math.min(Math.max(1,activeCasier),ac.casiers);
+  activeCasier=ac.casiers===0 ? 0 : Math.min(Math.max(1,activeCasier),ac.casiers);
   clearEmptySelection();
   clearOccupiedSelection();
   addTargets=[]; exitTargets=[]; saleTargets=[];
@@ -688,7 +696,7 @@ function renderCasierTabs(s){
   const cave=activeCave();
   if(!tabs||!cave) return;
 
-  if(cave.lignes===0){
+  if(cave.casiers===0&&cave.lignes===0&&cave.positions===0){
     tabs.innerHTML='<div class="bulk-only-tab">📦 Vrac uniquement</div>';
     return;
   }
@@ -1954,7 +1962,8 @@ function render(){
   if(!config) return;
   if(!caveById(activeCaveId)) activeCaveId=config.caves[0].id;
   const activeDef=activeCave();
-  if(activeCasier>activeDef.casiers) activeCasier=activeDef.casiers;
+  if(activeDef.casiers===0) activeCasier=0;
+  else if(activeCasier<1 || activeCasier>activeDef.casiers) activeCasier=1;
 
   selectedEmptyKeys.forEach(key=>{
     const x=inv.find(p=>slotKey(p)===key);
@@ -1975,8 +1984,8 @@ function render(){
   g.style.setProperty('--bpl',cave.positions);
   g.innerHTML='';
 
-  if(cave.lignes===0){
-    g.innerHTML='<div class="bulk-only-grid-message"><b>📦 Cave en vrac uniquement</b><span>Aucune ligne de casier n’est configurée pour cette cave.</span></div>';
+  if(cave.casiers===0&&cave.lignes===0&&cave.positions===0){
+    g.innerHTML='<div class="bulk-only-grid-message"><b>📦 Cave en vrac uniquement</b><span>Aucun casier n’est configuré pour cette cave.</span></div>';
   }
 
   inv.filter(x=>x.caveId===activeCaveId && x.casier===activeCasier).forEach(x=>{
@@ -2932,7 +2941,7 @@ $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
 $('#caveTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.cave-tab');if(!b)return;
   activeCaveId=b.dataset.caveId;
-  activeCasier=1;
+  activeCasier=activeCave()?.casiers===0 ? 0 : 1;
   $('#search').value='';clearMaturityFilter();clearYearFilter();hideResultPanel();
   render();await refreshPhotoButtons();
 });
