@@ -69,6 +69,7 @@ let saleTargets=[];
 let pendingBulkRefId='';
 let bulkDraft=null;
 let bulkActionIds=[];
+let drinkTargets=[];
 let emptyTapTimers=new Map();
 let occupiedTapTimers=new Map();
 let voiceRecognition=null;
@@ -118,7 +119,7 @@ function normalizeCave(raw,index=0){
   };
   if(
     !Number.isInteger(cave.casiers) || cave.casiers<1 || cave.casiers>20 ||
-    !Number.isInteger(cave.lignes) || cave.lignes<1 || cave.lignes>50 ||
+    !Number.isInteger(cave.lignes) || cave.lignes<0 || cave.lignes>50 ||
     !Number.isInteger(cave.positions) || cave.positions<1 || cave.positions>12
   ) return null;
   return cave;
@@ -239,7 +240,7 @@ function renderConfigEditors(caves){
       </div>
       <div class="cave-dims-row">
         <label>Casiers<input data-field="casiers" type="number" min="1" max="20" inputmode="numeric" value="${Number(c.casiers)||3}"></label>
-        <label>Lignes<input data-field="lignes" type="number" min="1" max="50" inputmode="numeric" value="${Number(c.lignes)||15}"></label>
+        <label>Lignes<input data-field="lignes" type="number" min="0" max="50" inputmode="numeric" value="${Number.isInteger(Number(c.lignes))?Number(c.lignes):15}"></label>
         <label>Bouteilles / ligne<input data-field="positions" type="number" min="1" max="12" inputmode="numeric" value="${Number(c.positions)||5}"></label>
       </div>
     </section>
@@ -282,8 +283,11 @@ function updateConfigCapacityPreview(){
     $('#configCapacity').textContent='Vérifie les dimensions et utilise un code différent pour chaque cave.';
     return;
   }
-  const details=cfg.caves.map(c=>`${c.code}: ${caveCapacity(c)}`).join(' · ');
-  $('#configCapacity').textContent=`${cfg.caves.length} cave${cfg.caves.length>1?'s':''} · ${details} · Total ${configCapacity(cfg)} emplacements`;
+  const details=cfg.caves.map(c=>c.lignes===0
+    ? `${c.code}: vrac uniquement`
+    : `${c.code}: ${caveCapacity(c)} emplacement${caveCapacity(c)>1?'s':''}`
+  ).join(' · ');
+  $('#configCapacity').textContent=`${cfg.caves.length} cave${cfg.caves.length>1?'s':''} · ${details} · Total ${configCapacity(cfg)} emplacements de casier`;
 }
 
 function openConfigDialog(firstRun=false){
@@ -367,6 +371,76 @@ function deriveConfigFromInventory(data){
     },i);
   });
   return normalizeConfig({caves});
+}
+
+
+function migrateBackupCaves(data,restoredConfig){
+  const cfg=restoredConfig;
+  const first=cfg.caves[0];
+  const validIds=new Set(cfg.caves.map(c=>c.id));
+
+  const caveFor=(rawId)=>{
+    const id=String(rawId||'').trim();
+    return id && validIds.has(id) ? id : first.id;
+  };
+
+  const caveMeta=(id)=>{
+    const c=cfg.caves.find(x=>x.id===id)||first;
+    return {id:c.id,name:c.name,code:c.code};
+  };
+
+  const migratedInv=(Array.isArray(data.inv)?data.inv:[]).map(x=>{
+    const cave=caveMeta(caveFor(x.caveId));
+    return {
+      ...x,
+      caveId:cave.id,
+      caveName:x.caveName||cave.name,
+      caveCode:x.caveCode||cave.code
+    };
+  });
+
+  const migratedConsumed=(Array.isArray(data.consumed)?data.consumed:[]).map(e=>{
+    const cave=caveMeta(caveFor(e.caveId));
+    return {
+      ...e,
+      caveId:cave.id,
+      caveName:e.caveName||cave.name,
+      caveCode:e.caveCode||cave.code
+    };
+  });
+
+  const migratedSales=(Array.isArray(data.sales)?data.sales:[]).map(e=>{
+    const cave=caveMeta(caveFor(e.caveId));
+    return {
+      ...e,
+      caveId:cave.id,
+      caveName:e.caveName||cave.name,
+      caveCode:e.caveCode||cave.code
+    };
+  });
+
+  const migratedBulk=(Array.isArray(data.bulk)?data.bulk:[]).map(e=>{
+    const cave=caveMeta(caveFor(e.caveId));
+    return {
+      ...e,
+      caveId:cave.id,
+      caveName:e.caveName||cave.name,
+      caveCode:e.caveCode||cave.code
+    };
+  });
+
+  return {
+    inv:migratedInv,
+    consumed:migratedConsumed,
+    sales:migratedSales,
+    bulk:migratedBulk,
+    defaultedToCave1:[
+      ...(Array.isArray(data.inv)?data.inv:[]),
+      ...(Array.isArray(data.consumed)?data.consumed:[]),
+      ...(Array.isArray(data.sales)?data.sales:[]),
+      ...(Array.isArray(data.bulk)?data.bulk:[])
+    ].filter(x=>!x?.caveId || !validIds.has(String(x.caveId))).length
+  };
 }
 
 // Migration douce V2 -> V3
@@ -613,6 +687,12 @@ function renderCasierTabs(s){
   const tabs=$('#casierTabs');
   const cave=activeCave();
   if(!tabs||!cave) return;
+
+  if(cave.lignes===0){
+    tabs.innerHTML='<div class="bulk-only-tab">📦 Vrac uniquement</div>';
+    return;
+  }
+
   const counts=s.byCaveCasier[cave.id]||{};
   tabs.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
     const c=i+1;
@@ -1665,23 +1745,75 @@ function removeBulkIds(ids){
   bulk=bulk.filter(x=>!set.has(x.id));
 }
 
+function openDrinkRatingDialog(targets){
+  drinkTargets=(targets||[]).filter(t=>t?.item?.refId&&ref(t.item.refId));
+  if(!drinkTargets.length) return;
+
+  const firstRef=ref(drinkTargets[0].item.refId);
+  const sameWine=drinkTargets.every(t=>t.item.refId===drinkTargets[0].item.refId);
+
+  $('#drinkRatingTitle').textContent=drinkTargets.length>1
+    ? `🍷 ${drinkTargets.length} bouteilles bues`
+    : '🍷 Bouteille bue';
+
+  $('#drinkRatingInfo').textContent=drinkTargets.length===1
+    ? [firstRef?.vin,firstRef?.millesime,firstRef?.domaine].filter(Boolean).join(' · ')
+    : (sameWine
+        ? `${firstRef?.vin||'Vin'}${firstRef?.millesime?` · ${firstRef.millesime}`:''} · ${drinkTargets.length} bouteilles`
+        : `${drinkTargets.length} bouteilles sélectionnées`);
+
+  // On ferme la fiche précédente, mais on conserve l'état d'historique Android.
+  if($('#dialog').open) $('#dialog').close();
+  if($('#bulkActionDialog').open) $('#bulkActionDialog').close();
+
+  if(dialogHistory) $('#drinkRatingDialog').showModal();
+  else showDialog($('#drinkRatingDialog'));
+}
+
+function finalizeDrinkRating(rating='neutral'){
+  if(!drinkTargets.length) return;
+
+  const validRating=['verygood','good','bad','verybad'].includes(rating)?rating:'neutral';
+  const bulkIds=[];
+
+  drinkTargets.forEach(({item})=>{
+    const r=ref(item.refId);
+    if(!r) return;
+
+    const source=item.bulk?bulkTarget(item):item;
+    const snap=consumedSnapshot(source,r);
+    snap.rating=validRating;
+    snap.comment='';
+
+    if(item.bulk){
+      snap.bulk=true;
+      snap.bulkLocation=String(item.locationText||'').trim();
+      bulkIds.push(item.id);
+    }
+
+    consumed.push(snap);
+
+    if(!item.bulk){
+      item.refId=null;
+    }
+  });
+
+  if(bulkIds.length) removeBulkIds(bulkIds);
+
+  const n=drinkTargets.length;
+  drinkTargets=[];
+  bulkActionIds=[];
+  persist();
+  render();
+
+  if($('#drinkRatingDialog').open) requestClose($('#drinkRatingDialog'));
+  setTimeout(()=>alert(`${n} bouteille${n>1?'s':''} enregistrée${n>1?'s':''} comme bue${n>1?'s':''}.`),80);
+}
+
 function drinkBulkSelection(){
   const items=selectedBulkActionItems();
   if(!items.length) return;
-  if(!confirm(`Marquer ${items.length} bouteille${items.length>1?'s':''} comme bue${items.length>1?'s':''} ?`)) return;
-  items.forEach(item=>{
-    const r=ref(item.refId),x=bulkTarget(item);
-    if(!r) return;
-    const snap=consumedSnapshot(x,r);
-    snap.bulk=true;
-    snap.bulkLocation=item.locationText;
-    snap.comment='';
-    consumed.push(snap);
-  });
-  removeBulkIds(items.map(x=>x.id));
-  bulkActionIds=[];
-  persist();render();
-  requestClose($('#bulkActionDialog'));
+  openDrinkRatingDialog(items.map(item=>({item})));
 }
 
 function removeBulkSelection(){
@@ -1842,6 +1974,11 @@ function render(){
   const g=$('#grid');
   g.style.setProperty('--bpl',cave.positions);
   g.innerHTML='';
+
+  if(cave.lignes===0){
+    g.innerHTML='<div class="bulk-only-grid-message"><b>📦 Cave en vrac uniquement</b><span>Aucune ligne de casier n’est configurée pour cette cave.</span></div>';
+  }
+
   inv.filter(x=>x.caveId===activeCaveId && x.casier===activeCasier).forEach(x=>{
     const r=ref(x.refId);
     const hay=r?[r.vin,r.domaine,r.millesime,r.couleur,r.format,x.emplacement].join(' ').toLowerCase():'';
@@ -1888,7 +2025,7 @@ function showDialog(d){
   d.showModal();
 }
 function closeDialogsFromPop(){
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -1896,7 +2033,7 @@ function closeDialogsFromPop(){
   addTargets=[];
   exitTargets=[];
   saleTargets=[];
-  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];
+  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];
   voiceExactRefId='';
   voiceSimilarRefId='';
   if(voiceRecognition){
@@ -2750,21 +2887,8 @@ $('#saleRows').addEventListener('input',e=>{if(e.target.classList.contains('sale
 
 $('#consumed').addEventListener('click',()=>{
   if(!selected || !selected.refId) return;
-  const r=ref(selected.refId);
-  if(!r) return;
-  if(!confirm(`Marquer « ${r.vin} » comme bue aujourd’hui ?`)) return;
-
-  const source=selected.bulk?bulkTarget(selected):selected;
-  const snap=consumedSnapshot(source,r);
-  snap.rating='neutral';
-  snap.comment='';
-  if(selected.bulk){snap.bulk=true;snap.bulkLocation=String(selected.locationText||'').trim();}
-  consumed.push(snap);
-  if(selected.bulk) removeBulkIds([selected.id]);
-  else selected.refId=null;
-  persist();
-  render();
-  requestClose($('#dialog'));
+  if(!ref(selected.refId)) return;
+  openDrinkRatingDialog([{item:selected}]);
 });
 
 $('#remove').addEventListener('click',()=>{
@@ -2852,6 +2976,13 @@ $('#bulkNewRef').addEventListener('click',()=>{
 $('#bulkAddCancel').addEventListener('click',()=>requestClose($('#bulkAddDialog')));
 $('#bulkList').addEventListener('click',e=>{const b=e.target.closest('[data-bulk-open]');if(b)openBulkGroup(b.dataset.bulkOpen);});
 $('#bulkActionDrink').addEventListener('click',drinkBulkSelection);
+$$('[data-drink-rating]').forEach(btn=>btn.addEventListener('click',()=>finalizeDrinkRating(btn.dataset.drinkRating)));
+$('#drinkLater').addEventListener('click',()=>finalizeDrinkRating('neutral'));
+$('#drinkRatingCancel').addEventListener('click',()=>{
+  drinkTargets=[];
+  requestClose($('#drinkRatingDialog'));
+});
+$('#drinkRatingDialog').addEventListener('click',backdropClose);
 $('#bulkActionRemove').addEventListener('click',removeBulkSelection);
 $('#bulkActionSell').addEventListener('click',()=>{
   const items=selectedBulkActionItems();if(!items.length||!moduleEnabled('sales'))return;
@@ -2954,15 +3085,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:7,
-    app:'ma-cave-configurable-v2.1',
+    version:9,
+    app:'ma-cave-configurable-v2.9',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v2-1.json';
+  a.download='sauvegarde-ma-cave-configurable-v2-9.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
@@ -2975,19 +3106,32 @@ $('#import').addEventListener('change',async e=>{
     const restoredConfig=normalizeConfig(d.config)||deriveConfigFromInventory(d.inv);
     if(!restoredConfig) throw new Error();
 
+    // Compatibilité des anciennes sauvegardes mono-cave (ex. version 4 de l'application d'origine).
+    // Toute donnée sans cave explicite va automatiquement dans la première cave, donc Cave 1.
+    const migrated=migrateBackupCaves(d,restoredConfig);
+
     config=restoredConfig;
-    inv=buildInventory(config,d.inv);
+    inv=buildInventory(config,migrated.inv);
     refs=d.refs;
-    consumed=Array.isArray(d.consumed)?d.consumed:[];
-    sales=Array.isArray(d.sales)?d.sales:[];
-    bulk=Array.isArray(d.bulk)?d.bulk:[];
+    consumed=migrated.consumed;
+    sales=migrated.sales;
+    bulk=migrated.bulk;
 
     consumed.forEach(e=>{
       if(!['verygood','good','bad','verybad','neutral'].includes(e.rating)) e.rating='neutral';
       if(e.comment===undefined)e.comment='';
       e.bulk=!!e.bulk;
     });
-    bulk=bulk.filter(e=>e&&e.refId).map((e,i)=>({id:String(e.id||`bulk_${Date.now()}_${i}`),caveId:String(e.caveId||config.caves[0].id),refId:String(e.refId),locationText:String(e.locationText||e.emplacement||'Vrac'),addedAt:e.addedAt||new Date().toISOString(),bulk:true}));
+    bulk=bulk.filter(e=>e&&e.refId).map((e,i)=>({
+      id:String(e.id||`bulk_${Date.now()}_${i}`),
+      caveId:String(e.caveId||config.caves[0].id),
+      refId:String(e.refId),
+      locationText:e.locationText!==undefined
+        ? String(e.locationText||'').trim()
+        : String(e.emplacement||'').replace(/^.*?Vrac\s*·?\s*/i,'').trim(),
+      addedAt:e.addedAt||new Date().toISOString(),
+      bulk:true
+    }));
     sales.forEach(e=>{
       e.costPrice=Number(e.costPrice??0)||0;e.salePrice=Number(e.salePrice??0)||0;
       e.costKnown=e.costKnown!==undefined?!!e.costKnown:e.costPrice>0;
@@ -3006,7 +3150,10 @@ $('#import').addEventListener('change',async e=>{
     render();
     renderSales();
     refreshPhotoButtons();
-    alert('Sauvegarde restaurée avec les caves, modules, consommations, ventes et stock vrac.');
+    const oldMonoCave=!d.config || !Array.isArray(d.config?.caves);
+    alert(oldMonoCave
+      ? 'Ancienne sauvegarde restaurée. Les données sans information de cave ont été placées dans Cave 1.'
+      : 'Sauvegarde restaurée avec les caves, modules, consommations, ventes et stock vrac.');
   }catch(err){ alert('Sauvegarde invalide.'); }
   e.target.value='';
 });

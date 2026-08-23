@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=2.8">
+<link rel="manifest" href="manifest.webmanifest?v=2.10">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2086,11 +2086,89 @@ header{
   font-size:16px;
 }
 
+
+/* V2.9 — vote au moment de boire */
+.drink-rating-dialog{
+  width:min(94vw,520px);
+}
+.drink-rating-question{
+  margin:14px 0 10px;
+  text-align:center;
+  font-size:15px;
+  font-weight:850;
+}
+.drink-rating-buttons{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:5px;
+  margin:8px 0 14px;
+}
+.drink-rating-buttons button{
+  min-width:0;
+  min-height:65px;
+  padding:7px 2px;
+  border:1px solid #514b4b;
+  border-radius:10px;
+  background:#2b2727;
+  color:#fff;
+  font-size:19px;
+  font-weight:850;
+}
+.drink-rating-buttons button small{
+  display:block;
+  margin-top:5px;
+  font-size:10px;
+  color:#aaa;
+}
+.drink-rating-note{
+  display:block;
+  margin-top:8px;
+  color:#999;
+  font-size:10px;
+  line-height:1.35;
+  text-align:center;
+}
+
+
+/* V2.10 — cave sans lignes = vrac uniquement */
+.bulk-only-tab{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #4b4545;
+  border-radius:10px;
+  background:#252121;
+  color:#d7d1d1;
+  font-size:13px;
+  font-weight:800;
+  text-align:center;
+}
+.bulk-only-grid-message{
+  grid-column:1/-1;
+  min-height:86px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:16px;
+  border:1px dashed #514b4b;
+  border-radius:12px;
+  background:#211e1e;
+  text-align:center;
+}
+.bulk-only-grid-message b{
+  font-size:15px;
+}
+.bulk-only-grid-message span{
+  font-size:11px;
+  color:#aaa;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v2.8</span>
+  <span class="app-version">v2.10</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2278,7 +2356,7 @@ header{
 <dialog id="configDialog" class="config-dialog">
   <div class="dlg">
     <h2 id="configTitle">Configurer mes caves</h2>
-    <p class="config-intro">Choisis le nombre de caves, puis donne à chacune un nom, un code court et sa structure.</p>
+    <p class="config-intro">Choisis le nombre de caves, puis donne à chacune un nom, un code court et sa structure. Mets <b>0 ligne</b> pour une cave utilisée uniquement en vrac.</p>
     <label class="cave-count-label">Nombre de caves
       <input id="cfgCaveCount" type="number" min="1" max="12" inputmode="numeric" value="1">
     </label>
@@ -2442,6 +2520,29 @@ header{
 
 
 
+<dialog id="drinkRatingDialog" class="drink-rating-dialog">
+  <div class="dlg">
+    <h2 id="drinkRatingTitle">🍷 Bouteille bue</h2>
+    <p id="drinkRatingInfo" class="where"></p>
+
+    <div class="drink-rating-question">Comment était ce vin ?</div>
+
+    <div class="drink-rating-buttons">
+      <button type="button" data-drink-rating="verybad" title="Très mauvais · −2">👎👎<small>−2</small></button>
+      <button type="button" data-drink-rating="bad" title="Pas bon · −1">👎<small>−1</small></button>
+      <button type="button" data-drink-rating="neutral" title="Neutre · 0">•<small>0</small></button>
+      <button type="button" data-drink-rating="good" title="Bon · +1">👍<small>+1</small></button>
+      <button type="button" data-drink-rating="verygood" title="Excellent · +2">👍👍<small>+2</small></button>
+    </div>
+
+    <div class="dlgactions">
+      <button id="drinkLater" type="button" class="primary">Noter plus tard</button>
+      <button id="drinkRatingCancel" type="button" class="secondary">Annuler</button>
+    </div>
+    <small class="drink-rating-note">La note pourra toujours être modifiée plus tard dans « Bouteilles bues ».</small>
+  </div>
+</dialog>
+
 <dialog id="bulkAddDialog" class="bulk-dialog">
   <div class="dlg">
     <h2>📦 Ajouter en vrac</h2>
@@ -2522,6 +2623,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=2.8"></script>
+<script src="app.js?v=2.10"></script>
 </body>
 </html>
