@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v5.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=5.1">
+<title>Ma Cave à Vin – Configurable v5.2</title>
+<link rel="manifest" href="manifest.webmanifest?v=5.2">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3242,11 +3242,41 @@ header .stock-filter.active{
   box-sizing:border-box;
 }
 
+
+/* =========================================================
+   V5.2 — portée de la recherche
+   ========================================================= */
+.search-all-caves{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin:7px 2px 11px;
+  padding:8px 10px;
+  border:1px solid #403b3b;
+  border-radius:9px;
+  background:#1d1a1a;
+  color:#c8c3c3;
+  font-size:10px;
+  line-height:1.2;
+  cursor:pointer;
+}
+.search-all-caves input{
+  flex:0 0 auto;
+  width:20px;
+  height:20px;
+  margin:0;
+  accent-color:#8b2444;
+}
+.search-all-caves span{
+  min-width:0;
+  font-weight:700;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v5.1</span>
+  <span class="app-version">v5.2</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3288,6 +3318,10 @@ header .stock-filter.active{
 <main>
   <input id="search" class="search" placeholder="Rechercher un vin, domaine, millésime…">
 
+  <label class="search-all-caves">
+    <input id="searchAllCaves" type="checkbox">
+    <span>Rechercher dans toutes les caves</span>
+  </label>
 
   <div id="resultPanel" class="result-panel" hidden>
     <div id="resultTitle" class="result-title"></div>
@@ -3816,6 +3850,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=5.1"></script>
+<script src="app.js?v=5.2"></script>
 </body>
 </html>

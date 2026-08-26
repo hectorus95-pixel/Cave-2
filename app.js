@@ -1716,23 +1716,34 @@ function showSearchResults(){
   clearMaturityFilter();
   clearYearFilter();
   clearStockFilter();
+
   const raw=$('#search').value.trim();
   const q=normalizeSearchText(raw);
   if(!q){hideResultPanel();return;}
 
+  const allCaves=!!$('#searchAllCaves')?.checked;
+  const currentCave=caveById(activeCaveId);
+
   const matches=refsWithLocations((r,p)=>{
+    if(!allCaves && p.caveId!==activeCaveId) return false;
+
     const hay=[
       r.vin,r.domaine,r.producteur,r.appellation,r.millesime,
       r.couleur,r.format,p.emplacement,
-      caveById(p.caveId)?.name,caveById(p.caveId)?.code,`casier ${p.casier}`,`ligne ${p.ligne}`,`position ${p.position}`
+      caveById(p.caveId)?.name,caveById(p.caveId)?.code,
+      `casier ${p.casier}`,`ligne ${p.ligne}`,`position ${p.position}`
     ].join(' ');
+
     return normalizeSearchText(hay).includes(q);
   });
 
   const items=groupedResultItems(matches);
+  const scopeLabel=allCaves
+    ? `${config.caves.length} cave${config.caves.length>1?'s':''}`
+    : `${currentCave?.code||''}${currentCave?.name?` · ${currentCave.name}`:''}`;
 
   showResultPanel(
-    `${items.length} vin${items.length>1?'s':''} · ${matches.length} bouteille${matches.length>1?'s':''} dans ${config.caves.length} cave${config.caves.length>1?'s':''} pour « ${raw} »`,
+    `${items.length} vin${items.length>1?'s':''} · ${matches.length} bouteille${matches.length>1?'s':''} · ${scopeLabel} · « ${raw} »`,
     items
   );
 }
@@ -4380,6 +4391,10 @@ $('#cfgCavesList').addEventListener('change',e=>{
 });
 
 $('#search').addEventListener('input',showSearchResults);
+$('#searchAllCaves').addEventListener('change',()=>{
+  if($('#search').value.trim()) showSearchResults();
+  else hideResultPanel();
+});
 $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
   const zone=Number(b.dataset.zone);
 
@@ -4587,15 +4602,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:5100,
-    app:'ma-cave-configurable-v5.1',
+    version:5200,
+    app:'ma-cave-configurable-v5.2',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v5-1.json';
+  a.download='sauvegarde-ma-cave-configurable-v5-2.json';
   a.click();
 
   const backupAt=new Date().toISOString();
