@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.0">
+<link rel="manifest" href="manifest.webmanifest?v=3.1">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2164,11 +2164,88 @@ header{
   color:#aaa;
 }
 
+
+/* V3.1 — déplacement visuel des bouteilles */
+.move-mode-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:10px 0;
+  padding:12px;
+  border:2px solid #d2a52c;
+  border-radius:12px;
+  background:#302817;
+}
+.move-mode-bar[hidden]{display:none!important}
+.move-mode-bar>div{min-width:0}
+.move-mode-bar b{
+  display:block;
+  font-size:14px;
+}
+.move-mode-bar span{
+  display:block;
+  margin-top:3px;
+  font-size:12px;
+  font-weight:750;
+  overflow-wrap:anywhere;
+}
+.move-mode-bar small{
+  display:block;
+  margin-top:4px;
+  color:#c7bfae;
+  font-size:10px;
+  line-height:1.25;
+}
+.move-mode-bar button{
+  flex:0 0 auto;
+}
+.slot.move-target{
+  outline:3px solid #d2a52c;
+  outline-offset:-3px;
+}
+.slot.move-target .name{
+  font-weight:900;
+}
+.slot.move-blocked{
+  opacity:.55;
+}
+.bulk-head-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:6px;
+}
+.move-to-bulk{
+  border:1px solid #d2a52c!important;
+  background:#3a2d13!important;
+  color:#fff!important;
+  font-weight:850!important;
+}
+.move-bulk-dialog{
+  width:min(94vw,520px);
+}
+.move-bulk-dialog label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:12px 0;
+}
+.move-bulk-dialog input{
+  min-height:46px;
+  padding:10px 12px;
+  border:1px solid #514b4b;
+  border-radius:10px;
+  background:#292525;
+  color:#fff;
+  font-size:15px;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.0</span>
+  <span class="app-version">v3.1</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2208,10 +2285,22 @@ header{
 
   <div id="grid"></div>
 
+  <section id="moveModeBar" class="move-mode-bar" hidden>
+    <div>
+      <b>↔️ Déplacement en cours</b>
+      <span id="moveModeInfo"></span>
+      <small>Choisis une cave, un casier puis touche directement un emplacement vide.</small>
+    </div>
+    <button id="cancelMove" type="button" class="secondary">Annuler</button>
+  </section>
+
   <section id="bulkPanel" class="bulk-panel" hidden>
     <div class="bulk-head">
       <div><h2>📦 Vrac</h2><small id="bulkCaveLabel"></small></div>
-      <button type="button" id="openBulkAdd">＋ Ajouter en vrac</button>
+      <div class="bulk-head-actions">
+        <button type="button" id="moveToBulk" class="move-to-bulk" hidden>↔️ Déplacer ici en vrac</button>
+        <button type="button" id="openBulkAdd">＋ Ajouter en vrac</button>
+      </div>
     </div>
     <div id="bulkList" class="bulk-list"></div>
   </section>
@@ -2504,6 +2593,7 @@ header{
     <div id="viewActions" class="dlgactions">
       <button id="editOneBottle" class="primary">✏️ Éditer cette bouteille</button>
       <button id="editAllBottles" class="primary">✏️ Éditer toutes les bouteilles</button>
+      <button id="moveBottle" class="primary">↔️ Déplacer cette bouteille</button>
       <button id="sellBottle" class="sell-btn">💶 Vendre</button>
       <button id="consumed" class="consumed-btn">🍷 Bue</button>
       <button id="remove" class="danger">Sortir cette bouteille</button>
@@ -2540,6 +2630,20 @@ header{
       <button id="drinkRatingCancel" type="button" class="secondary">Annuler</button>
     </div>
     <small class="drink-rating-note">La note pourra toujours être modifiée plus tard dans « Bouteilles bues ».</small>
+  </div>
+</dialog>
+
+<dialog id="moveBulkDialog" class="move-bulk-dialog">
+  <div class="dlg">
+    <h2>↔️ Déplacer vers le vrac</h2>
+    <p class="where">Destination : <b id="moveBulkCave"></b></p>
+    <label class="wide">Emplacement (facultatif)
+      <input id="moveBulkLocation" maxlength="120" placeholder="Ex. Frigo, carton 2, étagère…">
+    </label>
+    <div class="dlgactions">
+      <button id="confirmMoveBulk" type="button" class="primary">Déplacer ici</button>
+      <button id="cancelMoveBulk" type="button" class="secondary">Annuler</button>
+    </div>
   </div>
 </dialog>
 
@@ -2623,6 +2727,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.0"></script>
+<script src="app.js?v=3.1"></script>
 </body>
 </html>
