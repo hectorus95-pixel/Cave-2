@@ -2205,7 +2205,6 @@ function updateMoveBanner(){
   if(!moveSource?.items?.length){
     banner.hidden=true;
     document.body.classList.remove('move-mode');
-    $('#confirmMoveTargets').hidden=true;
     return;
   }
 
@@ -2217,7 +2216,6 @@ function updateMoveBanner(){
     moveTargetKeys.clear();
     banner.hidden=true;
     document.body.classList.remove('move-mode');
-    $('#confirmMoveTargets').hidden=true;
     return;
   }
 
@@ -2243,12 +2241,11 @@ function updateMoveBanner(){
       : 'Navigue entre les caves/casiers puis touche directement une place vide.';
     $('#confirmMoveTargets').hidden=true;
   }else{
-    $('#moveBannerText').textContent=moduleEnabled('bulk')
-      ? `${selectedCount}/${needed} destinations choisies · touche des places libres dans les caves/casiers, ou déplace tout le lot vers Vrac.`
-      : `${selectedCount}/${needed} destinations choisies · touche des places libres dans les caves/casiers.`;
-
-    $('#confirmMoveTargets').hidden=selectedCount!==needed;
-    $('#confirmMoveTargets').textContent=`Confirmer ${needed} déplacements`;
+    $('#moveBannerText').textContent=selectedCount===needed
+      ? `${selectedCount}/${needed} destinations choisies · retouche une destination sélectionnée pour valider.`
+      : (moduleEnabled('bulk')
+          ? `${selectedCount}/${needed} destinations choisies · touche des places libres dans les caves/casiers, ou déplace tout le lot vers Vrac.`
+          : `${selectedCount}/${needed} destinations choisies · touche des places libres dans les caves/casiers.`);
   }
 }
 
@@ -2369,21 +2366,55 @@ function completeMoveToGrid(target){
   }
 
   const key=slotKey(target);
+
   if(moveTargetKeys.has(key)){
-    moveTargetKeys.delete(key);
-  }else{
-    if(moveTargetKeys.size>=needed){
-      alert(`Tu as déjà choisi ${needed} destinations. Retire-en une pour en choisir une autre.`);
-      return;
+    if(moveTargetKeys.size===needed){
+      openMoveConfirmDialog();
+    }else{
+      alert(`${moveTargetKeys.size}/${needed} destinations choisies. Choisis encore ${needed-moveTargetKeys.size} emplacement${needed-moveTargetKeys.size>1?'s':''}.`);
     }
-    moveTargetKeys.add(key);
+    return;
   }
+
+  if(moveTargetKeys.size>=needed){
+    alert(`Tu as déjà choisi ${needed} destinations. Retouche une destination sélectionnée pour valider.`);
+    return;
+  }
+
+  moveTargetKeys.add(key);
   render();
+}
+
+function openMoveConfirmDialog(){
+  if(!moveSource?.items?.length) return;
+
+  const sources=moveSourceItems();
+  const targets=validMoveTargets();
+  const needed=moveSourceCount();
+
+  if(sources.length!==needed || targets.length!==needed){
+    return alert(`Choisis exactement ${needed} destination${needed>1?'s':''} avant de valider.`);
+  }
+
+  $('#moveConfirmCount').textContent=`${needed} bouteille${needed>1?'s':''} seront déplacée${needed>1?'s':''}.`;
+  $('#moveConfirmList').innerHTML=targets.map((t,i)=>{
+    const r=sources[i]?.ref;
+    return `<div class="move-confirm-row">
+      <span class="move-confirm-number">${i+1}</span>
+      <div>
+        <b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b>
+        <small>→ ${esc(t.emplacement)}</small>
+      </div>
+    </div>`;
+  }).join('');
+
+  $('#moveConfirmDialog').showModal();
 }
 
 function confirmMoveTargets(){
   if(!moveSource?.items?.length) return;
   const targets=validMoveTargets();
+  if($('#moveConfirmDialog').open) $('#moveConfirmDialog').close();
   moveSourcesToGrid(targets);
 }
 
@@ -2651,7 +2682,7 @@ function render(){
       b.innerHTML=`
         <span class="pos">L${x.ligne}·P${x.position}</span>
         <span class="name">${moveSource?.items?.length
-          ? (isMoveTargetSelected ? `✓ Destination ${[...moveTargetKeys].indexOf(slotKey(x))+1}` : '→ Déplacer ici')
+          ? (isMoveTargetSelected ? `✓ Destination ${[...moveTargetKeys].indexOf(slotKey(x))+1} · toucher pour valider` : '→ Déplacer ici')
           : (isMultiSelected?'✓ Sélectionnée':'＋ Vide')}</span>
       `;
     }
@@ -2673,7 +2704,7 @@ function showDialog(d){
   d.showModal();
 }
 function closeDialogsFromPop(){
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#undoHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -3629,7 +3660,9 @@ $('#confirmMoveBulk').addEventListener('click',completeMoveToBulk);
 $('#cancelMoveBulk').addEventListener('click',()=>$('#moveBulkDialog').close());
 $('#moveBulkDialog').addEventListener('click',backdropClose);
 $('#cancelMove').addEventListener('click',cancelMoveMode);
-$('#confirmMoveTargets').addEventListener('click',confirmMoveTargets);
+$('#moveConfirmYes').addEventListener('click',confirmMoveTargets);
+$('#moveConfirmNo').addEventListener('click',()=>$('#moveConfirmDialog').close());
+$('#moveConfirmDialog').addEventListener('click',backdropClose);
 $('#bulkPickSearch').addEventListener('input',()=>{pendingBulkRefId='';renderBulkPickResults();});
 $('#bulkPickResults').addEventListener('click',e=>{
   const b=e.target.closest('[data-bulk-pick]');if(!b)return;
@@ -3766,15 +3799,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:33,
-    app:'ma-cave-configurable-v3.3',
+    version:34,
+    app:'ma-cave-configurable-v3.4',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-3.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-4.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });

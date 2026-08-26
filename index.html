@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.3</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.3">
+<title>Ma Cave à Vin – Configurable v3.4</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.4">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2392,11 +2392,59 @@ header{
   line-height:1.4;
 }
 
+
+/* V3.4 — validation du déplacement en retouchant une destination */
+.move-confirm-dialog{
+  width:min(94vw,540px);
+}
+.move-confirm-list{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  max-height:48vh;
+  overflow:auto;
+  margin:12px 0;
+}
+.move-confirm-row{
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border:1px solid #413b3b;
+  border-radius:9px;
+  background:#242020;
+}
+.move-confirm-number{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:#35566d;
+  font-size:12px;
+  font-weight:900;
+}
+.move-confirm-row b{
+  display:block;
+  font-size:12px;
+}
+.move-confirm-row small{
+  display:block;
+  margin-top:4px;
+  color:#9f9999;
+  font-size:10px;
+}
+.move-mode .slot.empty.move-target.move-target-selected .name{
+  line-height:1.15!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.3</span>
+  <span class="app-version">v3.4</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2439,7 +2487,6 @@ header{
       <span id="moveBannerText">Choisis une cave, un casier puis touche un emplacement libre.</span>
     </div>
     <div class="move-banner-actions">
-      <button id="confirmMoveTargets" type="button" class="primary" hidden>Confirmer</button>
       <button id="cancelMove" type="button" class="secondary">Annuler</button>
     </div>
   </section>
@@ -2812,6 +2859,18 @@ header{
   </div>
 </dialog>
 
+<dialog id="moveConfirmDialog" class="move-confirm-dialog">
+  <div class="dlg">
+    <h2>📦 Valider le déplacement</h2>
+    <p id="moveConfirmCount" class="where"></p>
+    <div id="moveConfirmList" class="move-confirm-list"></div>
+    <div class="dlgactions">
+      <button id="moveConfirmYes" type="button" class="primary">Confirmer le déplacement</button>
+      <button id="moveConfirmNo" type="button" class="secondary">Retour</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="moveBulkDialog" class="bulk-dialog">
   <div class="dlg">
     <h2>📦 Déplacer vers le vrac</h2>
@@ -2907,6 +2966,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.3"></script>
+<script src="app.js?v=3.4"></script>
 </body>
 </html>
