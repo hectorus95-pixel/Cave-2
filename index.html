@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v5.0</title>
-<link rel="manifest" href="manifest.webmanifest?v=5.0">
+<title>Ma Cave à Vin – Configurable v5.1</title>
+<link rel="manifest" href="manifest.webmanifest?v=5.1">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3223,11 +3223,30 @@ header .stock-filter.active{
   line-height:1.35;
 }
 
+
+/* =========================================================
+   V5.1 — voix : Couleur + Format
+   ========================================================= */
+.voice-order-six{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.voice-fields select{
+  width:100%;
+  margin-top:4px;
+  padding:9px;
+  border:1px solid #686363;
+  border-radius:8px;
+  background:#292626;
+  color:#fff;
+  font:inherit;
+  box-sizing:border-box;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v5.0</span>
+  <span class="app-version">v5.1</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3533,21 +3552,23 @@ header .stock-filter.active{
     <h2>🎤 Ajouter par la voix</h2>
 
     <div class="voice-instruction">
-      <b>Tu peux dicter en une ou plusieurs fois :</b>
-      <div class="voice-order">
+      <b>6 mots-clés, dans l’ordre que tu veux :</b>
+      <div class="voice-order voice-order-six">
         <span>Domaine</span>
         <span>Cuvée</span>
         <span>Année</span>
         <span>Prix</span>
+        <span>Couleur</span>
+        <span>Format</span>
       </div>
       <p>Exemples :</p>
-      <strong>« Domaine Pieropan, cuvée Soave Classico »</strong>
-      <strong>« Année 2021, prix 12 euros »</strong>
-      <small>Les informations déjà reconnues restent dans les champs. Rappuie simplement sur le micro pour compléter ce qui manque.</small>
+      <strong>« Domaine Pieropan, couleur blanc, cuvée Soave Classico »</strong>
+      <strong>« Prix 12 euros, année 2021, format 75 cl »</strong>
+      <small>Chaque valeur doit être précédée de son mot-clé. Les informations reconnues restent dans les champs entre deux dictées. Le format est 75 cl par défaut. La maturité ne se saisit pas par la voix.</small>
     </div>
 
     <button type="button" id="voiceStart" class="voice-start">🎤 Commencer la dictée</button>
-    <div id="voiceStatus" class="voice-status">Tu peux dicter une seule information ou plusieurs. Ce qui est compris reste enregistré pour la dictée suivante.</div>
+    <div id="voiceStatus" class="voice-status">Dicte une ou plusieurs informations avec leur mot-clé. Le format est déjà réglé sur 75 cl.</div>
 
     <div class="voice-transcript">
       <span>Transcription</span>
@@ -3559,6 +3580,16 @@ header .stock-filter.active{
       <label>Cuvée<input id="voiceCuvee"></label>
       <label>Année<input id="voiceYear" inputmode="numeric"></label>
       <label>Prix (€)<input id="voicePrice" inputmode="decimal"></label>
+      <label>Couleur
+        <select id="voiceColor">
+          <option value="">— À renseigner —</option>
+          <option value="Rouge">Rouge</option>
+          <option value="Blanc">Blanc</option>
+          <option value="Rosé">Rosé</option>
+          <option value="Effervescent">Effervescent</option>
+        </select>
+      </label>
+      <label>Format<input id="voiceFormat" value="75 cl"></label>
     </div>
 
     <div id="voiceMatch" class="voice-match" hidden></div>
@@ -3785,6 +3816,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=5.0"></script>
+<script src="app.js?v=5.1"></script>
 </body>
 </html>

@@ -2532,13 +2532,13 @@ function openBulkVoiceAdd(){
 
   clearVoiceForm();
   $('#voiceStatus').textContent=
-    `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${bulkLocationLabel(v.location)}. Appuyez sur le micro puis dictez Domaine, Cuvée, Année, Prix.`;
+    `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${bulkLocationLabel(v.location)}. Appuyez sur le micro puis dictez les informations avec leurs mots-clés : Domaine, Cuvée, Année, Prix, Couleur, Format.`;
 
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   $('#voiceStart').disabled=!SpeechRecognition;
   if(!SpeechRecognition){
     $('#voiceStatus').textContent=
-      `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${bulkLocationLabel(v.location)}. La dictée vocale n’est pas disponible ici ; vous pouvez remplir les 4 champs manuellement.`;
+      `Vrac : ${v.qty} bouteille${v.qty>1?'s':''} · ${bulkLocationLabel(v.location)}. La dictée vocale n’est pas disponible ici ; vous pouvez remplir les 6 champs manuellement.`;
   }
 
   $('#bulkAddDialog').close();
@@ -3442,11 +3442,13 @@ function clearVoiceForm(){
   $('#voiceCuvee').value='';
   $('#voiceYear').value='';
   $('#voicePrice').value='';
+  $('#voiceColor').value='';
+  $('#voiceFormat').value='75 cl';
   $('#voiceMatch').hidden=true;
   $('#voiceMatch').className='voice-match';
   $('#voiceMatch').innerHTML='';
   $('#voiceContinue').disabled=true;
-  $('#voiceStatus').textContent='Tu peux dicter une seule information ou plusieurs. Ce qui est compris reste enregistré pour la dictée suivante.';
+  $('#voiceStatus').textContent='Dicte une ou plusieurs informations avec leur mot-clé. Le format est déjà réglé sur 75 cl.';
   $('#voiceStart').textContent='🎤 Commencer la dictée';
   $('#voiceStart').classList.remove('listening');
 }
@@ -3571,7 +3573,9 @@ function voiceMissingFields(){
     ['domaine',$('#voiceDomaine').value.trim()],
     ['cuvée',$('#voiceCuvee').value.trim()],
     ['année',$('#voiceYear').value.trim()],
-    ['prix',$('#voicePrice').value.trim()]
+    ['prix',$('#voicePrice').value.trim()],
+    ['couleur',$('#voiceColor').value.trim()],
+    ['format',$('#voiceFormat').value.trim()]
   ];
   return fields.filter(([,value])=>!value).map(([name])=>name);
 }
@@ -3581,9 +3585,55 @@ function voiceProgressText(){
     ['Domaine',$('#voiceDomaine').value.trim()],
     ['Cuvée',$('#voiceCuvee').value.trim()],
     ['Année',$('#voiceYear').value.trim()],
-    ['Prix',$('#voicePrice').value.trim()]
+    ['Prix',$('#voicePrice').value.trim()],
+    ['Couleur',$('#voiceColor').value.trim()],
+    ['Format',$('#voiceFormat').value.trim()]
   ];
   return values.map(([name,value])=>value?`✓ ${name}`:`○ ${name}`).join(' · ');
+}
+
+function normalizeVoiceColor(value){
+  const c=normalizeSearchText(value)
+    .replace(/[,:;.\-]+$/g,'')
+    .trim();
+
+  const allowed={
+    rouge:'Rouge',
+    blanc:'Blanc',
+    rose:'Rosé',
+    effervescent:'Effervescent'
+  };
+  return allowed[c]||'';
+}
+
+function normalizeVoiceFormat(value){
+  let f=normalizeSearchText(value)
+    .replace(/,/g,'.')
+    .replace(/\s+/g,' ')
+    .replace(/[;:]+$/g,'')
+    .trim();
+
+  if(!f) return '';
+
+  if(/\bmagnum\b/.test(f)) return 'Magnum';
+
+  let m=f.match(/\b(\d+(?:\.\d+)?)\s*(cl|centilitres?|centilitre)\b/);
+  if(m){
+    const n=Number(m[1]);
+    if(Number.isFinite(n) && n>0 && n<=1000){
+      return `${Number.isInteger(n)?n:String(n).replace('.',',')} cl`;
+    }
+  }
+
+  m=f.match(/\b(\d+(?:\.\d+)?)\s*(l|litres?|litre)\b/);
+  if(m){
+    const n=Number(m[1]);
+    if(Number.isFinite(n) && n>0 && n<=10){
+      return `${String(n).replace('.',',')} L`;
+    }
+  }
+
+  return '';
 }
 
 function voiceKeywordMatches(text){
@@ -3592,7 +3642,7 @@ function voiceKeywordMatches(text){
     .replace(/\s+/g,' ')
     .trim();
 
-  const keywordRe=/\b(domaine|cuvee|cuve|annee|millesime|prix)\b/g;
+  const keywordRe=/\b(domaine|cuvee|cuve|annee|millesime|prix|couleur|format)\b/g;
   const matches=[];
   let m;
 
@@ -3601,6 +3651,7 @@ function voiceKeywordMatches(text){
     let field=raw;
     if(raw==='cuvee'||raw==='cuve') field='cuvee';
     if(raw==='annee'||raw==='millesime') field='year';
+    if(raw==='couleur') field='color';
     matches.push({field,index:m.index,end:m.index+m[0].length});
   }
 
@@ -3609,16 +3660,12 @@ function voiceKeywordMatches(text){
 
 function parseVoicePartial(text){
   const original=String(text||'').trim();
-  if(!original) return {};
-
-  // Si les 4 informations sont données comme auparavant, on conserve
-  // le parseur historique qui reste le plus précis pour cette phrase.
-  const complete=parseVoiceBottle(original) || repairVoiceCuveeToken(original);
-  if(complete) return complete;
+  if(!original) return {errors:[]};
 
   const {norm,matches}=voiceKeywordMatches(original);
-  const result={};
+  const result={errors:[]};
 
+  // Tous les champs doivent avoir leur mot-clé. Aucun remplissage implicite.
   matches.forEach((match,i)=>{
     const end=i+1<matches.length ? matches[i+1].index : norm.length;
     let value=norm.slice(match.end,end)
@@ -3626,7 +3673,10 @@ function parseVoicePartial(text){
       .replace(/^[,:;.\-]+|[,:;.\-]+$/g,'')
       .trim();
 
-    if(!value) return;
+    if(!value){
+      result.errors.push(`Aucune valeur après « ${match.field} »`);
+      return;
+    }
 
     if(match.field==='domaine'){
       result.domaine=value;
@@ -3635,37 +3685,31 @@ function parseVoicePartial(text){
     }else if(match.field==='year'){
       const y=value.match(/\b(?:19|20)\d{2}\b/);
       if(y) result.year=y[0];
+      else result.errors.push(`Année « ${value} » non reconnue`);
     }else if(match.field==='prix'){
       const p=value.match(/\d+(?:[.,]\d+)?/);
       if(p) result.price=normalizeVoiceNumber(p[0]);
+      else result.errors.push(`Prix « ${value} » non reconnu`);
+    }else if(match.field==='color'){
+      const color=normalizeVoiceColor(value);
+      if(color) result.color=color;
+      else result.errors.push(`Couleur « ${value} » non reconnue (Rouge / Blanc / Rosé / Effervescent)`);
+    }else if(match.field==='format'){
+      const format=normalizeVoiceFormat(value);
+      if(format) result.format=format;
+      else result.errors.push(`Format « ${value} » non reconnu`);
     }
   });
 
-  // Sans mot-clé, si UNE SEULE information manque, on peut simplement
-  // la dicter. C'est pratique pour finir une fiche en plusieurs fois.
   if(!matches.length){
-    const missing=voiceMissingFields();
-    if(missing.length===1){
-      const field=missing[0];
-      if(field==='année'){
-        const y=norm.match(/\b(?:19|20)\d{2}\b/);
-        if(y) result.year=y[0];
-      }else if(field==='prix'){
-        const p=norm.match(/\d+(?:[.,]\d+)?/);
-        if(p) result.price=normalizeVoiceNumber(p[0]);
-      }else if(field==='domaine'){
-        result.domaine=norm;
-      }else if(field==='cuvée'){
-        result.cuvee=norm;
-      }
-    }
+    result.errors.push('Aucun mot-clé reconnu');
   }
 
   return result;
 }
 
 function applyVoicePartial(partial){
-  if(!partial || typeof partial!=='object') return 0;
+  if(!partial || typeof partial!=='object') return {count:0,errors:[]};
 
   let count=0;
 
@@ -3685,29 +3729,41 @@ function applyVoicePartial(partial){
     $('#voicePrice').value=normalizeVoiceNumber(partial.price);
     count++;
   }
+  if(partial.color){
+    $('#voiceColor').value=partial.color;
+    count++;
+  }
+  if(partial.format){
+    $('#voiceFormat').value=partial.format;
+    count++;
+  }
 
   analyzeVoiceBottle();
-  return count;
+  return {count,errors:Array.isArray(partial.errors)?partial.errors:[]};
 }
 
-function updateVoiceProgressStatus(prefix=''){
+function updateVoiceProgressStatus(prefix='',errors=[]){
   const missing=voiceMissingFields();
   const progress=voiceProgressText();
+  const warning=errors.length ? ` · ⚠ ${errors.join(' · ')}` : '';
 
   if(!missing.length){
-    $('#voiceStatus').textContent=`${prefix?prefix+' ':''}${progress} · Tout est renseigné. Vérifie puis appuie sur Continuer.`;
+    $('#voiceStatus').textContent=
+      `${prefix?prefix+' ':''}${progress} · Tout est renseigné. Vérifie puis appuie sur Continuer.${warning}`;
     return;
   }
 
   $('#voiceStatus').textContent=
-    `${prefix?prefix+' ':''}${progress} · Il manque : ${missing.join(', ')}. Tu peux rappuyer sur le micro pour continuer.`;
+    `${prefix?prefix+' ':''}${progress} · Il manque : ${missing.join(', ')}. Tu peux rappuyer sur le micro pour continuer.${warning}`;
 }
 
 function voiceBottleKey(v){
   return {
     domaine:normalizeSearchText(v.domaine||'').trim(),
     cuvee:normalizeSearchText(v.cuvee||v.vin||'').trim(),
-    year:String(v.year||v.millesime||'').trim()
+    year:String(v.year||v.millesime||'').trim(),
+    color:normalizeSearchText(v.color||v.couleur||'').trim(),
+    format:normalizeSearchText(v.format||'75 cl').replace(/,/g,'.').replace(/\s+/g,' ').trim()
   };
 }
 
@@ -3716,12 +3772,22 @@ function analyzeVoiceBottle(){
     domaine:$('#voiceDomaine').value.trim(),
     cuvee:$('#voiceCuvee').value.trim(),
     year:$('#voiceYear').value.trim(),
-    price:normalizeVoiceNumber($('#voicePrice').value)
+    price:normalizeVoiceNumber($('#voicePrice').value),
+    color:$('#voiceColor').value.trim(),
+    format:$('#voiceFormat').value.trim()||'75 cl'
   };
 
   $('#voicePrice').value=data.price;
+  $('#voiceFormat').value=data.format;
 
-  const ready=!!(data.domaine && data.cuvee && /^\d{4}$/.test(data.year) && data.price);
+  const ready=!!(
+    data.domaine &&
+    data.cuvee &&
+    /^\d{4}$/.test(data.year) &&
+    data.price &&
+    ['Rouge','Blanc','Rosé','Effervescent'].includes(data.color) &&
+    data.format
+  );
   $('#voiceContinue').disabled=!ready;
   voiceExactRefId='';
   voiceSimilarRefId='';
@@ -3735,7 +3801,11 @@ function analyzeVoiceBottle(){
 
   const exact=refs.find(r=>{
     const rk=voiceBottleKey(r);
-    return rk.domaine===key.domaine && rk.cuvee===key.cuvee && rk.year===key.year;
+    return rk.domaine===key.domaine &&
+      rk.cuvee===key.cuvee &&
+      rk.year===key.year &&
+      rk.color===key.color &&
+      rk.format===key.format;
   });
 
   const similar=refs.find(r=>{
@@ -3769,7 +3839,7 @@ function openVoiceAdd(){
 
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SpeechRecognition){
-    $('#voiceStatus').textContent='La dictée vocale n’est pas disponible dans ce navigateur. Vous pouvez saisir les 4 champs manuellement.';
+    $('#voiceStatus').textContent='La dictée vocale n’est pas disponible dans ce navigateur. Vous pouvez saisir les 6 champs manuellement.';
     $('#voiceStart').disabled=true;
   }else{
     $('#voiceStart').disabled=false;
@@ -3827,12 +3897,16 @@ function startVoiceRecognition(){
     $('#voiceTranscript').textContent=transcript||'—';
 
     const partial=parseVoicePartial(transcript);
-    const count=applyVoicePartial(partial);
+    const applied=applyVoicePartial(partial);
+    const {count,errors}=applied;
 
     if(count){
-      updateVoiceProgressStatus(`${count} information${count>1?'s':''} ajoutée${count>1?'s':''}.`);
+      updateVoiceProgressStatus(
+        `${count} information${count>1?'s':''} ajoutée${count>1?'s':''}.`,
+        errors
+      );
     }else{
-      updateVoiceProgressStatus('Je n’ai pas reconnu de nouvelle information.');
+      updateVoiceProgressStatus('Je n’ai pas reconnu de nouvelle information.',errors);
     }
   };
 
@@ -3883,6 +3957,8 @@ function continueVoiceBottle(){
   const cuvee=$('#voiceCuvee').value.trim();
   const year=$('#voiceYear').value.trim();
   const price=Number(normalizeVoiceNumber($('#voicePrice').value))||0;
+  const color=$('#voiceColor').value.trim();
+  const format=$('#voiceFormat').value.trim()||'75 cl';
 
   if(voiceExactRefId){
     const r=ref(voiceExactRefId);
@@ -3931,6 +4007,8 @@ function continueVoiceBottle(){
     domaine,
     vin:cuvee,
     millesime:year,
+    couleur:color,
+    format,
     prix:price,
     maturiteDebut:'',
     maturiteFin:''
@@ -3939,8 +4017,8 @@ function continueVoiceBottle(){
     domaine,
     vin:cuvee,
     millesime:year,
-    couleur:'Rouge',
-    format:'75 cl',
+    couleur:color,
+    format,
     prix:price,
     maturiteDebut:'',
     maturiteFin:''
@@ -4061,8 +4139,9 @@ $('#voiceCancel').addEventListener('click',()=>{
   stopVoiceRecognition(true);
   requestClose($('#voiceDialog'));
 });
-['voiceDomaine','voiceCuvee','voiceYear','voicePrice'].forEach(id=>{
+['voiceDomaine','voiceCuvee','voiceYear','voicePrice','voiceColor','voiceFormat'].forEach(id=>{
   $('#'+id).addEventListener('input',analyzeVoiceBottle);
+  $('#'+id).addEventListener('change',analyzeVoiceBottle);
 });
 
 $('#newRef').addEventListener('click',()=>{
@@ -4508,15 +4587,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:5000,
-    app:'ma-cave-configurable-v5.0',
+    version:5100,
+    app:'ma-cave-configurable-v5.1',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v5-0.json';
+  a.download='sauvegarde-ma-cave-configurable-v5-1.json';
   a.click();
 
   const backupAt=new Date().toISOString();
