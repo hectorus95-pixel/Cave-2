@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.12</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.12">
+<title>Ma Cave à Vin – Configurable v3.14</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.14">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2741,11 +2741,154 @@ header{
   }
 }
 
+
+/* =========================================================
+   V3.13 — badge Magnum plus haut, centré et plus discret
+   ========================================================= */
+.slot .magnum-badge{
+  top:-7px!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+  padding:1px 3px!important;
+  max-width:none!important;
+  border-radius:4px!important;
+  font-size:5.5px!important;
+  line-height:1!important;
+  letter-spacing:0!important;
+  white-space:nowrap!important;
+}
+
+/* L'emplacement Lx·Px retrouve toute sa largeur : Magnum
+   n'est plus posé sur la même ligne. */
+.slot .slot-main:has(.magnum-badge) .pos{
+  padding-right:0!important;
+}
+
+
+/* =========================================================
+   V3.14 — vins bus compacts : date et actions sur la même ligne
+   ========================================================= */
+#consumptionDialog .consumed-entry{
+  display:block!important;
+  min-height:0!important;
+  height:auto!important;
+  padding:8px 9px!important;
+  overflow:visible!important;
+}
+
+#consumptionDialog .consumed-entry-top{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+
+#consumptionDialog .consumed-entry-date{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  margin:0!important;
+  font-size:10px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+}
+
+#consumptionDialog .consumed-entry-actions{
+  flex:0 0 auto!important;
+  width:auto!important;
+  margin:0!important;
+  align-self:auto!important;
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:4px!important;
+}
+
+#consumptionDialog .comment-open,
+#consumptionDialog .vote-open,
+#consumptionDialog .restore-consumed{
+  min-height:29px!important;
+  height:29px!important;
+  padding:3px 6px!important;
+  border-radius:7px!important;
+  font-size:8px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+
+#consumptionDialog .restore-consumed{
+  width:32px!important;
+  padding:0!important;
+  font-size:11px!important;
+}
+
+#consumptionDialog .vote-open .rating-icon{
+  font-size:11px!important;
+  margin-left:2px!important;
+}
+
+#consumptionDialog .consumed-entry-date .rating-icon{
+  font-size:13px!important;
+  margin-left:3px!important;
+}
+
+#consumptionDialog .consumed-entry-meta{
+  display:block!important;
+  width:100%!important;
+  margin-top:3px!important;
+  color:#aaa!important;
+  font-size:8px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Le menu de vote s'ouvre sous son bouton sans modifier
+   l'alignement principal date/actions. */
+#consumptionDialog .vote-wrap{
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  gap:3px!important;
+}
+
+#consumptionDialog .vote-wrap .consumed-rating-edit:not([hidden]){
+  position:absolute!important;
+  top:33px!important;
+  right:0!important;
+  z-index:30!important;
+  display:flex!important;
+}
+
+/* Sur téléphone étroit, on garde la ligne compacte :
+   le mot Annoter/Modifier disparaît mais l'icône 📝 reste. */
+@media (max-width:430px){
+  #consumptionDialog .comment-open .action-label{
+    display:none!important;
+  }
+  #consumptionDialog .comment-open{
+    width:31px!important;
+    padding:0!important;
+  }
+  #consumptionDialog .consumed-entry-top{
+    gap:4px!important;
+  }
+  #consumptionDialog .consumed-entry-actions{
+    gap:3px!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.12</span>
+  <span class="app-version">v3.14</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3266,6 +3409,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.12"></script>
+<script src="app.js?v=3.14"></script>
 </body>
 </html>

@@ -1903,30 +1903,30 @@ function renderConsumption(){
         <div class="consumed-dates">
           ${entries.map(e=>`
             <div class="consumed-entry">
-              <div class="consumed-entry-info">
-                <b>${new Date(e.drunkAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}${ratingIcon(e.rating||'neutral')}</b>
-                <small>${esc(e.emplacement||'Emplacement inconnu')} · ${euro(e.prix)}</small>
-                ${e.comment?`<span class="consumed-comment">📝 ${esc(e.comment)}</span>`:''}
-                <div class="comment-editor" data-comment-editor="${esc(e.id)}" hidden>
-                  <textarea maxlength="500" placeholder="Commentaire de dégustation…">${esc(e.comment||'')}</textarea>
-                  <div><button type="button" data-comment-save="${esc(e.id)}">Enregistrer</button><button type="button" data-comment-cancel="${esc(e.id)}">Annuler</button></div>
+              <div class="consumed-entry-top">
+                <b class="consumed-entry-date">${new Date(e.drunkAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}${ratingIcon(e.rating||'neutral')}</b>
+                <div class="consumed-entry-actions">
+                  <button type="button" class="comment-open" data-comment-open="${esc(e.id)}" title="${e.comment?'Modifier le commentaire':'Annoter'}"><span class="action-icon">📝</span><span class="action-label">${e.comment?'Modifier':'Annoter'}</span></button>
+                  <div class="vote-wrap">
+                    <button type="button" class="vote-open" data-vote-open="${esc(e.id)}">
+                      <span class="action-label">Voter</span>${ratingIcon(e.rating||'neutral')}
+                    </button>
+                    <div class="consumed-rating-edit" data-vote-choices="${esc(e.id)}" hidden>
+                      <button type="button" class="${(e.rating||'neutral')==='verybad'?'active verybad':''}" data-rating-id="${esc(e.id)}" data-rating-value="verybad" title="Très nul · −2">👎👎</button>
+                      <button type="button" class="${(e.rating||'neutral')==='bad'?'active bad':''}" data-rating-id="${esc(e.id)}" data-rating-value="bad" title="Nul · −1">👎</button>
+                      <button type="button" class="${(e.rating||'neutral')==='neutral'?'active neutral':''}" data-rating-id="${esc(e.id)}" data-rating-value="neutral" title="Neutre · 0">•</button>
+                      <button type="button" class="${(e.rating||'neutral')==='good'?'active good':''}" data-rating-id="${esc(e.id)}" data-rating-value="good" title="Bon · +1">👍</button>
+                      <button type="button" class="${(e.rating||'neutral')==='verygood'?'active verygood':''}" data-rating-id="${esc(e.id)}" data-rating-value="verygood" title="Excellent · +2">👍👍</button>
+                    </div>
+                  </div>
+                  <button type="button" class="restore-consumed" data-consumed-id="${esc(e.id)}" title="Remettre en cave">↩</button>
                 </div>
               </div>
-              <div class="consumed-entry-actions">
-                <button type="button" class="comment-open" data-comment-open="${esc(e.id)}">📝 ${e.comment?'Modifier':'Annoter'}</button>
-                <div class="vote-wrap">
-                  <button type="button" class="vote-open" data-vote-open="${esc(e.id)}">
-                    Voter${ratingIcon(e.rating||'neutral')}
-                  </button>
-                  <div class="consumed-rating-edit" data-vote-choices="${esc(e.id)}" hidden>
-                    <button type="button" class="${(e.rating||'neutral')==='verybad'?'active verybad':''}" data-rating-id="${esc(e.id)}" data-rating-value="verybad" title="Très nul · −2">👎👎</button>
-                    <button type="button" class="${(e.rating||'neutral')==='bad'?'active bad':''}" data-rating-id="${esc(e.id)}" data-rating-value="bad" title="Nul · −1">👎</button>
-                    <button type="button" class="${(e.rating||'neutral')==='neutral'?'active neutral':''}" data-rating-id="${esc(e.id)}" data-rating-value="neutral" title="Neutre · 0">•</button>
-                    <button type="button" class="${(e.rating||'neutral')==='good'?'active good':''}" data-rating-id="${esc(e.id)}" data-rating-value="good" title="Bon · +1">👍</button>
-                    <button type="button" class="${(e.rating||'neutral')==='verygood'?'active verygood':''}" data-rating-id="${esc(e.id)}" data-rating-value="verygood" title="Excellent · +2">👍👍</button>
-                  </div>
-                </div>
-                <button type="button" class="restore-consumed" data-consumed-id="${esc(e.id)}" title="Remettre en cave">↩</button>
+              <small class="consumed-entry-meta">${esc(e.emplacement||'Emplacement inconnu')} · ${euro(e.prix)}</small>
+              ${e.comment?`<span class="consumed-comment">📝 ${esc(e.comment)}</span>`:''}
+              <div class="comment-editor" data-comment-editor="${esc(e.id)}" hidden>
+                <textarea maxlength="500" placeholder="Commentaire de dégustation…">${esc(e.comment||'')}</textarea>
+                <div><button type="button" data-comment-save="${esc(e.id)}">Enregistrer</button><button type="button" data-comment-cancel="${esc(e.id)}">Annuler</button></div>
               </div>
             </div>
           `).join('')}
@@ -3879,15 +3879,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:312,
-    app:'ma-cave-configurable-v3.12',
+    version:314,
+    app:'ma-cave-configurable-v3.14',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-12.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-14.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
