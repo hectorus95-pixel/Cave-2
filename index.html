@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.10</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.10">
+<title>Ma Cave à Vin – Configurable v3.11</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.11">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2581,11 +2581,90 @@ header{
   font-weight:900!important;
 }
 
+
+/* =========================================================
+   V3.11 — cadre année visible + historique des vins bus
+   ========================================================= */
+
+/* Le cadre blanc est posé AU-DESSUS de la couleur du millésime. */
+.year-chip{
+  position:relative!important;
+  isolation:isolate!important;
+}
+.year-chip.active{
+  outline:none!important;
+  box-shadow:none!important;
+}
+.year-chip.active::after{
+  content:""!important;
+  position:absolute!important;
+  inset:2px!important;
+  z-index:20!important;
+  pointer-events:none!important;
+  border:2px solid rgba(255,255,255,.98)!important;
+  border-radius:7px!important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.72)!important;
+}
+
+/* La fenêtre Bouteilles bues défile elle-même :
+   aucune seconde zone de défilement au milieu de la page. */
+#consumptionDialog .consumption-list{
+  max-height:none!important;
+  height:auto!important;
+  overflow:visible!important;
+}
+
+/* Chaque fiche garde sa hauteur naturelle et ne peut plus être tronquée. */
+#consumptionDialog .consumed-card{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+
+#consumptionDialog .consumed-card-head,
+#consumptionDialog .consumed-dates{
+  height:auto!important;
+  min-height:0!important;
+}
+
+#consumptionDialog .consumed-dates{
+  overflow:visible!important;
+}
+
+#consumptionDialog .consumed-entry{
+  height:auto!important;
+  min-height:58px!important;
+  overflow:visible!important;
+  align-items:center!important;
+}
+
+#consumptionDialog .consumed-entry-actions{
+  align-self:center!important;
+  flex-wrap:nowrap!important;
+}
+
+/* Sur les téléphones plus étroits, les actions passent sous les infos
+   au lieu de réduire/couper la fiche. */
+@media (max-width:430px){
+  #consumptionDialog .consumed-entry{
+    grid-template-columns:1fr!important;
+    gap:7px!important;
+  }
+  #consumptionDialog .consumed-entry-actions{
+    width:100%!important;
+    justify-content:flex-end!important;
+    flex-wrap:wrap!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.10</span>
+  <span class="app-version">v3.11</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3106,6 +3185,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.10"></script>
+<script src="app.js?v=3.11"></script>
 </body>
 </html>

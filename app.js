@@ -3879,15 +3879,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:310,
-    app:'ma-cave-configurable-v3.10',
+    version:311,
+    app:'ma-cave-configurable-v3.11',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-10.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-11.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
