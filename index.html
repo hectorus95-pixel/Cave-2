@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.15</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.15">
+<title>Ma Cave à Vin – Configurable v3.16</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.16">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2884,11 +2884,21 @@ header{
   }
 }
 
+
+/* =========================================================
+   V3.16 — correction visuelle définitive de la maturité
+   4 zones réelles : vert / jaune / orange / rouge
+   ========================================================= */
+.maturity-gauge,
+.maturity-bar.four-zone{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.15</span>
+  <span class="app-version">v3.16</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3409,6 +3419,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.15"></script>
+<script src="app.js?v=3.16"></script>
 </body>
 </html>
