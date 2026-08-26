@@ -9,7 +9,8 @@ const KI='ma-cave-configurable-v1-inv',
       KC='ma-cave-configurable-v1-consumed',
       KCFG='ma-cave-configurable-v1-config',
       KSALES='ma-cave-configurable-v2-sales',
-      KBULK='ma-cave-configurable-v2-bulk';
+      KBULK='ma-cave-configurable-v2-bulk',
+      KHIST='ma-cave-configurable-v3-history';
 
 const DEFAULT_DIMENSIONS={casiers:3,lignes:15,positions:5};
 const DEFAULT_CONFIG={
@@ -28,6 +29,15 @@ let refs=load(KR,SEED_REFS);
 let consumed=load(KC,[]);
 let sales=load(KSALES,[]);
 let bulk=load(KBULK,[]);
+let historyState=load(KHIST,{undo:[],redo:[]});
+const HISTORY_LIMIT=20;
+let historyReady=false;
+if(!historyState || !Array.isArray(historyState.undo) || !Array.isArray(historyState.redo)){
+  historyState={undo:[],redo:[]};
+}
+historyState.undo=historyState.undo.slice(-HISTORY_LIMIT);
+historyState.redo=historyState.redo.slice(-HISTORY_LIMIT);
+
 if(!Array.isArray(consumed)) consumed=[];
 if(!Array.isArray(sales)) sales=[];
 if(!Array.isArray(bulk)) bulk=[];
@@ -356,7 +366,7 @@ function applyConfiguration(){
   clearOccupiedSelection();
   addTargets=[]; exitTargets=[]; saleTargets=[];
   pendingAddRefId=''; editScope=null;
-  persist(); render(); refreshPhotoButtons();
+  persist('Configuration des caves modifiée'); render(); refreshPhotoButtons();
 
   const newCapacity=configCapacity(config);
   const message=oldCapacity?`Configuration enregistrée : ${config.caves.length} cave${config.caves.length>1?'s':''}, ${newCapacity} emplacements.`:`Caves créées : ${newCapacity} emplacements.`;
@@ -460,14 +470,325 @@ refs.forEach(r=>{
 });
 
 
-function persist(){
-  if(config) localStorage.setItem(KCFG,JSON.stringify(config));
-  localStorage.setItem(KI,JSON.stringify(inv));
-  localStorage.setItem(KR,JSON.stringify(refs));
-  localStorage.setItem(KC,JSON.stringify(consumed));
-  localStorage.setItem(KSALES,JSON.stringify(sales));
-  localStorage.setItem(KBULK,JSON.stringify(bulk));
+function cloneHistoryData(value){
+  return JSON.parse(JSON.stringify(value));
 }
+
+function currentHistorySnapshot(){
+  return cloneHistoryData({config,inv,refs,consumed,sales,bulk});
+}
+
+function storedHistorySnapshot(){
+  try{
+    const storedConfig=JSON.parse(localStorage.getItem(KCFG)||'null');
+    if(!storedConfig) return null;
+    return {
+      config:storedConfig,
+      inv:JSON.parse(localStorage.getItem(KI)||'[]'),
+      refs:JSON.parse(localStorage.getItem(KR)||'[]'),
+      consumed:JSON.parse(localStorage.getItem(KC)||'[]'),
+      sales:JSON.parse(localStorage.getItem(KSALES)||'[]'),
+      bulk:JSON.parse(localStorage.getItem(KBULK)||'[]')
+    };
+  }catch(e){
+    return null;
+  }
+}
+
+function historySignature(snapshot){
+  return snapshot ? JSON.stringify(snapshot) : '';
+}
+
+function snapshotBottleCount(s){
+  if(!s) return 0;
+  const grid=(Array.isArray(s.inv)?s.inv:[]).filter(x=>x?.refId).length;
+  const loose=(Array.isArray(s.bulk)?s.bulk:[]).filter(x=>x?.refId).length;
+  return grid+loose;
+}
+
+function inferHistoryLabel(before,after){
+  if(!before||!after) return 'Modification';
+
+  const bSales=(before.sales||[]).length, aSales=(after.sales||[]).length;
+  const bConsumed=(before.consumed||[]).length, aConsumed=(after.consumed||[]).length;
+  const bBottles=snapshotBottleCount(before), aBottles=snapshotBottleCount(after);
+  const bRefs=(before.refs||[]).length, aRefs=(after.refs||[]).length;
+
+  if(JSON.stringify(before.config)!==JSON.stringify(after.config)){
+    return 'Configuration des caves modifiée';
+  }
+
+  if(aSales>bSales){
+    const n=aSales-bSales;
+    return `Vente de ${n} bouteille${n>1?'s':''}`;
+  }
+  if(aConsumed>bConsumed){
+    const n=aConsumed-bConsumed;
+    return `${n} bouteille${n>1?'s':''} bue${n>1?'s':''}`;
+  }
+  if(aConsumed<bConsumed){
+    const n=bConsumed-aConsumed;
+    return `${n} bouteille${n>1?'s':''} remise${n>1?'s':''} en cave`;
+  }
+
+  if(aBottles>bBottles){
+    const n=aBottles-bBottles;
+    return `Ajout de ${n} bouteille${n>1?'s':''}`;
+  }
+  if(aBottles<bBottles){
+    const n=bBottles-aBottles;
+    return `Sortie de ${n} bouteille${n>1?'s':''}`;
+  }
+
+  if(
+    JSON.stringify(before.inv)!==JSON.stringify(after.inv) ||
+    JSON.stringify(before.bulk)!==JSON.stringify(after.bulk)
+  ){
+    return 'Déplacement de bouteille(s)';
+  }
+
+  if(aRefs!==bRefs){
+    return aRefs>bRefs ? 'Nouvelle référence de vin' : 'Référence de vin supprimée';
+  }
+  if(JSON.stringify(before.refs)!==JSON.stringify(after.refs)){
+    return 'Informations d’un vin modifiées';
+  }
+  if(JSON.stringify(before.consumed)!==JSON.stringify(after.consumed)){
+    return 'Note ou commentaire modifié';
+  }
+  if(JSON.stringify(before.sales)!==JSON.stringify(after.sales)){
+    return 'Historique des ventes modifié';
+  }
+  return 'Modification';
+}
+
+function saveHistoryState(){
+  historyState.undo=historyState.undo.slice(-HISTORY_LIMIT);
+  historyState.redo=historyState.redo.slice(-HISTORY_LIMIT);
+
+  // Si le navigateur manque d'espace, on enlève d'abord les étapes les plus anciennes.
+  while(true){
+    try{
+      localStorage.setItem(KHIST,JSON.stringify(historyState));
+      break;
+    }catch(e){
+      if(historyState.undo.length>1){
+        historyState.undo.shift();
+        continue;
+      }
+      if(historyState.redo.length>1){
+        historyState.redo.shift();
+        continue;
+      }
+      console.warn('Historique non enregistrable : stockage local insuffisant.',e);
+      break;
+    }
+  }
+}
+
+function writeHistorySnapshot(snapshot){
+  if(snapshot.config) localStorage.setItem(KCFG,JSON.stringify(snapshot.config));
+  localStorage.setItem(KI,JSON.stringify(snapshot.inv||[]));
+  localStorage.setItem(KR,JSON.stringify(snapshot.refs||[]));
+  localStorage.setItem(KC,JSON.stringify(snapshot.consumed||[]));
+  localStorage.setItem(KSALES,JSON.stringify(snapshot.sales||[]));
+  localStorage.setItem(KBULK,JSON.stringify(snapshot.bulk||[]));
+}
+
+function persist(actionLabel=''){
+  const after=currentHistorySnapshot();
+
+  if(historyReady){
+    const before=storedHistorySnapshot();
+    if(before && historySignature(before)!==historySignature(after)){
+      historyState.undo.push({
+        at:new Date().toISOString(),
+        label:actionLabel||inferHistoryLabel(before,after),
+        state:before
+      });
+      historyState.undo=historyState.undo.slice(-HISTORY_LIMIT);
+
+      // Une nouvelle action après un Annuler invalide le futur, comme dans un éditeur.
+      historyState.redo=[];
+    }
+  }
+
+  writeHistorySnapshot(after);
+  saveHistoryState();
+  renderHistoryControls();
+  if($('#undoHistoryDialog')?.open) renderUndoHistory();
+}
+
+function normalizeSnapshotForRuntime(snapshot){
+  const nextConfig=normalizeConfig(cloneHistoryData(snapshot.config));
+  if(!nextConfig) return false;
+
+  config=nextConfig;
+  refs=cloneHistoryData(snapshot.refs||[]);
+  consumed=cloneHistoryData(snapshot.consumed||[]);
+  sales=cloneHistoryData(snapshot.sales||[]);
+  bulk=cloneHistoryData(snapshot.bulk||[]);
+  inv=buildInventory(config,cloneHistoryData(snapshot.inv||[]));
+
+  refs.forEach(r=>{
+    if(r.maturiteDebut===undefined) r.maturiteDebut='';
+    if(r.maturiteFin===undefined) r.maturiteFin='';
+  });
+  consumed.forEach(e=>{
+    if(!['verygood','good','bad','verybad','neutral'].includes(e.rating)) e.rating='neutral';
+    if(e.comment===undefined) e.comment='';
+    e.bulk=!!e.bulk;
+  });
+  bulk=bulk.filter(e=>e&&e.refId).map((e,i)=>({
+    ...e,
+    id:String(e.id||`bulk_hist_${Date.now()}_${i}`),
+    caveId:String(e.caveId||config.caves[0].id),
+    refId:String(e.refId),
+    locationText:String(e.locationText||'').trim(),
+    bulk:true
+  }));
+
+  if(!caveById(activeCaveId)) activeCaveId=config.caves[0].id;
+  const cave=activeCave();
+  activeCasier=cave.casiers===0 ? 0 : Math.min(Math.max(1,activeCasier||1),cave.casiers);
+
+  selected=null;
+  moveSource=null;
+  moveTargetKeys.clear();
+  selectedEmptyKeys.clear();
+  selectedOccupiedKeys.clear();
+  addTargets=[];
+  exitTargets=[];
+  saleTargets=[];
+  pendingAddRefId='';
+  pendingBulkRefId='';
+  bulkDraft=null;
+  bulkActionIds=[];
+  drinkTargets=[];
+
+  return true;
+}
+
+function refreshAfterHistoryRestore(){
+  render();
+  renderConsumption();
+  if(moduleEnabled('sales')) renderSales();
+  renderHistoryControls();
+  if($('#undoHistoryDialog')?.open) renderUndoHistory();
+  refreshPhotoButtons();
+}
+
+function undoLastAction(){
+  if(!historyState.undo.length) return;
+
+  const entry=historyState.undo.pop();
+  const current=currentHistorySnapshot();
+
+  historyState.redo.push({
+    at:new Date().toISOString(),
+    label:entry.label,
+    state:current
+  });
+  historyState.redo=historyState.redo.slice(-HISTORY_LIMIT);
+
+  if(!normalizeSnapshotForRuntime(entry.state)){
+    historyState.undo.push(entry);
+    historyState.redo.pop();
+    return alert('Impossible de restaurer cette étape.');
+  }
+
+  writeHistorySnapshot(currentHistorySnapshot());
+  saveHistoryState();
+  refreshAfterHistoryRestore();
+}
+
+function redoLastAction(){
+  if(!historyState.redo.length) return;
+
+  const entry=historyState.redo.pop();
+  const current=currentHistorySnapshot();
+
+  historyState.undo.push({
+    at:new Date().toISOString(),
+    label:entry.label,
+    state:current
+  });
+  historyState.undo=historyState.undo.slice(-HISTORY_LIMIT);
+
+  if(!normalizeSnapshotForRuntime(entry.state)){
+    historyState.redo.push(entry);
+    historyState.undo.pop();
+    return alert('Impossible de rétablir cette étape.');
+  }
+
+  writeHistorySnapshot(currentHistorySnapshot());
+  saveHistoryState();
+  refreshAfterHistoryRestore();
+}
+
+function historyTimeLabel(iso){
+  const d=new Date(iso);
+  if(Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('fr-FR',{
+    day:'2-digit',month:'2-digit',
+    hour:'2-digit',minute:'2-digit'
+  });
+}
+
+function renderHistoryControls(){
+  if(!$('#undoAction')) return;
+
+  const undo=historyState.undo[historyState.undo.length-1];
+  const redo=historyState.redo[historyState.redo.length-1];
+
+  $('#undoAction').disabled=!undo;
+  $('#redoAction').disabled=!redo;
+  $('#undoAction').title=undo?`Annuler : ${undo.label}`:'Rien à annuler';
+  $('#redoAction').title=redo?`Rétablir : ${redo.label}`:'Rien à rétablir';
+
+  $('#historyCount').textContent=`${historyState.undo.length}/${HISTORY_LIMIT}`;
+  $('#historyLast').textContent=undo
+    ? `Dernière action : ${undo.label}`
+    : 'Aucune modification mémorisée';
+}
+
+function renderUndoHistory(){
+  const list=$('#undoHistoryList');
+  if(!list) return;
+
+  const undoRows=historyState.undo.slice().reverse().map((entry,i)=>`
+    <article class="undo-history-row">
+      <div class="undo-history-index">−${i+1}</div>
+      <div>
+        <b>${esc(entry.label||'Modification')}</b>
+        <small>${esc(historyTimeLabel(entry.at))}</small>
+      </div>
+    </article>
+  `).join('');
+
+  const redoRows=historyState.redo.slice().reverse().map((entry,i)=>`
+    <article class="undo-history-row redo-row">
+      <div class="undo-history-index">+${i+1}</div>
+      <div>
+        <b>${esc(entry.label||'Modification')}</b>
+        <small>À rétablir · ${esc(historyTimeLabel(entry.at))}</small>
+      </div>
+    </article>
+  `).join('');
+
+  list.innerHTML=`
+    <div class="undo-history-section">
+      <h3>Actions annulables · ${historyState.undo.length}/${HISTORY_LIMIT}</h3>
+      ${undoRows||'<div class="undo-history-empty">Aucune action à annuler.</div>'}
+    </div>
+    ${historyState.redo.length?`
+      <div class="undo-history-section">
+        <h3>Actions rétablissables</h3>
+        ${redoRows}
+      </div>`:''}
+  `;
+}
+
 function save(){ persist(); render(); }
 
 function esc(s){
@@ -1077,7 +1398,7 @@ function setConsumedRating(id,rating){
   const entry=consumed.find(e=>e.id===id);
   if(!entry) return;
   entry.rating=['verygood','good','bad','verybad'].includes(rating)?rating:'neutral';
-  persist();
+  persist('Note d’un vin modifiée');
   renderConsumption();
 }
 
@@ -1085,7 +1406,7 @@ function setConsumedComment(id,comment){
   const entry=consumed.find(e=>e.id===id);
   if(!entry) return;
   entry.comment=String(comment||'').trim();
-  persist();
+  persist('Commentaire d’un vin modifié');
   renderConsumption();
 }
 
@@ -2352,7 +2673,7 @@ function showDialog(d){
   d.showModal();
 }
 function closeDialogsFromPop(){
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#undoHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -3232,6 +3553,29 @@ $('#cancel').addEventListener('click',()=>requestClose($('#dialog')));
 $('#cancelAdd').addEventListener('click',()=>requestClose($('#addDialog')));
 ['f_millesime','f_maturiteDebut','f_maturiteFin'].forEach(id=>$('#'+id).addEventListener('input',updateMaturityPreview));
 
+$('#undoAction').addEventListener('click',undoLastAction);
+$('#redoAction').addEventListener('click',redoLastAction);
+$('#openUndoHistory').addEventListener('click',()=>{
+  renderUndoHistory();
+  $('#undoFromHistory').disabled=!historyState.undo.length;
+  $('#redoFromHistory').disabled=!historyState.redo.length;
+  showDialog($('#undoHistoryDialog'));
+});
+$('#undoHistoryClose').addEventListener('click',()=>requestClose($('#undoHistoryDialog')));
+$('#undoHistoryDialog').addEventListener('click',backdropClose);
+$('#undoFromHistory').addEventListener('click',()=>{
+  undoLastAction();
+  $('#undoFromHistory').disabled=!historyState.undo.length;
+  $('#redoFromHistory').disabled=!historyState.redo.length;
+  renderUndoHistory();
+});
+$('#redoFromHistory').addEventListener('click',()=>{
+  redoLastAction();
+  $('#undoFromHistory').disabled=!historyState.undo.length;
+  $('#redoFromHistory').disabled=!historyState.redo.length;
+  renderUndoHistory();
+});
+
 $('#openConfig').addEventListener('click',()=>openConfigDialog(false));
 $('#configSave').addEventListener('click',applyConfiguration);
 $('#configCancel').addEventListener('click',()=>{
@@ -3422,15 +3766,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:9,
-    app:'ma-cave-configurable-v2.9',
+    version:33,
+    app:'ma-cave-configurable-v3.3',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v2-9.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-3.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
@@ -3483,7 +3827,7 @@ $('#import').addEventListener('change',async e=>{
     activeCasier=1;
     clearEmptySelection();
     clearOccupiedSelection();
-    persist();
+    persist('Restauration d’une sauvegarde');
     render();
     renderSales();
     refreshPhotoButtons();
@@ -3625,11 +3969,15 @@ initSalesPeriod();
 
 if(config){
   inv=buildInventory(config,inv);
-  persist();
+  persist(); // historyReady=false : simple normalisation de démarrage, non historisée
+  historyReady=true;
   render();
   renderSales();
+  renderHistoryControls();
   refreshPhotoButtons();
 }else{
+  historyReady=true;
+  renderHistoryControls();
   $('#count').textContent='0';
   $('#free').textContent='—';
   openConfigDialog(true);

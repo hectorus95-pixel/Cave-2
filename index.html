@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.2">
+<title>Ma Cave à Vin – Configurable v3.3</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.3">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2269,11 +2269,134 @@ header{
   }
 }
 
+
+/* V3.3 — Annuler / Rétablir, historique 20 actions */
+.undo-panel{
+  margin:14px 0 4px;
+  padding:10px;
+  border:1px solid #403a3a;
+  border-radius:12px;
+  background:#181515;
+}
+.undo-controls{
+  display:grid;
+  grid-template-columns:1fr 1fr auto;
+  gap:7px;
+}
+.undo-controls button{
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid #5b5555;
+  border-radius:9px;
+  background:#302c2c;
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+}
+.undo-controls button:disabled{
+  opacity:.35;
+}
+#openUndoHistory{
+  min-width:78px;
+}
+#historyLast{
+  display:block;
+  margin-top:7px;
+  color:#9f9999;
+  font-size:10px;
+  line-height:1.3;
+}
+.undo-history-dialog{
+  width:min(94vw,560px);
+}
+.undo-history-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+.undo-history-head h2{
+  margin:0 0 3px;
+  font-size:18px;
+}
+.undo-history-head small{
+  color:#aaa;
+  font-size:10px;
+}
+.undo-history-quick{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0 14px;
+}
+.undo-history-quick button{
+  min-height:42px;
+  border:0;
+  border-radius:9px;
+  font-weight:800;
+}
+.undo-history-quick button:disabled{
+  opacity:.35;
+}
+.undo-history-section{
+  margin:12px 0;
+}
+.undo-history-section h3{
+  margin:0 0 7px;
+  font-size:12px;
+  color:#cfc9c9;
+}
+.undo-history-row{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+  padding:9px;
+  margin:5px 0;
+  border:1px solid #3d3838;
+  border-radius:9px;
+  background:#242020;
+}
+.undo-history-row.redo-row{
+  opacity:.75;
+}
+.undo-history-index{
+  font-size:13px;
+  font-weight:900;
+  text-align:center;
+  color:#b9b2b2;
+}
+.undo-history-row b{
+  display:block;
+  font-size:12px;
+}
+.undo-history-row small{
+  display:block;
+  margin-top:2px;
+  font-size:9px;
+  color:#918b8b;
+}
+.undo-history-empty{
+  padding:12px;
+  border:1px dashed #423c3c;
+  border-radius:9px;
+  color:#8d8787;
+  font-size:11px;
+}
+.undo-history-note{
+  display:block;
+  margin-top:14px;
+  color:#888;
+  font-size:9px;
+  line-height:1.4;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.2</span>
+  <span class="app-version">v3.3</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2367,6 +2490,15 @@ header{
     </div>
   </section>
 
+  <section class="undo-panel">
+    <div class="undo-controls">
+      <button id="undoAction" type="button" disabled>↶ Annuler</button>
+      <button id="redoAction" type="button" disabled>↷ Rétablir</button>
+      <button id="openUndoHistory" type="button">🕘 <span id="historyCount">0/20</span></button>
+    </div>
+    <small id="historyLast">Aucune modification mémorisée</small>
+  </section>
+
   <div class="actions">
     <button id="openConfig">⚙️ Configuration</button>
     <button id="export">Sauvegarder</button>
@@ -2376,6 +2508,26 @@ header{
 </main>
 
 
+
+<dialog id="undoHistoryDialog" class="undo-history-dialog">
+  <div class="dlg">
+    <div class="undo-history-head">
+      <div>
+        <h2>🕘 Historique des actions</h2>
+        <small>Les 20 dernières modifications de la base sont conservées.</small>
+      </div>
+      <button id="undoHistoryClose" type="button" class="secondary">Fermer</button>
+    </div>
+
+    <div class="undo-history-quick">
+      <button id="undoFromHistory" type="button" class="secondary">↶ Annuler</button>
+      <button id="redoFromHistory" type="button" class="secondary">↷ Rétablir</button>
+    </div>
+
+    <div id="undoHistoryList"></div>
+    <small class="undo-history-note">Les photos de casiers ne font pas partie de cet historique. Une nouvelle modification après « Annuler » efface les étapes « Rétablir ».</small>
+  </div>
+</dialog>
 
 <dialog id="consumptionDialog" class="history-dialog">
   <div class="dlg history-dialog-inner">
@@ -2755,6 +2907,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.2"></script>
+<script src="app.js?v=3.3"></script>
 </body>
 </html>
