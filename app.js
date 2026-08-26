@@ -913,66 +913,96 @@ function maturityYearValue(value){
   return Number.isFinite(n) && n>=1900 && n<=2200 ? Math.trunc(n) : null;
 }
 
-function maturityInfo(r){
-  const startInput=maturityYearValue(r?.maturiteDebut);
-  const endInput=maturityYearValue(r?.maturiteFin);
-  const nowDecimal=currentDecimalYear();
-  const currentYear=new Date().getFullYear();
+function maturityDateStartOfYear(year){
+  return new Date(year,0,1,0,0,0,0);
+}
 
-  if(startInput===null && endInput===null){
-    return {known:false,zone:0,label:'Maturité non renseignée',cursor:0};
+function maturityDateEndOfYear(year){
+  return new Date(year,11,31,23,59,59,999);
+}
+
+function maturityScale(r,now=new Date()){
+  const startYear=maturityYearValue(r?.maturiteDebut);
+  const endYear=maturityYearValue(r?.maturiteFin);
+
+  if(startYear===null && endYear===null){
+    return {
+      known:false,
+      zone:0,
+      cursor:0,
+      label:'Maturité non renseignée',
+      startYellow:null,
+      mid:null,
+      endOrange:null,
+      startGreen:null,
+      endRed:null
+    };
   }
 
+  // Si une seule borne existe, on garde une échelle exploitable.
   const vintage=maturityYearValue(r?.millesime);
-  const start=startInput ?? vintage ?? currentYear;
-  const end=endInput ?? start;
-  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const effectiveStartYear=startYear ?? vintage ?? endYear ?? now.getFullYear();
+  const effectiveEndYear=endYear ?? effectiveStartYear;
 
-  // Classement : uniquement sur l'année civile.
-  // La fiche, les compteurs et les filtres utilisent TOUS cette zone.
-  if(currentYear < start){
-    const youngStart=(vintage!==null && vintage<start) ? vintage : start-1;
-    const progress=clamp((nowDecimal-youngStart)/Math.max(1,start-youngStart),0,1);
-    return {
-      known:true,
-      zone:1,
-      label:`Jeune · maturité à partir de ${start}`,
-      cursor:2 + progress*21
-    };
+  const startYellow=maturityDateStartOfYear(effectiveStartYear);
+  const endOrange=maturityDateEndOfYear(effectiveEndYear);
+
+  // Sécurité si des données anciennes sont inversées.
+  const a=startYellow.getTime();
+  const b=Math.max(a+86400000,endOrange.getTime());
+
+  // Milieu temporel exact entre début jaune et fin orange.
+  const midMs=a+(b-a)/2;
+  const mid=new Date(midMs);
+
+  // Début vert et fin rouge ne sont pas affichés.
+  // On extrapole la même demi-durée de chaque côté afin que :
+  // début jaune = 25 %, milieu = 50 %, fin orange = 75 %.
+  const halfSpan=(b-a)/2;
+  const startGreen=new Date(a-halfSpan);
+  const endRed=new Date(b+halfSpan);
+
+  const nowMs=now.getTime();
+  const fullStart=startGreen.getTime();
+  const fullEnd=endRed.getTime();
+  const raw=((nowMs-fullStart)/(fullEnd-fullStart))*100;
+  const cursor=Math.max(0,Math.min(100,raw));
+
+  let zone,label;
+
+  if(nowMs < a){
+    zone=1;
+    label=`Jeune · maturité à partir de ${effectiveStartYear}`;
+  }else if(nowMs < midMs){
+    zone=2;
+    label=`À boire · ${effectiveStartYear}–${effectiveEndYear}`;
+  }else if(nowMs <= b){
+    zone=3;
+    label=`Fin de maturité · ${effectiveStartYear}–${effectiveEndYear}`;
+  }else{
+    zone=4;
+    label=`Surmaturité · depuis ${effectiveEndYear+1}`;
   }
 
-  if(currentYear < end){
-    const progress=clamp((nowDecimal-start)/Math.max(1,end-start),0,1);
-    return {
-      known:true,
-      zone:2,
-      label:`À boire · ${start}–${end}`,
-      cursor:27 + progress*21
-    };
-  }
-
-  if(currentYear === end){
-    const progress=clamp(nowDecimal-end,0,1);
-    return {
-      known:true,
-      zone:3,
-      label:`Fin de maturité · dernière année ${end}`,
-      cursor:52 + progress*21
-    };
-  }
-
-  const yearsOver=currentYear-end;
-  const progress=clamp((yearsOver-1 + (nowDecimal-currentYear))/3,0,1);
   return {
     known:true,
-    zone:4,
-    label:`Surmaturité · depuis ${end+1}`,
-    cursor:77 + progress*21
+    zone,
+    label,
+    cursor,
+    startYellow,
+    mid,
+    endOrange,
+    startGreen,
+    endRed
   };
 }
 
+function maturityInfo(r){
+  return maturityScale(r);
+}
+
 function maturityZone(r){
-  const mi=maturityInfo(r);
+  const mi=maturityScale(r);
   return mi.known ? mi.zone : 0;
 }
 
@@ -3885,15 +3915,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:316,
-    app:'ma-cave-configurable-v3.16',
+    version:400,
+    app:'ma-cave-configurable-v4.0',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-16.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-0.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
