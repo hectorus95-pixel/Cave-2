@@ -1341,11 +1341,12 @@ function renderCasierTabs(s){
   if(!tabs||!cave) return;
 
   if(cave.casiers===0&&cave.lignes===0&&cave.positions===0){
-    tabs.innerHTML='<div class="bulk-only-tab">📦 Vrac uniquement</div>';
-    scheduleTabCentering();
+    tabs.innerHTML='';
+    tabs.hidden=true;
     return;
   }
 
+  tabs.hidden=false;
   const counts=s.byCaveCasier[cave.id]||{};
   tabs.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
     const c=i+1;
@@ -4146,15 +4147,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:440,
-    app:'ma-cave-configurable-v4.4',
+    version:450,
+    app:'ma-cave-configurable-v4.5',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-4.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-5.json';
   a.click();
 
   const backupAt=new Date().toISOString();
