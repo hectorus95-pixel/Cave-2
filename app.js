@@ -10,7 +10,8 @@ const KI='ma-cave-configurable-v1-inv',
       KCFG='ma-cave-configurable-v1-config',
       KSALES='ma-cave-configurable-v2-sales',
       KBULK='ma-cave-configurable-v2-bulk',
-      KHIST='ma-cave-configurable-v3-history';
+      KHIST='ma-cave-configurable-v3-history',
+      KBACKUP='ma-cave-configurable-last-manual-backup';
 
 const DEFAULT_DIMENSIONS={casiers:3,lignes:15,positions:5};
 const DEFAULT_CONFIG={
@@ -540,60 +541,251 @@ function snapshotBottleCount(s){
   return grid+loose;
 }
 
-function inferHistoryLabel(before,after){
-  if(!before||!after) return 'Modification';
+function snapshotRefById(snapshot,id){
+  return (snapshot?.refs||[]).find(r=>String(r.id)===String(id))||null;
+}
 
-  const bSales=(before.sales||[]).length, aSales=(after.sales||[]).length;
-  const bConsumed=(before.consumed||[]).length, aConsumed=(after.consumed||[]).length;
-  const bBottles=snapshotBottleCount(before), aBottles=snapshotBottleCount(after);
-  const bRefs=(before.refs||[]).length, aRefs=(after.refs||[]).length;
+function historyWineName(snapshot,refId){
+  const r=snapshotRefById(snapshot,refId);
+  if(!r) return 'Vin';
+  return `${r.vin||'Vin'}${r.millesime?` ${r.millesime}`:''}`;
+}
+
+function historyLocation(snapshot,item){
+  if(!item) return '';
+  if(item.bulk){
+    const cave=(snapshot?.config?.caves||[]).find(c=>c.id===item.caveId);
+    const loc=String(item.locationText||'').trim();
+    return `${cave?.code||'CAV'} · Vrac${loc?` · ${loc}`:''}`;
+  }
+  return item.emplacement||'';
+}
+
+function historyChangedGrid(before,after){
+  const key=x=>`${x.caveId}|${x.casier}|${x.ligne}|${x.position}`;
+  const bm=new Map((before?.inv||[]).map(x=>[key(x),x]));
+  const am=new Map((after?.inv||[]).map(x=>[key(x),x]));
+  const changes=[];
+
+  new Set([...bm.keys(),...am.keys()]).forEach(k=>{
+    const b=bm.get(k),a=am.get(k);
+    const br=String(b?.refId||''),ar=String(a?.refId||'');
+    if(br!==ar) changes.push({key:k,before:b,after:a,beforeRef:br,afterRef:ar});
+  });
+  return changes;
+}
+
+function historyChangedBulk(before,after){
+  const bm=new Map((before?.bulk||[]).map(x=>[String(x.id),x]));
+  const am=new Map((after?.bulk||[]).map(x=>[String(x.id),x]));
+  const changes=[];
+
+  new Set([...bm.keys(),...am.keys()]).forEach(k=>{
+    const b=bm.get(k),a=am.get(k);
+    if(JSON.stringify(b||null)!==JSON.stringify(a||null)){
+      changes.push({id:k,before:b,after:a});
+    }
+  });
+  return changes;
+}
+
+function historyListNames(entries,snapshot,limit=2){
+  const names=[];
+  entries.forEach(e=>{
+    const name=historyWineName(snapshot,e.refId);
+    if(name && !names.includes(name)) names.push(name);
+  });
+  if(!names.length) return '';
+  const shown=names.slice(0,limit).join(', ');
+  return names.length>limit ? `${shown} +${names.length-limit}` : shown;
+}
+
+function describeHistoryChange(before,after){
+  if(!before||!after) return {icon:'✏️',label:'Modification',detail:''};
+
+  const bSales=before.sales||[], aSales=after.sales||[];
+  const bConsumed=before.consumed||[], aConsumed=after.consumed||[];
+  const bRefs=before.refs||[], aRefs=after.refs||[];
 
   if(JSON.stringify(before.config)!==JSON.stringify(after.config)){
-    return 'Configuration des caves modifiée';
+    const bc=before.config?.caves?.length||0, ac=after.config?.caves?.length||0;
+    const detail=bc!==ac
+      ? `${bc} → ${ac} cave${ac>1?'s':''}`
+      : 'Dimensions, noms ou modules modifiés';
+    return {icon:'⚙️',label:'Configuration des caves',detail};
   }
 
-  if(aSales>bSales){
-    const n=aSales-bSales;
-    return `Vente de ${n} bouteille${n>1?'s':''}`;
-  }
-  if(aConsumed>bConsumed){
-    const n=aConsumed-bConsumed;
-    return `${n} bouteille${n>1?'s':''} bue${n>1?'s':''}`;
-  }
-  if(aConsumed<bConsumed){
-    const n=bConsumed-aConsumed;
-    return `${n} bouteille${n>1?'s':''} remise${n>1?'s':''} en cave`;
-  }
-
-  if(aBottles>bBottles){
-    const n=aBottles-bBottles;
-    return `Ajout de ${n} bouteille${n>1?'s':''}`;
-  }
-  if(aBottles<bBottles){
-    const n=bBottles-aBottles;
-    return `Sortie de ${n} bouteille${n>1?'s':''}`;
+  if(aSales.length>bSales.length){
+    const added=aSales.slice(bSales.length);
+    const names=historyListNames(added,after);
+    const client=[...new Set(added.map(e=>String(e.client||'').trim()).filter(Boolean))].join(', ');
+    const n=added.length;
+    return {
+      icon:'💶',
+      label:`Vente · ${n} bouteille${n>1?'s':''}`,
+      detail:[names,client?`Client : ${client}`:''].filter(Boolean).join(' · ')
+    };
   }
 
+  if(aConsumed.length>bConsumed.length){
+    const added=aConsumed.slice(bConsumed.length);
+    const names=historyListNames(added,after);
+    const n=added.length;
+    return {
+      icon:'🍷',
+      label:`Bue · ${n} bouteille${n>1?'s':''}`,
+      detail:names
+    };
+  }
+
+  if(aConsumed.length<bConsumed.length){
+    const removed=bConsumed.filter(b=>!aConsumed.some(a=>a.id===b.id));
+    const names=historyListNames(removed,before);
+    const n=Math.max(1,bConsumed.length-aConsumed.length);
+    return {
+      icon:'↩️',
+      label:`Remise en cave · ${n} bouteille${n>1?'s':''}`,
+      detail:names
+    };
+  }
+
+  const gridChanges=historyChangedGrid(before,after);
+  const bulkChanges=historyChangedBulk(before,after);
+
+  const removedGrid=gridChanges.filter(c=>c.beforeRef&&!c.afterRef);
+  const addedGrid=gridChanges.filter(c=>!c.beforeRef&&c.afterRef);
+  const replacedGrid=gridChanges.filter(c=>c.beforeRef&&c.afterRef&&c.beforeRef!==c.afterRef);
+
+  const addedBulk=bulkChanges.filter(c=>!c.before&&c.after);
+  const removedBulk=bulkChanges.filter(c=>c.before&&!c.after);
+  const movedBulk=bulkChanges.filter(c=>c.before&&c.after);
+
+  // Movement: same number leaves and arrives, or a bulk entry changes location/cave.
   if(
-    JSON.stringify(before.inv)!==JSON.stringify(after.inv) ||
-    JSON.stringify(before.bulk)!==JSON.stringify(after.bulk)
+    (removedGrid.length && addedGrid.length && removedGrid.length===addedGrid.length) ||
+    (removedGrid.length && addedBulk.length) ||
+    (removedBulk.length && addedGrid.length) ||
+    movedBulk.length
   ){
-    return 'Déplacement de bouteille(s)';
+    const n=Math.max(
+      removedGrid.length,addedGrid.length,removedBulk.length,addedBulk.length,movedBulk.length,1
+    );
+
+    let from='',to='',name='';
+    const rg=removedGrid[0],ag=addedGrid[0],rb=removedBulk[0],ab=addedBulk[0],mb=movedBulk[0];
+
+    if(rg){
+      from=historyLocation(before,rg.before);
+      name=historyWineName(before,rg.beforeRef);
+    }else if(rb){
+      from=historyLocation(before,rb.before);
+      name=historyWineName(before,rb.before?.refId);
+    }else if(mb){
+      from=historyLocation(before,{...mb.before,bulk:true});
+      name=historyWineName(before,mb.before?.refId);
+    }
+
+    if(ag) to=historyLocation(after,ag.after);
+    else if(ab) to=historyLocation(after,{...ab.after,bulk:true});
+    else if(mb) to=historyLocation(after,{...mb.after,bulk:true});
+
+    return {
+      icon:'📦',
+      label:`Déplacement · ${n} bouteille${n>1?'s':''}`,
+      detail:[name,from&&to?`${from} → ${to}`:''].filter(Boolean).join(' · ')
+    };
   }
 
-  if(aRefs!==bRefs){
-    return aRefs>bRefs ? 'Nouvelle référence de vin' : 'Référence de vin supprimée';
+  if(addedGrid.length || addedBulk.length){
+    const n=addedGrid.length+addedBulk.length;
+    const first=addedGrid[0];
+    const bulkFirst=addedBulk[0];
+    const refId=first?.afterRef||bulkFirst?.after?.refId;
+    const name=historyWineName(after,refId);
+    const loc=first
+      ? historyLocation(after,first.after)
+      : historyLocation(after,{...bulkFirst.after,bulk:true});
+    return {
+      icon:'➕',
+      label:`Ajout · ${n} bouteille${n>1?'s':''}`,
+      detail:[name,loc].filter(Boolean).join(' · ')
+    };
   }
+
+  if(removedGrid.length || removedBulk.length){
+    const n=removedGrid.length+removedBulk.length;
+    const first=removedGrid[0];
+    const bulkFirst=removedBulk[0];
+    const refId=first?.beforeRef||bulkFirst?.before?.refId;
+    const name=historyWineName(before,refId);
+    const loc=first
+      ? historyLocation(before,first.before)
+      : historyLocation(before,{...bulkFirst.before,bulk:true});
+    return {
+      icon:'➖',
+      label:`Sortie · ${n} bouteille${n>1?'s':''}`,
+      detail:[name,loc].filter(Boolean).join(' · ')
+    };
+  }
+
+  if(replacedGrid.length){
+    const n=replacedGrid.length;
+    const first=replacedGrid[0];
+    return {
+      icon:'✏️',
+      label:`Bouteille modifiée${n>1?'s':''}`,
+      detail:`${historyWineName(before,first.beforeRef)} → ${historyWineName(after,first.afterRef)}`
+    };
+  }
+
+  if(aRefs.length!==bRefs.length){
+    const added=aRefs.find(a=>!bRefs.some(b=>b.id===a.id));
+    const removed=bRefs.find(b=>!aRefs.some(a=>a.id===b.id));
+    if(added) return {icon:'🆕',label:'Nouvelle référence',detail:`${added.vin||'Vin'}${added.millesime?` · ${added.millesime}`:''}`};
+    if(removed) return {icon:'🗑️',label:'Référence supprimée',detail:`${removed.vin||'Vin'}${removed.millesime?` · ${removed.millesime}`:''}`};
+  }
+
   if(JSON.stringify(before.refs)!==JSON.stringify(after.refs)){
-    return 'Informations d’un vin modifiées';
+    const changed=aRefs.find(a=>{
+      const b=bRefs.find(x=>x.id===a.id);
+      return b && JSON.stringify(b)!==JSON.stringify(a);
+    });
+    if(changed){
+      const old=bRefs.find(x=>x.id===changed.id);
+      const changedFields=[
+        ['vin','cuvée'],['domaine','domaine'],['millesime','millésime'],
+        ['format','format'],['prix','prix'],['maturiteDebut','début maturité'],
+        ['maturiteFin','fin maturité']
+      ].filter(([k])=>String(old?.[k]??'')!==String(changed?.[k]??'')).map(([,label])=>label);
+      return {
+        icon:'✏️',
+        label:'Vin modifié',
+        detail:`${changed.vin||old?.vin||'Vin'}${changed.millesime?` · ${changed.millesime}`:''}${changedFields.length?` · ${changedFields.join(', ')}`:''}`
+      };
+    }
   }
+
   if(JSON.stringify(before.consumed)!==JSON.stringify(after.consumed)){
-    return 'Note ou commentaire modifié';
+    const changed=aConsumed.find(a=>{
+      const b=bConsumed.find(x=>x.id===a.id);
+      return b && JSON.stringify(b)!==JSON.stringify(a);
+    });
+    return {
+      icon:'📝',
+      label:'Note / commentaire modifié',
+      detail:changed ? `${changed.vin||'Vin'}${changed.millesime?` · ${changed.millesime}`:''}` : ''
+    };
   }
+
   if(JSON.stringify(before.sales)!==JSON.stringify(after.sales)){
-    return 'Historique des ventes modifié';
+    return {icon:'💶',label:'Historique des ventes modifié',detail:''};
   }
-  return 'Modification';
+
+  return {icon:'✏️',label:'Modification',detail:''};
+}
+
+function inferHistoryLabel(before,after){
+  return describeHistoryChange(before,after).label;
 }
 
 function saveHistoryState(){
@@ -635,9 +827,12 @@ function persist(actionLabel=''){
   if(historyReady){
     const before=storedHistorySnapshot();
     if(before && historySignature(before)!==historySignature(after)){
+      const description=describeHistoryChange(before,after);
       historyState.undo.push({
         at:new Date().toISOString(),
-        label:actionLabel||inferHistoryLabel(before,after),
+        label:actionLabel||description.label,
+        detail:description.detail||'',
+        icon:description.icon||'✏️',
         state:before
       });
       historyState.undo=historyState.undo.slice(-HISTORY_LIMIT);
@@ -721,6 +916,8 @@ function undoLastAction(){
   historyState.redo.push({
     at:new Date().toISOString(),
     label:entry.label,
+    detail:entry.detail||'',
+    icon:entry.icon||'✏️',
     state:current
   });
   historyState.redo=historyState.redo.slice(-HISTORY_LIMIT);
@@ -745,6 +942,8 @@ function redoLastAction(){
   historyState.undo.push({
     at:new Date().toISOString(),
     label:entry.label,
+    detail:entry.detail||'',
+    icon:entry.icon||'✏️',
     state:current
   });
   historyState.undo=historyState.undo.slice(-HISTORY_LIMIT);
@@ -769,55 +968,72 @@ function historyTimeLabel(iso){
   });
 }
 
+function historyEntryPresentation(entry){
+  return {
+    icon:entry?.icon||'✏️',
+    label:entry?.label||'Modification',
+    detail:entry?.detail||''
+  };
+}
+
 function renderHistoryControls(){
   if(!$('#undoAction')) return;
 
   const undo=historyState.undo[historyState.undo.length-1];
   const redo=historyState.redo[historyState.redo.length-1];
+  const p=historyEntryPresentation(undo);
 
   $('#undoAction').disabled=!undo;
   $('#redoAction').disabled=!redo;
-  $('#undoAction').title=undo?`Annuler : ${undo.label}`:'Rien à annuler';
-  $('#redoAction').title=redo?`Rétablir : ${redo.label}`:'Rien à rétablir';
+  $('#undoAction').title=undo?`Annuler : ${p.label}`:'Rien à annuler';
+  $('#redoAction').title=redo?`Rétablir : ${historyEntryPresentation(redo).label}`:'Rien à rétablir';
 
   $('#historyCount').textContent=`${historyState.undo.length}/${HISTORY_LIMIT}`;
-  $('#historyLast').textContent=undo
-    ? `Dernière action : ${undo.label}`
-    : 'Aucune modification mémorisée';
+  $('#historyLast').innerHTML=undo
+    ? `<span class="history-last-icon">${esc(p.icon)}</span><span><b>${esc(p.label)}</b>${p.detail?`<small>${esc(p.detail)}</small>`:''}</span>`
+    : '<span>Aucune modification mémorisée</span>';
 }
 
 function renderUndoHistory(){
   const list=$('#undoHistoryList');
   if(!list) return;
 
-  const undoRows=historyState.undo.slice().reverse().map((entry,i)=>`
-    <article class="undo-history-row">
-      <div class="undo-history-index">−${i+1}</div>
-      <div>
-        <b>${esc(entry.label||'Modification')}</b>
-        <small>${esc(historyTimeLabel(entry.at))}</small>
-      </div>
-    </article>
-  `).join('');
+  const undoRows=historyState.undo.slice().reverse().map((entry,i)=>{
+    const p=historyEntryPresentation(entry);
+    return `
+      <article class="undo-history-row">
+        <div class="undo-history-icon">${esc(p.icon)}</div>
+        <div class="undo-history-content">
+          <div class="undo-history-title"><b>${esc(p.label)}</b><span>−${i+1}</span></div>
+          ${p.detail?`<div class="undo-history-detail">${esc(p.detail)}</div>`:''}
+          <small>${esc(historyTimeLabel(entry.at))}</small>
+        </div>
+      </article>
+    `;
+  }).join('');
 
-  const redoRows=historyState.redo.slice().reverse().map((entry,i)=>`
-    <article class="undo-history-row redo-row">
-      <div class="undo-history-index">+${i+1}</div>
-      <div>
-        <b>${esc(entry.label||'Modification')}</b>
-        <small>À rétablir · ${esc(historyTimeLabel(entry.at))}</small>
-      </div>
-    </article>
-  `).join('');
+  const redoRows=historyState.redo.slice().reverse().map((entry,i)=>{
+    const p=historyEntryPresentation(entry);
+    return `
+      <article class="undo-history-row redo-row">
+        <div class="undo-history-icon">↷</div>
+        <div class="undo-history-content">
+          <div class="undo-history-title"><b>${esc(p.label)}</b><span>+${i+1}</span></div>
+          ${p.detail?`<div class="undo-history-detail">${esc(p.detail)}</div>`:''}
+          <small>À rétablir · ${esc(historyTimeLabel(entry.at))}</small>
+        </div>
+      </article>
+    `;
+  }).join('');
 
   list.innerHTML=`
     <div class="undo-history-section">
-      <h3>Actions annulables · ${historyState.undo.length}/${HISTORY_LIMIT}</h3>
+      <h3>À annuler · ${historyState.undo.length}/${HISTORY_LIMIT}</h3>
       ${undoRows||'<div class="undo-history-empty">Aucune action à annuler.</div>'}
     </div>
     ${historyState.redo.length?`
       <div class="undo-history-section">
-        <h3>Actions rétablissables</h3>
+        <h3>À rétablir · ${historyState.redo.length}</h3>
         ${redoRows}
       </div>`:''}
   `;
@@ -3913,18 +4129,38 @@ $('#consumptionList').addEventListener('click',e=>{
   restoreConsumedBottle(btn.dataset.consumedId);
 });
 
+function formatBackupDate(iso){
+  const d=new Date(iso);
+  if(Number.isNaN(d.getTime())) return 'Jamais';
+  return d.toLocaleString('fr-FR',{
+    day:'2-digit',month:'2-digit',year:'numeric',
+    hour:'2-digit',minute:'2-digit'
+  }).replace(',',' à');
+}
+
+function renderLastBackup(){
+  const iso=localStorage.getItem(KBACKUP)||'';
+  const el=$('#lastBackupDate');
+  if(el) el.textContent=iso?formatBackupDate(iso):'Jamais';
+}
+
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:410,
-    app:'ma-cave-configurable-v4.1',
+    version:420,
+    app:'ma-cave-configurable-v4.2',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-1.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-2.json';
   a.click();
+
+  const backupAt=new Date().toISOString();
+  localStorage.setItem(KBACKUP,backupAt);
+  renderLastBackup();
+
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
 $('#import').addEventListener('change',async e=>{
@@ -4131,10 +4367,12 @@ if(config){
   render();
   renderSales();
   renderHistoryControls();
+  renderLastBackup();
   refreshPhotoButtons();
 }else{
   historyReady=true;
   renderHistoryControls();
+  renderLastBackup();
   $('#count').textContent='0';
   $('#free').textContent='—';
   openConfigDialog(true);
