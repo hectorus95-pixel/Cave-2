@@ -93,12 +93,6 @@ let drinkTargets=[];
 let emptyTapTimers=new Map();
 let occupiedTapTimers=new Map();
 let voiceRecognition=null;
-let voiceSessionActive=false;
-let voiceSessionTimer=null;
-let voiceRestartTimer=null;
-let voiceAccumulatedTranscript='';
-let voiceSessionDeadline=0;
-const VOICE_MAX_SESSION_MS=45000;
 let voiceExactRefId='';
 let voiceSimilarRefId='';
 let dialogHistory=false;
@@ -3452,7 +3446,8 @@ function clearVoiceForm(){
   $('#voiceMatch').className='voice-match';
   $('#voiceMatch').innerHTML='';
   $('#voiceContinue').disabled=true;
-  $('#voiceStatus').textContent='Appuyez sur le micro puis dictez les 4 informations.';
+  $('#voiceStatus').textContent='Tu peux dicter une seule information ou plusieurs. Ce qui est compris reste enregistré pour la dictée suivante.';
+  $('#voiceStart').textContent='🎤 Commencer la dictée';
   $('#voiceStart').classList.remove('listening');
 }
 
@@ -3570,6 +3565,144 @@ function repairVoiceCuveeToken(text){
   };
 }
 
+
+function voiceMissingFields(){
+  const fields=[
+    ['domaine',$('#voiceDomaine').value.trim()],
+    ['cuvée',$('#voiceCuvee').value.trim()],
+    ['année',$('#voiceYear').value.trim()],
+    ['prix',$('#voicePrice').value.trim()]
+  ];
+  return fields.filter(([,value])=>!value).map(([name])=>name);
+}
+
+function voiceProgressText(){
+  const values=[
+    ['Domaine',$('#voiceDomaine').value.trim()],
+    ['Cuvée',$('#voiceCuvee').value.trim()],
+    ['Année',$('#voiceYear').value.trim()],
+    ['Prix',$('#voicePrice').value.trim()]
+  ];
+  return values.map(([name,value])=>value?`✓ ${name}`:`○ ${name}`).join(' · ');
+}
+
+function voiceKeywordMatches(text){
+  const norm=normalizeSearchText(text)
+    .replace(/[€]/g,' euros ')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  const keywordRe=/\b(domaine|cuvee|cuve|annee|millesime|prix)\b/g;
+  const matches=[];
+  let m;
+
+  while((m=keywordRe.exec(norm))){
+    const raw=m[1];
+    let field=raw;
+    if(raw==='cuvee'||raw==='cuve') field='cuvee';
+    if(raw==='annee'||raw==='millesime') field='year';
+    matches.push({field,index:m.index,end:m.index+m[0].length});
+  }
+
+  return {norm,matches};
+}
+
+function parseVoicePartial(text){
+  const original=String(text||'').trim();
+  if(!original) return {};
+
+  // Si les 4 informations sont données comme auparavant, on conserve
+  // le parseur historique qui reste le plus précis pour cette phrase.
+  const complete=parseVoiceBottle(original) || repairVoiceCuveeToken(original);
+  if(complete) return complete;
+
+  const {norm,matches}=voiceKeywordMatches(original);
+  const result={};
+
+  matches.forEach((match,i)=>{
+    const end=i+1<matches.length ? matches[i+1].index : norm.length;
+    let value=norm.slice(match.end,end)
+      .trim()
+      .replace(/^[,:;.\-]+|[,:;.\-]+$/g,'')
+      .trim();
+
+    if(!value) return;
+
+    if(match.field==='domaine'){
+      result.domaine=value;
+    }else if(match.field==='cuvee'){
+      result.cuvee=value;
+    }else if(match.field==='year'){
+      const y=value.match(/\b(?:19|20)\d{2}\b/);
+      if(y) result.year=y[0];
+    }else if(match.field==='prix'){
+      const p=value.match(/\d+(?:[.,]\d+)?/);
+      if(p) result.price=normalizeVoiceNumber(p[0]);
+    }
+  });
+
+  // Sans mot-clé, si UNE SEULE information manque, on peut simplement
+  // la dicter. C'est pratique pour finir une fiche en plusieurs fois.
+  if(!matches.length){
+    const missing=voiceMissingFields();
+    if(missing.length===1){
+      const field=missing[0];
+      if(field==='année'){
+        const y=norm.match(/\b(?:19|20)\d{2}\b/);
+        if(y) result.year=y[0];
+      }else if(field==='prix'){
+        const p=norm.match(/\d+(?:[.,]\d+)?/);
+        if(p) result.price=normalizeVoiceNumber(p[0]);
+      }else if(field==='domaine'){
+        result.domaine=norm;
+      }else if(field==='cuvée'){
+        result.cuvee=norm;
+      }
+    }
+  }
+
+  return result;
+}
+
+function applyVoicePartial(partial){
+  if(!partial || typeof partial!=='object') return 0;
+
+  let count=0;
+
+  if(partial.domaine){
+    $('#voiceDomaine').value=partial.domaine;
+    count++;
+  }
+  if(partial.cuvee){
+    $('#voiceCuvee').value=partial.cuvee;
+    count++;
+  }
+  if(partial.year && /^(?:19|20)\d{2}$/.test(String(partial.year))){
+    $('#voiceYear').value=partial.year;
+    count++;
+  }
+  if(partial.price){
+    $('#voicePrice').value=normalizeVoiceNumber(partial.price);
+    count++;
+  }
+
+  analyzeVoiceBottle();
+  return count;
+}
+
+function updateVoiceProgressStatus(prefix=''){
+  const missing=voiceMissingFields();
+  const progress=voiceProgressText();
+
+  if(!missing.length){
+    $('#voiceStatus').textContent=`${prefix?prefix+' ':''}${progress} · Tout est renseigné. Vérifie puis appuie sur Continuer.`;
+    return;
+  }
+
+  $('#voiceStatus').textContent=
+    `${prefix?prefix+' ':''}${progress} · Il manque : ${missing.join(', ')}. Tu peux rappuyer sur le micro pour continuer.`;
+}
+
 function voiceBottleKey(v){
   return {
     domaine:normalizeSearchText(v.domaine||'').trim(),
@@ -3647,18 +3780,6 @@ function openVoiceAdd(){
 }
 
 function stopVoiceRecognition(abort=true){
-  voiceSessionActive=false;
-  voiceSessionDeadline=0;
-
-  if(voiceSessionTimer){
-    clearTimeout(voiceSessionTimer);
-    voiceSessionTimer=null;
-  }
-  if(voiceRestartTimer){
-    clearTimeout(voiceRestartTimer);
-    voiceRestartTimer=null;
-  }
-
   const current=voiceRecognition;
   voiceRecognition=null;
 
@@ -3670,29 +3791,7 @@ function stopVoiceRecognition(abort=true){
   }
 
   $('#voiceStart')?.classList.remove('listening');
-}
-
-function applyVoiceTranscript(transcript,finalAttempt=false){
-  const text=String(transcript||'').replace(/\s+/g,' ').trim();
-  $('#voiceTranscript').textContent=text||'—';
-
-  if(!text) return false;
-
-  const parsed=parseVoiceBottle(text) || repairVoiceCuveeToken(text);
-
-  if(parsed){
-    $('#voiceDomaine').value=parsed.domaine;
-    $('#voiceCuvee').value=parsed.cuvee;
-    $('#voiceYear').value=parsed.year;
-    $('#voicePrice').value=parsed.price;
-    analyzeVoiceBottle();
-    return true;
-  }
-
-  if(finalAttempt){
-    $('#voiceStatus').textContent='La dictée est terminée. Vous pouvez compléter les champs ou recommencer.';
-  }
-  return false;
+  if($('#voiceStart')) $('#voiceStart').textContent='🎤 Continuer la dictée';
 }
 
 function startVoiceRecognition(){
@@ -3702,136 +3801,77 @@ function startVoiceRecognition(){
     return;
   }
 
-  // Un nouvel appui sur le micro recommence une dictée complète.
-  stopVoiceRecognition(true);
-  voiceSessionActive=true;
-  voiceAccumulatedTranscript='';
-  voiceSessionDeadline=Date.now()+VOICE_MAX_SESSION_MS;
+  // Empêche totalement plusieurs reconnaissances simultanées.
+  if(voiceRecognition) return;
 
-  $('#voiceTranscript').textContent='—';
-  $('#voiceStatus').textContent=
-    editScope==='newbulkvoice' && bulkDraft
-      ? `Écoute pendant 45 s… ${bulkDraft.qty} bouteille${bulkDraft.qty>1?'s':''} en vrac. Vous pouvez hésiter ou faire de petites pauses.`
-      : 'Écoute pendant 45 s… Vous pouvez hésiter ou faire de petites pauses. Domaine, cuvée, année, prix.';
+  const recognition=new SpeechRecognition();
+  voiceRecognition=recognition;
+  recognition.lang='fr-FR';
+
+  // Retour au fonctionnement simple et stable :
+  // une pression = une écoute, aucune relance automatique.
+  recognition.continuous=false;
+  recognition.interimResults=false;
+  recognition.maxAlternatives=1;
+
   $('#voiceStart').classList.add('listening');
+  $('#voiceStart').textContent='🎤 Écoute en cours…';
+  $('#voiceStatus').textContent=
+    `${voiceProgressText()} · Parle maintenant. Tu peux donner une seule information ou plusieurs.`;
 
-  const startEngine=()=>{
-    if(!voiceSessionActive || Date.now()>=voiceSessionDeadline || !$('#voiceDialog')?.open) return;
+  let gotResult=false;
 
-    const recognition=new SpeechRecognition();
-    voiceRecognition=recognition;
-    recognition.lang='fr-FR';
+  recognition.onresult=e=>{
+    gotResult=true;
+    const transcript=e.results?.[0]?.[0]?.transcript||'';
+    $('#voiceTranscript').textContent=transcript||'—';
 
-    // Chrome Android peut néanmoins couper l'écoute après un silence.
-    // Dans ce cas, on redémarre automatiquement jusqu'à la limite de 45 s.
-    recognition.continuous=true;
-    recognition.interimResults=true;
-    recognition.maxAlternatives=1;
+    const partial=parseVoicePartial(transcript);
+    const count=applyVoicePartial(partial);
 
-    let interimText='';
+    if(count){
+      updateVoiceProgressStatus(`${count} information${count>1?'s':''} ajoutée${count>1?'s':''}.`);
+    }else{
+      updateVoiceProgressStatus('Je n’ai pas reconnu de nouvelle information.');
+    }
+  };
 
-    recognition.onresult=e=>{
-      interimText='';
+  recognition.onerror=e=>{
+    if(e.error==='aborted') return;
 
-      for(let i=e.resultIndex;i<e.results.length;i++){
-        const text=e.results[i]?.[0]?.transcript||'';
-        if(!text) continue;
-
-        if(e.results[i].isFinal){
-          voiceAccumulatedTranscript=
-            `${voiceAccumulatedTranscript} ${text}`.replace(/\s+/g,' ').trim();
-        }else{
-          interimText+=` ${text}`;
-        }
-      }
-
-      const combined=
-        `${voiceAccumulatedTranscript} ${interimText}`.replace(/\s+/g,' ').trim();
-
-      const parsed=applyVoiceTranscript(combined,false);
-      $('#voiceStatus').textContent=parsed
-        ? 'Les 4 informations sont comprises. Vous pouvez encore parler pour corriger ou préciser, puis appuyer sur Continuer.'
-        : 'Je vous écoute… prenez votre temps. Domaine, cuvée, année, prix.';
+    const messages={
+      'not-allowed':'Autorisation du microphone refusée.',
+      'audio-capture':'Microphone indisponible.',
+      'no-speech':'Aucune parole détectée. Les informations déjà saisies sont conservées.',
+      'network':'La reconnaissance vocale n’a pas pu se connecter.'
     };
 
-    recognition.onerror=e=>{
-      // "no-speech" arrive souvent après une hésitation :
-      // la session reste active et on relance dans onend.
-      if(e.error==='no-speech' || e.error==='aborted') return;
+    $('#voiceStatus').textContent=
+      messages[e.error]||'La dictée a échoué. Les informations déjà saisies sont conservées.';
+  };
 
-      const messages={
-        'not-allowed':'Autorisation du microphone refusée.',
-        'audio-capture':'Microphone indisponible.',
-        'network':'La reconnaissance vocale n’a pas pu se connecter.'
-      };
+  recognition.onend=()=>{
+    if(voiceRecognition===recognition) voiceRecognition=null;
+    $('#voiceStart').classList.remove('listening');
+    $('#voiceStart').textContent='🎤 Continuer la dictée';
 
-      $('#voiceStatus').textContent=messages[e.error]||'La reconnaissance vocale a rencontré un problème.';
-
-      if(['not-allowed','audio-capture','network'].includes(e.error)){
-        stopVoiceRecognition(true);
-      }
-    };
-
-    recognition.onend=()=>{
-      if(voiceRecognition===recognition) voiceRecognition=null;
-
-      if(
-        voiceSessionActive &&
-        Date.now()<voiceSessionDeadline &&
-        $('#voiceDialog')?.open
-      ){
-        $('#voiceStatus').textContent='Petite pause détectée… reprise automatique de l’écoute.';
-        voiceRestartTimer=setTimeout(()=>{
-          voiceRestartTimer=null;
-          startEngine();
-        },300);
-      }
-    };
-
-    try{
-      recognition.start();
-    }catch(e){
-      if(voiceSessionActive && Date.now()<voiceSessionDeadline){
-        voiceRestartTimer=setTimeout(()=>{
-          voiceRestartTimer=null;
-          startEngine();
-        },500);
-      }else{
-        stopVoiceRecognition(true);
+    if(!gotResult){
+      const missing=voiceMissingFields();
+      if(missing.length){
+        $('#voiceStatus').textContent=
+          `${voiceProgressText()} · Il manque : ${missing.join(', ')}. Appuie sur le micro pour continuer.`;
       }
     }
   };
 
-  voiceSessionTimer=setTimeout(()=>{
-    if(!voiceSessionActive) return;
-
-    voiceSessionActive=false;
-    voiceSessionDeadline=0;
-
-    if(voiceRestartTimer){
-      clearTimeout(voiceRestartTimer);
-      voiceRestartTimer=null;
-    }
-
-    const current=voiceRecognition;
+  try{
+    recognition.start();
+  }catch(e){
     voiceRecognition=null;
-    if(current){
-      try{ current.stop(); }catch(e){}
-    }
-
     $('#voiceStart').classList.remove('listening');
-
-    const understood=applyVoiceTranscript(
-      voiceAccumulatedTranscript || $('#voiceTranscript').textContent,
-      true
-    );
-
-    $('#voiceStatus').textContent=understood
-      ? '45 secondes écoulées. Dictée comprise : vérifiez les informations puis appuyez sur Continuer.'
-      : '45 secondes écoulées. Complétez les champs si besoin, ou appuyez de nouveau sur le micro.';
-  },VOICE_MAX_SESSION_MS);
-
-  startEngine();
+    $('#voiceStart').textContent='🎤 Continuer la dictée';
+    $('#voiceStatus').textContent='Impossible de démarrer la dictée. Réessaie.';
+  }
 }
 
 function continueVoiceBottle(){
@@ -4468,15 +4508,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:4120,
-    app:'ma-cave-configurable-v4.12',
+    version:5000,
+    app:'ma-cave-configurable-v5.0',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-12.json';
+  a.download='sauvegarde-ma-cave-configurable-v5-0.json';
   a.click();
 
   const backupAt=new Date().toISOString();

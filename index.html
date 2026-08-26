@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v4.12</title>
-<link rel="manifest" href="manifest.webmanifest?v=4.12">
+<title>Ma Cave à Vin – Configurable v5.0</title>
+<link rel="manifest" href="manifest.webmanifest?v=5.0">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3205,11 +3205,29 @@ header .stock-filter.active{
   color:#ff9e9e;
 }
 
+
+/* =========================================================
+   V5.0 — saisie vocale progressive
+   ========================================================= */
+.voice-instruction strong{
+  display:block;
+}
+.voice-instruction strong + strong{
+  margin-top:5px;
+}
+.voice-instruction > small{
+  display:block;
+  margin-top:8px;
+  color:#aaa;
+  font-size:9px;
+  line-height:1.35;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v4.12</span>
+  <span class="app-version">v5.0</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3515,19 +3533,21 @@ header .stock-filter.active{
     <h2>🎤 Ajouter par la voix</h2>
 
     <div class="voice-instruction">
-      <b>Dites dans cet ordre :</b>
+      <b>Tu peux dicter en une ou plusieurs fois :</b>
       <div class="voice-order">
-        <span>1. Domaine</span>
-        <span>2. Cuvée</span>
-        <span>3. Année</span>
-        <span>4. Prix</span>
+        <span>Domaine</span>
+        <span>Cuvée</span>
+        <span>Année</span>
+        <span>Prix</span>
       </div>
-      <p>Exemple :</p>
-      <strong>« Domaine Clos Marie, cuvée Simon, année 2021, prix 22 euros »</strong>
+      <p>Exemples :</p>
+      <strong>« Domaine Pieropan, cuvée Soave Classico »</strong>
+      <strong>« Année 2021, prix 12 euros »</strong>
+      <small>Les informations déjà reconnues restent dans les champs. Rappuie simplement sur le micro pour compléter ce qui manque.</small>
     </div>
 
     <button type="button" id="voiceStart" class="voice-start">🎤 Commencer la dictée</button>
-    <div id="voiceStatus" class="voice-status">Appuyez sur le micro puis dictez les 4 informations. Vous disposez de 45 secondes et pouvez faire de petites pauses.</div>
+    <div id="voiceStatus" class="voice-status">Tu peux dicter une seule information ou plusieurs. Ce qui est compris reste enregistré pour la dictée suivante.</div>
 
     <div class="voice-transcript">
       <span>Transcription</span>
@@ -3765,6 +3785,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=4.12"></script>
+<script src="app.js?v=5.0"></script>
 </body>
 </html>
