@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v4.9</title>
-<link rel="manifest" href="manifest.webmanifest?v=4.9">
+<title>Ma Cave à Vin – Configurable v4.11</title>
+<link rel="manifest" href="manifest.webmanifest?v=4.11">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3209,7 +3209,7 @@ header .stock-filter.active{
 </head>
 <body>
 <header>
-  <span class="app-version">v4.9</span>
+  <span class="app-version">v4.11</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3237,7 +3237,7 @@ header .stock-filter.active{
   </div>
   <div id="stockFilters" class="stock-filters" aria-label="Filtrer par quantité en stock">
     <button type="button" class="stock-filter" data-stock="12plus">
-      <span id="stockLabelHigh">12+ bt</span>
+      <span id="stockLabelHigh">13+ bt</span>
     </button>
     <button type="button" class="stock-filter" data-stock="6to12">
       <span id="stockLabelMedium">6 à 12 bt</span>
@@ -3464,7 +3464,7 @@ header .stock-filter.active{
     <section class="stock-threshold-config">
       <div class="stock-threshold-head">
         <b>📦 Filtres de stock</b>
-        <small>Valeurs par défaut : 12+ · 6 à 12 · 1 à 5.</small>
+        <small>Valeurs par défaut : 13+ · 6 à 12 · 1 à 5.</small>
       </div>
       <div class="stock-threshold-inputs">
         <label>Faible à partir de
@@ -3473,11 +3473,11 @@ header .stock-filter.active{
         <label>Moyen à partir de
           <input id="cfgStockMedium" type="number" min="2" max="998" inputmode="numeric" value="6">
         </label>
-        <label>Élevé à partir de
+        <label>Moyen jusqu’à
           <input id="cfgStockHigh" type="number" min="3" max="999" inputmode="numeric" value="12">
         </label>
       </div>
-      <small class="stock-threshold-example" id="stockThresholdPreview">1 à 5 · 6 à 12 · 12+</small>
+      <small class="stock-threshold-example" id="stockThresholdPreview">1 à 5 · 6 à 12 · 13+</small>
     </section>
 
     <div id="configCapacity" class="config-capacity"></div>
@@ -3527,7 +3527,7 @@ header .stock-filter.active{
     </div>
 
     <button type="button" id="voiceStart" class="voice-start">🎤 Commencer la dictée</button>
-    <div id="voiceStatus" class="voice-status">Appuyez sur le micro puis dictez les 4 informations.</div>
+    <div id="voiceStatus" class="voice-status">Appuyez sur le micro puis dictez les 4 informations. Vous disposez de 45 secondes et pouvez faire de petites pauses.</div>
 
     <div class="voice-transcript">
       <span>Transcription</span>
@@ -3765,6 +3765,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=4.9"></script>
+<script src="app.js?v=4.11"></script>
 </body>
 </html>

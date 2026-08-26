@@ -93,6 +93,12 @@ let drinkTargets=[];
 let emptyTapTimers=new Map();
 let occupiedTapTimers=new Map();
 let voiceRecognition=null;
+let voiceSessionActive=false;
+let voiceSessionTimer=null;
+let voiceRestartTimer=null;
+let voiceAccumulatedTranscript='';
+let voiceSessionDeadline=0;
+const VOICE_MAX_SESSION_MS=45000;
 let voiceExactRefId='';
 let voiceSimilarRefId='';
 let dialogHistory=false;
@@ -184,7 +190,7 @@ function stockThresholdValues(){
 function stockFilterText(){
   const {low,medium,high}=stockThresholdValues();
   return {
-    high:`${high}+ bt`,
+    high:`${high+1}+ bt`,
     medium:`${medium} à ${high} bt`,
     low:`${low} à ${medium-1} bt`
   };
@@ -389,7 +395,7 @@ function renderStockThresholdPreview(){
     Number.isInteger(high) &&
     low>=1 && low<medium && medium<high
   ){
-    el.textContent=`${low} à ${medium-1} · ${medium} à ${high} · ${high}+`;
+    el.textContent=`${low} à ${medium-1} · ${medium} à ${high} · ${high+1}+`;
     el.classList.remove('invalid');
   }else{
     el.textContent='Seuils invalides : faible < moyen < élevé';
@@ -1631,7 +1637,12 @@ function stockCountByRef(){
 function stockBucketMatches(count,bucket){
   count=Number(count)||0;
   const {low,medium,high}=stockThresholdValues();
-  if(bucket==='12plus') return count>=high;
+
+  // Les trois catégories sont volontairement sans chevauchement :
+  // faible = low .. medium-1
+  // moyen  = medium .. high
+  // fort   = high+1 et plus
+  if(bucket==='12plus') return count>high;
   if(bucket==='6to12') return count>=medium && count<=high;
   if(bucket==='1to5') return count>=low && count<medium;
   return false;
@@ -3202,10 +3213,7 @@ function closeDialogsFromPop(){
   pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];moveSource=null;moveTargetKeys.clear();
   voiceExactRefId='';
   voiceSimilarRefId='';
-  if(voiceRecognition){
-    try{ voiceRecognition.abort(); }catch(e){}
-    voiceRecognition=null;
-  }
+  stopVoiceRecognition(true);
 }
 window.addEventListener('popstate',closeDialogsFromPop);
 
@@ -3638,6 +3646,55 @@ function openVoiceAdd(){
   showDialog($('#voiceDialog'));
 }
 
+function stopVoiceRecognition(abort=true){
+  voiceSessionActive=false;
+  voiceSessionDeadline=0;
+
+  if(voiceSessionTimer){
+    clearTimeout(voiceSessionTimer);
+    voiceSessionTimer=null;
+  }
+  if(voiceRestartTimer){
+    clearTimeout(voiceRestartTimer);
+    voiceRestartTimer=null;
+  }
+
+  const current=voiceRecognition;
+  voiceRecognition=null;
+
+  if(current){
+    try{
+      if(abort) current.abort();
+      else current.stop();
+    }catch(e){}
+  }
+
+  $('#voiceStart')?.classList.remove('listening');
+}
+
+function applyVoiceTranscript(transcript,finalAttempt=false){
+  const text=String(transcript||'').replace(/\s+/g,' ').trim();
+  $('#voiceTranscript').textContent=text||'—';
+
+  if(!text) return false;
+
+  const parsed=parseVoiceBottle(text) || repairVoiceCuveeToken(text);
+
+  if(parsed){
+    $('#voiceDomaine').value=parsed.domaine;
+    $('#voiceCuvee').value=parsed.cuvee;
+    $('#voiceYear').value=parsed.year;
+    $('#voicePrice').value=parsed.price;
+    analyzeVoiceBottle();
+    return true;
+  }
+
+  if(finalAttempt){
+    $('#voiceStatus').textContent='La dictée est terminée. Vous pouvez compléter les champs ou recommencer.';
+  }
+  return false;
+}
+
 function startVoiceRecognition(){
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SpeechRecognition){
@@ -3645,67 +3702,142 @@ function startVoiceRecognition(){
     return;
   }
 
-  if(voiceRecognition){
-    try{ voiceRecognition.abort(); }catch(e){}
-  }
+  // Un nouvel appui sur le micro recommence une dictée complète.
+  stopVoiceRecognition(true);
+  voiceSessionActive=true;
+  voiceAccumulatedTranscript='';
+  voiceSessionDeadline=Date.now()+VOICE_MAX_SESSION_MS;
 
-  const recognition=new SpeechRecognition();
-  voiceRecognition=recognition;
-  recognition.lang='fr-FR';
-  recognition.continuous=false;
-  recognition.interimResults=false;
-  recognition.maxAlternatives=1;
-
+  $('#voiceTranscript').textContent='—';
   $('#voiceStatus').textContent=
     editScope==='newbulkvoice' && bulkDraft
-      ? `Écoute en cours… ${bulkDraft.qty} bouteille${bulkDraft.qty>1?'s':''} en vrac · Domaine, cuvée, année, prix.`
-      : 'Écoute en cours… Domaine, cuvée, année, prix.';
+      ? `Écoute pendant 45 s… ${bulkDraft.qty} bouteille${bulkDraft.qty>1?'s':''} en vrac. Vous pouvez hésiter ou faire de petites pauses.`
+      : 'Écoute pendant 45 s… Vous pouvez hésiter ou faire de petites pauses. Domaine, cuvée, année, prix.';
   $('#voiceStart').classList.add('listening');
 
-  recognition.onresult=e=>{
-    const transcript=e.results?.[0]?.[0]?.transcript||'';
-    $('#voiceTranscript').textContent=transcript||'—';
+  const startEngine=()=>{
+    if(!voiceSessionActive || Date.now()>=voiceSessionDeadline || !$('#voiceDialog')?.open) return;
 
-    const parsed=parseVoiceBottle(transcript) || repairVoiceCuveeToken(transcript);
+    const recognition=new SpeechRecognition();
+    voiceRecognition=recognition;
+    recognition.lang='fr-FR';
 
-    if(parsed){
-      $('#voiceDomaine').value=parsed.domaine;
-      $('#voiceCuvee').value=parsed.cuvee;
-      $('#voiceYear').value=parsed.year;
-      $('#voicePrice').value=parsed.price;
-      $('#voiceStatus').textContent='Dictée comprise. Vérifiez les 4 informations ci-dessous.';
-      analyzeVoiceBottle();
-    }else{
-      $('#voiceStatus').textContent='Je n’ai pas pu séparer correctement les 4 informations. Vous pouvez corriger les champs ou recommencer.';
+    // Chrome Android peut néanmoins couper l'écoute après un silence.
+    // Dans ce cas, on redémarre automatiquement jusqu'à la limite de 45 s.
+    recognition.continuous=true;
+    recognition.interimResults=true;
+    recognition.maxAlternatives=1;
+
+    let interimText='';
+
+    recognition.onresult=e=>{
+      interimText='';
+
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const text=e.results[i]?.[0]?.transcript||'';
+        if(!text) continue;
+
+        if(e.results[i].isFinal){
+          voiceAccumulatedTranscript=
+            `${voiceAccumulatedTranscript} ${text}`.replace(/\s+/g,' ').trim();
+        }else{
+          interimText+=` ${text}`;
+        }
+      }
+
+      const combined=
+        `${voiceAccumulatedTranscript} ${interimText}`.replace(/\s+/g,' ').trim();
+
+      const parsed=applyVoiceTranscript(combined,false);
+      $('#voiceStatus').textContent=parsed
+        ? 'Les 4 informations sont comprises. Vous pouvez encore parler pour corriger ou préciser, puis appuyer sur Continuer.'
+        : 'Je vous écoute… prenez votre temps. Domaine, cuvée, année, prix.';
+    };
+
+    recognition.onerror=e=>{
+      // "no-speech" arrive souvent après une hésitation :
+      // la session reste active et on relance dans onend.
+      if(e.error==='no-speech' || e.error==='aborted') return;
+
+      const messages={
+        'not-allowed':'Autorisation du microphone refusée.',
+        'audio-capture':'Microphone indisponible.',
+        'network':'La reconnaissance vocale n’a pas pu se connecter.'
+      };
+
+      $('#voiceStatus').textContent=messages[e.error]||'La reconnaissance vocale a rencontré un problème.';
+
+      if(['not-allowed','audio-capture','network'].includes(e.error)){
+        stopVoiceRecognition(true);
+      }
+    };
+
+    recognition.onend=()=>{
+      if(voiceRecognition===recognition) voiceRecognition=null;
+
+      if(
+        voiceSessionActive &&
+        Date.now()<voiceSessionDeadline &&
+        $('#voiceDialog')?.open
+      ){
+        $('#voiceStatus').textContent='Petite pause détectée… reprise automatique de l’écoute.';
+        voiceRestartTimer=setTimeout(()=>{
+          voiceRestartTimer=null;
+          startEngine();
+        },300);
+      }
+    };
+
+    try{
+      recognition.start();
+    }catch(e){
+      if(voiceSessionActive && Date.now()<voiceSessionDeadline){
+        voiceRestartTimer=setTimeout(()=>{
+          voiceRestartTimer=null;
+          startEngine();
+        },500);
+      }else{
+        stopVoiceRecognition(true);
+      }
     }
   };
 
-  recognition.onerror=e=>{
-    const messages={
-      'not-allowed':'Autorisation du microphone refusée.',
-      'audio-capture':'Microphone indisponible.',
-      'no-speech':'Aucune parole détectée.',
-      'network':'La reconnaissance vocale n’a pas pu se connecter.'
-    };
-    $('#voiceStatus').textContent=messages[e.error]||'La dictée a échoué. Vous pouvez recommencer.';
-  };
+  voiceSessionTimer=setTimeout(()=>{
+    if(!voiceSessionActive) return;
 
-  recognition.onend=()=>{
-    $('#voiceStart').classList.remove('listening');
+    voiceSessionActive=false;
+    voiceSessionDeadline=0;
+
+    if(voiceRestartTimer){
+      clearTimeout(voiceRestartTimer);
+      voiceRestartTimer=null;
+    }
+
+    const current=voiceRecognition;
     voiceRecognition=null;
-  };
+    if(current){
+      try{ current.stop(); }catch(e){}
+    }
 
-  try{
-    recognition.start();
-  }catch(e){
-    $('#voiceStatus').textContent='Impossible de démarrer la dictée. Réessayez.';
     $('#voiceStart').classList.remove('listening');
-  }
+
+    const understood=applyVoiceTranscript(
+      voiceAccumulatedTranscript || $('#voiceTranscript').textContent,
+      true
+    );
+
+    $('#voiceStatus').textContent=understood
+      ? '45 secondes écoulées. Dictée comprise : vérifiez les informations puis appuyez sur Continuer.'
+      : '45 secondes écoulées. Complétez les champs si besoin, ou appuyez de nouveau sur le micro.';
+  },VOICE_MAX_SESSION_MS);
+
+  startEngine();
 }
 
 function continueVoiceBottle(){
   analyzeVoiceBottle();
   if($('#voiceContinue').disabled) return;
+  stopVoiceRecognition(true);
 
   const domaine=$('#voiceDomaine').value.trim();
   const cuvee=$('#voiceCuvee').value.trim();
@@ -3874,10 +4006,7 @@ $('#voiceAdd').addEventListener('click',openVoiceAdd);
 $('#voiceStart').addEventListener('click',startVoiceRecognition);
 $('#voiceContinue').addEventListener('click',continueVoiceBottle);
 $('#voiceCancel').addEventListener('click',()=>{
-  if(voiceRecognition){
-    try{ voiceRecognition.abort(); }catch(e){}
-    voiceRecognition=null;
-  }
+  stopVoiceRecognition(true);
   requestClose($('#voiceDialog'));
 });
 ['voiceDomaine','voiceCuvee','voiceYear','voicePrice'].forEach(id=>{
@@ -4327,15 +4456,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:490,
-    app:'ma-cave-configurable-v4.9',
+    version:4110,
+    app:'ma-cave-configurable-v4.11',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-9.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-11.json';
   a.click();
 
   const backupAt=new Date().toISOString();
