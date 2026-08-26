@@ -1518,6 +1518,64 @@ function clearMaturityFilter(){
   $$('.maturity-filter').forEach(b=>b.classList.remove('active'));
 }
 
+function clearStockFilter(){
+  $$('.stock-filter').forEach(b=>b.classList.remove('active'));
+}
+
+function stockCountByRef(){
+  const counts=new Map();
+  refsWithLocations(()=>true).forEach(({r})=>{
+    const key=String(r.id||'');
+    counts.set(key,(counts.get(key)||0)+1);
+  });
+  return counts;
+}
+
+function stockBucketMatches(count,bucket){
+  count=Number(count)||0;
+  if(bucket==='12plus') return count>=12;
+  if(bucket==='6to12') return count>=6 && count<=12;
+  if(bucket==='1to5') return count>=1 && count<=5;
+  return false;
+}
+
+function showStockResults(bucket){
+  $('#search').value='';
+  clearYearFilter();
+  clearMaturityFilter();
+  clearStockFilter();
+  clearStockFilter();
+
+  const active=$$('.stock-filter').find(b=>b.dataset.stock===bucket);
+  if(active) active.classList.add('active');
+
+  const counts=stockCountByRef();
+  const matches=refsWithLocations(r=>stockBucketMatches(counts.get(String(r.id||''))||0,bucket));
+
+  const items=groupedResultItems(matches)
+    .map(item=>({
+      ...item,
+      _stockCount:counts.get(String(item.r.id||''))||0
+    }))
+    .sort((a,b)=>
+      b._stockCount-a._stockCount ||
+      normalizeSearchText(a.r.vin).localeCompare(normalizeSearchText(b.r.vin),'fr')
+    );
+
+  const labels={
+    '12plus':'12+ bouteilles',
+    '6to12':'6 à 12 bouteilles',
+    '1to5':'1 à 5 bouteilles'
+  };
+
+  showResultPanel(
+    `${labels[bucket]} · ${items.length} vin${items.length>1?'s':''}`,
+    items
+  );
+
+  $('#resultPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
 function showMaturityResults(zone){
   zone=Number(zone);
   $('#search').value='';
@@ -1553,6 +1611,7 @@ function showMaturityResults(zone){
 function showSearchResults(){
   clearMaturityFilter();
   clearYearFilter();
+  clearStockFilter();
   const raw=$('#search').value.trim();
   const q=normalizeSearchText(raw);
   if(!q){hideResultPanel();return;}
@@ -1576,6 +1635,7 @@ function showSearchResults(){
 function showVintageResults(year){
   clearMaturityFilter();
   clearYearFilter();
+  clearStockFilter();
   $('#search').value='';
   const y=String(year);
 
@@ -2609,6 +2669,7 @@ function beginMoveFromItems(items,sourceDialog=null){
   $('#search').value='';
   clearMaturityFilter();
   clearYearFilter();
+  clearStockFilter();
   hideResultPanel();
 
   if(sourceDialog?.open) sourceDialog.close();
@@ -3960,6 +4021,7 @@ $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
   if(b.classList.contains('active')){
     clearMaturityFilter();
     clearYearFilter();
+    clearStockFilter();
     hideResultPanel();
     return;
   }
@@ -3967,11 +4029,23 @@ $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
   showMaturityResults(zone);
 }));
 
+$$('.stock-filter').forEach(b=>b.addEventListener('click',()=>{
+  const bucket=b.dataset.stock;
+
+  if(b.classList.contains('active')){
+    clearStockFilter();
+    hideResultPanel();
+    return;
+  }
+
+  showStockResults(bucket);
+}));
+
 $('#caveTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.cave-tab');if(!b)return;
   activeCaveId=b.dataset.caveId;
   activeCasier=activeCave()?.casiers===0 ? 0 : 1;
-  $('#search').value='';clearMaturityFilter();clearYearFilter();hideResultPanel();
+  $('#search').value='';clearMaturityFilter();clearYearFilter();clearStockFilter();hideResultPanel();
   render();await refreshPhotoButtons();
 });
 
@@ -3982,6 +4056,7 @@ $('#casierTabs').addEventListener('click',async e=>{
   $('#search').value='';
   clearMaturityFilter();
   clearYearFilter();
+  clearStockFilter();
   hideResultPanel();
   render();
   await refreshPhotoButtons();
@@ -4147,15 +4222,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:450,
-    app:'ma-cave-configurable-v4.5',
+    version:460,
+    app:'ma-cave-configurable-v4.6',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-5.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-6.json';
   a.click();
 
   const backupAt=new Date().toISOString();
