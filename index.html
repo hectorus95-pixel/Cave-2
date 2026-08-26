@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v4.2</title>
-<link rel="manifest" href="manifest.webmanifest?v=4.2">
+<title>Ma Cave à Vin – Configurable v4.3</title>
+<link rel="manifest" href="manifest.webmanifest?v=4.3">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3027,11 +3027,51 @@ header{
   text-align:right;
 }
 
+
+/* =========================================================
+   V4.3 — filtres maturité dans le bandeau bordeaux
+   ========================================================= */
+header #maturityFilters{
+  margin:12px 0 0!important;
+  padding-bottom:2px!important;
+}
+
+header .maturity-filters{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:7px!important;
+  width:100%!important;
+}
+
+header .maturity-filter{
+  min-width:0!important;
+  min-height:50px!important;
+  padding:7px 4px!important;
+}
+
+header .maturity-filter span{
+  font-size:9px!important;
+  line-height:1.05!important;
+}
+
+header .maturity-filter small{
+  margin-top:3px!important;
+  font-size:8px!important;
+}
+
+main{
+  padding-top:14px!important;
+}
+
+main > .search{
+  margin-top:0!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v4.2</span>
+  <span class="app-version">v4.3</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3040,11 +3080,6 @@ header{
   <div id="caveTabs" class="cave-tabs" aria-label="Choisir une cave"></div>
   <div id="casierTabs" class="tabs top-casier-tabs" aria-label="Choisir un casier"></div>
   <div id="yearStats" class="yearbox" aria-label="Répartition par millésime"></div>
-</header>
-
-<main>
-  <input id="search" class="search" placeholder="Rechercher un vin, domaine, millésime…">
-
   <div id="maturityFilters" class="maturity-filters" aria-label="Rechercher par maturité">
     <button type="button" class="maturity-filter z1" data-zone="1">
       <span>Jeune</span><small id="matCount1">0 bt</small>
@@ -3062,6 +3097,11 @@ header{
       <span>Non renseigné</span><small id="matCount0">0 bt</small>
     </button>
   </div>
+</header>
+
+<main>
+  <input id="search" class="search" placeholder="Rechercher un vin, domaine, millésime…">
+
 
   <div id="resultPanel" class="result-panel" hidden>
     <div id="resultTitle" class="result-title"></div>
@@ -3556,6 +3596,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=4.2"></script>
+<script src="app.js?v=4.3"></script>
 </body>
 </html>
