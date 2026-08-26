@@ -430,6 +430,13 @@ function openConfigDialog(firstRun=false){
 
   if(firstRun) $('#configDialog').showModal();
   else showDialog($('#configDialog'));
+
+  // Chrome/Android donne sinon automatiquement le focus au premier champ
+  // ("Nombre de caves"), ce qui ouvre le clavier.
+  requestAnimationFrame(()=>{
+    const title=$('#configTitle');
+    if(title) title.focus({preventScroll:true});
+  });
 }
 
 function applyConfiguration(){
@@ -4320,15 +4327,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:480,
-    app:'ma-cave-configurable-v4.8',
+    version:490,
+    app:'ma-cave-configurable-v4.9',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-8.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-9.json';
   a.click();
 
   const backupAt=new Date().toISOString();
