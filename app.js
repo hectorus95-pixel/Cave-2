@@ -1005,6 +1005,27 @@ function statsData(){
   return {occ,gridOcc,bulkOcc,byCave,byCaveCasier,byYear,valueCave};
 }
 
+function updateTabCentering(){
+  ['#caveTabs','#casierTabs'].forEach(selector=>{
+    const el=$(selector);
+    if(!el) return;
+
+    // On retire d'abord le centrage pour mesurer la largeur naturelle.
+    el.classList.remove('tabs-fit');
+
+    // scrollWidth/clientWidth forcent le navigateur à calculer la mise en page.
+    const fits=el.scrollWidth<=el.clientWidth+1;
+    el.classList.toggle('tabs-fit',fits);
+
+    // Quand tout tient, la rangée revient proprement au centre.
+    if(fits) el.scrollLeft=0;
+  });
+}
+
+function scheduleTabCentering(){
+  requestAnimationFrame(updateTabCentering);
+}
+
 function renderCaveTabs(s){
   const tabs=$('#caveTabs');
   tabs.innerHTML=config.caves.map(c=>`
@@ -1012,6 +1033,7 @@ function renderCaveTabs(s){
       <b>${esc(c.code)}</b><span>${esc(c.name)}</span><small>${s.byCave[c.id]||0} bt</small>
     </button>
   `).join('');
+  scheduleTabCentering();
 }
 
 function renderCasierTabs(s){
@@ -1021,6 +1043,7 @@ function renderCasierTabs(s){
 
   if(cave.casiers===0&&cave.lignes===0&&cave.positions===0){
     tabs.innerHTML='<div class="bulk-only-tab">📦 Vrac uniquement</div>';
+    scheduleTabCentering();
     return;
   }
 
@@ -1029,6 +1052,7 @@ function renderCasierTabs(s){
     const c=i+1;
     return `<button class="tab ${c===activeCasier?'active':''}" data-c="${c}"><b>Casier ${c}</b><small>${counts[c]||0} bt</small></button>`;
   }).join('');
+  scheduleTabCentering();
 }
 
 function renderStats(){
@@ -3799,15 +3823,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:34,
-    app:'ma-cave-configurable-v3.4',
+    version:35,
+    app:'ma-cave-configurable-v3.5',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-4.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-5.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
@@ -3978,6 +4002,8 @@ $('#photoDialog').addEventListener('close',()=>{
   img.removeAttribute('src');
 });
 
+
+window.addEventListener('resize',scheduleTabCentering);
 
 let swipeStartX=null,swipeStartY=null;
 $('#grid').addEventListener('touchstart',e=>{

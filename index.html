@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.4</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.4">
+<title>Ma Cave à Vin – Configurable v3.5</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.5">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2440,11 +2440,23 @@ header{
   line-height:1.15!important;
 }
 
+
+/* V3.5 — centrage automatique des boutons Caves / Casiers
+   uniquement quand toute la rangée tient dans l'écran */
+.cave-tabs.tabs-fit,
+.top-casier-tabs.tabs-fit{
+  justify-content:center!important;
+}
+.cave-tabs:not(.tabs-fit),
+.top-casier-tabs:not(.tabs-fit){
+  justify-content:flex-start!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.4</span>
+  <span class="app-version">v3.5</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2966,6 +2978,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.4"></script>
+<script src="app.js?v=3.5"></script>
 </body>
 </html>
