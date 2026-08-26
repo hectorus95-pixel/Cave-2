@@ -11,7 +11,8 @@ const KI='ma-cave-configurable-v1-inv',
       KSALES='ma-cave-configurable-v2-sales',
       KBULK='ma-cave-configurable-v2-bulk',
       KHIST='ma-cave-configurable-v3-history',
-      KBACKUP='ma-cave-configurable-last-manual-backup';
+      KBACKUP='ma-cave-configurable-last-manual-backup',
+      KINTERNALBACKUP='ma-cave-configurable-internal-backup-v1';
 
 const DEFAULT_DIMENSIONS={casiers:3,lignes:15,positions:5};
 const DEFAULT_CONFIG={
@@ -4594,95 +4595,262 @@ function formatBackupDate(iso){
   }).replace(',',' à');
 }
 
-function renderLastBackup(){
-  const iso=localStorage.getItem(KBACKUP)||'';
-  const el=$('#lastBackupDate');
-  if(el) el.textContent=iso?formatBackupDate(iso):'Jamais';
+function readInternalBackup(){
+  try{
+    const raw=localStorage.getItem(KINTERNALBACKUP);
+    if(!raw) return null;
+    const d=JSON.parse(raw);
+    if(!d || !Array.isArray(d.inv) || !Array.isArray(d.refs)) return null;
+    return d;
+  }catch(e){
+    return null;
+  }
 }
 
-$('#export').addEventListener('click',()=>{
-  const payload={
-    version:5400,
-    app:'ma-cave-configurable-v5.4',
+function renderLastBackup(){
+  const internal=readInternalBackup();
+  const iso=internal?.exportedAt || localStorage.getItem(KBACKUP) || '';
+  const el=$('#lastBackupDate');
+  if(el) el.textContent=iso?formatBackupDate(iso):'Jamais';
+
+  const btn=$('#restoreInternalBackup');
+  if(btn){
+    btn.disabled=!internal;
+    btn.title=internal
+      ? `Copie navigateur du ${formatBackupDate(internal.exportedAt)}`
+      : 'Aucune sauvegarde interne disponible';
+  }
+}
+
+function downloadBackupFallback(json,filename){
+  const blob=new Blob([json],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+async function saveBackupFileOnDevice(json,filename){
+  const blob=new Blob([json],{type:'application/json'});
+
+  if(typeof window.showSaveFilePicker==='function'){
+    try{
+      const handle=await window.showSaveFilePicker({
+        suggestedName:filename,
+        types:[{
+          description:'Sauvegarde Ma Cave (JSON)',
+          accept:{'application/json':['.json']}
+        }]
+      });
+
+      const writable=await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+
+      return {method:'picker',saved:true};
+    }catch(err){
+      if(err?.name==='AbortError'){
+        return {method:'picker',saved:false,cancelled:true};
+      }
+
+      // Si l'accès direct échoue pour une raison technique,
+      // on conserve toujours un moyen de récupérer le fichier.
+      downloadBackupFallback(json,filename);
+      return {method:'download',saved:true,fallback:true};
+    }
+  }
+
+  downloadBackupFallback(json,filename);
+  return {method:'download',saved:true};
+}
+
+function makeBackupPayload(){
+  return {
+    version:5600,
+    app:'ma-cave-configurable-v5.6',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v5-4.json';
-  a.click();
+}
 
-  const backupAt=new Date().toISOString();
-  localStorage.setItem(KBACKUP,backupAt);
+function normalizeRestoredBackup(d){
+  if(!d || !Array.isArray(d.inv) || !Array.isArray(d.refs)) throw new Error('invalid');
+
+  const restoredConfig=normalizeConfig(d.config)||deriveConfigFromInventory(d.inv);
+  if(!restoredConfig) throw new Error('invalid');
+
+  // Compatibilité des anciennes sauvegardes mono-cave.
+  const migrated=migrateBackupCaves(d,restoredConfig);
+
+  return {
+    oldMonoCave:!d.config || !Array.isArray(d.config?.caves),
+    config:restoredConfig,
+    inv:buildInventory(restoredConfig,migrated.inv),
+    refs:Array.isArray(d.refs)?d.refs:[],
+    consumed:Array.isArray(migrated.consumed)?migrated.consumed:[],
+    sales:Array.isArray(migrated.sales)?migrated.sales:[],
+    bulk:Array.isArray(migrated.bulk)?migrated.bulk:[]
+  };
+}
+
+function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
+  const restored=normalizeRestoredBackup(d);
+
+  config=restored.config;
+  inv=restored.inv;
+  refs=restored.refs;
+  consumed=restored.consumed;
+  sales=restored.sales;
+  bulk=restored.bulk;
+
+  consumed.forEach(e=>{
+    if(!['verygood','good','bad','verybad','neutral'].includes(e.rating)) e.rating='neutral';
+    if(e.comment===undefined)e.comment='';
+    e.bulk=!!e.bulk;
+  });
+
+  bulk=bulk.filter(e=>e&&e.refId).map((e,i)=>({
+    id:String(e.id||`bulk_${Date.now()}_${i}`),
+    caveId:String(e.caveId||config.caves[0].id),
+    refId:String(e.refId),
+    locationText:e.locationText!==undefined
+      ? String(e.locationText||'').trim()
+      : String(e.emplacement||'').replace(/^.*?Vrac\s*·?\s*/i,'').trim(),
+    addedAt:e.addedAt||new Date().toISOString(),
+    bulk:true
+  }));
+
+  if(bulk.length){
+    const cavesWithBulk=new Set(bulk.map(x=>x.caveId));
+    config.caves.forEach(c=>{
+      if(cavesWithBulk.has(c.id)) c.bulkEnabled=true;
+    });
+  }
+
+  sales.forEach(e=>{
+    e.costPrice=Number(e.costPrice??0)||0;
+    e.salePrice=Number(e.salePrice??0)||0;
+    e.costKnown=e.costKnown!==undefined?!!e.costKnown:e.costPrice>0;
+    e.profit=e.costKnown?e.salePrice-e.costPrice:null;
+  });
+
+  refs.forEach(r=>{
+    if(r.maturiteDebut===undefined) r.maturiteDebut='';
+    if(r.maturiteFin===undefined) r.maturiteFin='';
+  });
+
+  activeCaveId=config.caves[0].id;
+  activeCasier=config.caves[0]?.casiers===0 ? 0 : 1;
+  clearEmptySelection();
+  clearOccupiedSelection();
+  persist(`Restauration · ${sourceLabel}`);
+  render();
+  renderSales();
+  refreshPhotoButtons();
+
+  return restored;
+}
+
+$('#export').addEventListener('click',async ()=>{
+  const payload=makeBackupPayload();
+  const json=JSON.stringify(payload,null,2);
+  const filename='sauvegarde-ma-cave-configurable-v5-6.json';
+
+  // Copie 1 : sauvegarde interne du navigateur.
+  let internalSaved=false;
+  try{
+    localStorage.setItem(KINTERNALBACKUP,json);
+    localStorage.setItem(KBACKUP,payload.exportedAt);
+    internalSaved=true;
+  }catch(e){
+    internalSaved=false;
+  }
+
+  // Copie 2 : fichier sur le téléphone.
+  // Si disponible, le navigateur laisse choisir l'emplacement et le nom.
+  // Sinon, téléchargement classique dans le dossier habituel.
+  let deviceResult={saved:false};
+  try{
+    deviceResult=await saveBackupFileOnDevice(json,filename);
+  }catch(e){
+    deviceResult={saved:false,error:true};
+  }
+
   renderLastBackup();
 
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  if(deviceResult.cancelled){
+    alert(
+      internalSaved
+        ? 'La copie navigateur a bien été enregistrée. La sauvegarde sur le téléphone a été annulée.'
+        : 'La sauvegarde sur le téléphone a été annulée et la copie navigateur n’a pas pu être enregistrée.'
+    );
+    return;
+  }
+
+  if(!internalSaved && deviceResult.saved){
+    alert(
+      'Le fichier a bien été enregistré sur le téléphone, mais la copie de secours dans le navigateur n’a pas pu être créée.'
+    );
+    return;
+  }
+
+  if(internalSaved && !deviceResult.saved){
+    alert(
+      'La copie navigateur a bien été enregistrée, mais le fichier sur le téléphone n’a pas pu être créé.'
+    );
+    return;
+  }
+
+  if(deviceResult.fallback){
+    alert(
+      'La copie navigateur est enregistrée. Le choix direct de l’emplacement a échoué : le fichier a été téléchargé dans le dossier habituel.'
+    );
+  }
 });
+
+$('#restoreInternalBackup').addEventListener('click',()=>{
+  const d=readInternalBackup();
+  if(!d){
+    renderLastBackup();
+    return alert('Aucune sauvegarde interne disponible.');
+  }
+
+  const date=formatBackupDate(d.exportedAt);
+  const bottleCount=(Array.isArray(d.inv)?d.inv.filter(x=>x?.refId).length:0) +
+    (Array.isArray(d.bulk)?d.bulk.filter(x=>x?.refId).length:0);
+
+  if(!confirm(
+    `Restaurer la copie navigateur du ${date} ?\n\n`+
+    `${bottleCount} bouteille${bottleCount>1?'s':''} enregistrée${bottleCount>1?'s':''} dans cette sauvegarde.\n\n`+
+    `Les données actuelles de l’application seront remplacées.`
+  )) return;
+
+  try{
+    const restored=applyRestoredBackup(d,'copie navigateur');
+    alert(restored.oldMonoCave
+      ? 'Copie navigateur restaurée. Les anciennes données sans cave ont été placées dans Cave 1.'
+      : 'Copie navigateur restaurée avec succès.');
+  }catch(err){
+    alert('La copie navigateur est invalide.');
+  }
+});
+
 $('#import').addEventListener('change',async e=>{
-  const f=e.target.files?.[0]; if(!f) return;
+  const f=e.target.files?.[0];
+  if(!f) return;
+
   try{
     const d=JSON.parse(await f.text());
-    if(!Array.isArray(d.inv)||!Array.isArray(d.refs)) throw new Error();
+    const restored=applyRestoredBackup(d,'fichier JSON');
 
-    const restoredConfig=normalizeConfig(d.config)||deriveConfigFromInventory(d.inv);
-    if(!restoredConfig) throw new Error();
-
-    // Compatibilité des anciennes sauvegardes mono-cave (ex. version 4 de l'application d'origine).
-    // Toute donnée sans cave explicite va automatiquement dans la première cave, donc Cave 1.
-    const migrated=migrateBackupCaves(d,restoredConfig);
-
-    config=restoredConfig;
-    inv=buildInventory(config,migrated.inv);
-    refs=d.refs;
-    consumed=migrated.consumed;
-    sales=migrated.sales;
-    bulk=migrated.bulk;
-
-    consumed.forEach(e=>{
-      if(!['verygood','good','bad','verybad','neutral'].includes(e.rating)) e.rating='neutral';
-      if(e.comment===undefined)e.comment='';
-      e.bulk=!!e.bulk;
-    });
-    bulk=bulk.filter(e=>e&&e.refId).map((e,i)=>({
-      id:String(e.id||`bulk_${Date.now()}_${i}`),
-      caveId:String(e.caveId||config.caves[0].id),
-      refId:String(e.refId),
-      locationText:e.locationText!==undefined
-        ? String(e.locationText||'').trim()
-        : String(e.emplacement||'').replace(/^.*?Vrac\s*·?\s*/i,'').trim(),
-      addedAt:e.addedAt||new Date().toISOString(),
-      bulk:true
-    }));
-    if(bulk.length){
-      const cavesWithBulk=new Set(bulk.map(x=>x.caveId));
-      config.caves.forEach(c=>{
-        if(cavesWithBulk.has(c.id)) c.bulkEnabled=true;
-      });
-    }
-    sales.forEach(e=>{
-      e.costPrice=Number(e.costPrice??0)||0;e.salePrice=Number(e.salePrice??0)||0;
-      e.costKnown=e.costKnown!==undefined?!!e.costKnown:e.costPrice>0;
-      e.profit=e.costKnown?e.salePrice-e.costPrice:null;
-    });
-    refs.forEach(r=>{
-      if(r.maturiteDebut===undefined) r.maturiteDebut='';
-      if(r.maturiteFin===undefined) r.maturiteFin='';
-    });
-
-    activeCaveId=config.caves[0].id;
-    activeCasier=1;
-    clearEmptySelection();
-    clearOccupiedSelection();
-    persist('Restauration d’une sauvegarde');
-    render();
-    renderSales();
-    refreshPhotoButtons();
-    const oldMonoCave=!d.config || !Array.isArray(d.config?.caves);
-    alert(oldMonoCave
+    alert(restored.oldMonoCave
       ? 'Ancienne sauvegarde restaurée. Les données sans information de cave ont été placées dans Cave 1.'
       : 'Sauvegarde restaurée avec les caves, modules, consommations, ventes et stock vrac.');
-  }catch(err){ alert('Sauvegarde invalide.'); }
+  }catch(err){
+    alert('Sauvegarde invalide.');
+  }
+
   e.target.value='';
 });
 
