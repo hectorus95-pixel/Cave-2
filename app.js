@@ -1672,6 +1672,7 @@ function showMaturityResults(zone){
   $('#search').value='';
   clearYearFilter();
   clearMaturityFilter();
+  clearStockFilter();
 
   const active=$$('.maturity-filter').find(b=>Number(b.dataset.zone)===zone);
   if(active) active.classList.add('active');
@@ -4319,15 +4320,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:470,
-    app:'ma-cave-configurable-v4.7',
+    version:480,
+    app:'ma-cave-configurable-v4.8',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-7.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-8.json';
   a.click();
 
   const backupAt=new Date().toISOString();
