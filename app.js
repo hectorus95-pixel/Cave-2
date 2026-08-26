@@ -906,78 +906,83 @@ function ageClass(y){
 }
 
 
-function maturityInfo(r){
-  const s=Number(r?.maturiteDebut);
-  const e=Number(r?.maturiteFin);
-  const now=currentDecimalYear();
+function maturityYearValue(value){
+  const text=String(value??'').trim();
+  if(!text) return null;
+  const n=Number(text);
+  return Number.isFinite(n) && n>=1900 && n<=2200 ? Math.trunc(n) : null;
+}
 
-  if(!s && !e){
+function maturityInfo(r){
+  const startInput=maturityYearValue(r?.maturiteDebut);
+  const endInput=maturityYearValue(r?.maturiteFin);
+  const nowDecimal=currentDecimalYear();
+  const currentYear=new Date().getFullYear();
+
+  if(startInput===null && endInput===null){
     return {known:false,zone:0,label:'Maturité non renseignée',cursor:0};
   }
 
-  // Les données de la cave sont saisies à l'année près.
-  // Une année de fin est donc INCLUSIVE :
-  // ex. fin 2027 = surmaturité seulement à partir du 01/01/2028.
-  const start=s || Number(r?.millesime) || Math.floor(now);
-  const end=e || start;
-  const endExclusive=end+1;
-
+  const vintage=maturityYearValue(r?.millesime);
+  const start=startInput ?? vintage ?? currentYear;
+  const end=endInput ?? start;
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-  // 1. JEUNE : avant l'année de début de maturité.
-  // Le curseur reste exclusivement dans le quart vert (0–25 %).
-  if(now < start){
-    const vintage=Number(r?.millesime);
-    const youngStart=(vintage && vintage<start) ? vintage : start-1;
-    const progress=clamp((now-youngStart)/Math.max(1,start-youngStart),0,1);
-    const cursor=2 + progress*21; // 2–23 %
+  // Classement : uniquement sur l'année civile.
+  // La fiche, les compteurs et les filtres utilisent TOUS cette zone.
+  if(currentYear < start){
+    const youngStart=(vintage!==null && vintage<start) ? vintage : start-1;
+    const progress=clamp((nowDecimal-youngStart)/Math.max(1,start-youngStart),0,1);
     return {
       known:true,
       zone:1,
       label:`Jeune · maturité à partir de ${start}`,
-      cursor
+      cursor:2 + progress*21
     };
   }
 
-  // 2. À BOIRE : de l'année de début jusqu'à l'année PRÉCÉDANT
-  // la dernière année de maturité.
-  // Le curseur reste exclusivement dans le quart jaune (25–50 %).
-  if(now < end){
-    const progress=clamp((now-start)/Math.max(1,end-start),0,1);
-    const cursor=27 + progress*21; // 27–48 %
+  if(currentYear < end){
+    const progress=clamp((nowDecimal-start)/Math.max(1,end-start),0,1);
     return {
       known:true,
       zone:2,
       label:`À boire · ${start}–${end}`,
-      cursor
+      cursor:27 + progress*21
     };
   }
 
-  // 3. FIN DE MATURITÉ : toute la dernière année indiquée.
-  // Ex. maturiteFin=2027 => du 01/01/2027 au 31/12/2027.
-  // Le curseur reste exclusivement dans le quart orange (50–75 %).
-  if(now < endExclusive){
-    const progress=clamp(now-end,0,1);
-    const cursor=52 + progress*21; // 52–73 %
+  if(currentYear === end){
+    const progress=clamp(nowDecimal-end,0,1);
     return {
       known:true,
       zone:3,
       label:`Fin de maturité · dernière année ${end}`,
-      cursor
+      cursor:52 + progress*21
     };
   }
 
-  // 4. SURMATURITÉ : uniquement APRÈS la fin complète de l'année limite.
-  // Le curseur reste exclusivement dans le quart rouge (75–100 %).
-  const yearsOver=now-endExclusive;
-  const progress=clamp(yearsOver/3,0,1);
-  const cursor=77 + progress*21; // 77–98 %
+  const yearsOver=currentYear-end;
+  const progress=clamp((yearsOver-1 + (nowDecimal-currentYear))/3,0,1);
   return {
     known:true,
     zone:4,
     label:`Surmaturité · depuis ${end+1}`,
-    cursor
+    cursor:77 + progress*21
   };
+}
+
+function maturityZone(r){
+  const mi=maturityInfo(r);
+  return mi.known ? mi.zone : 0;
+}
+
+function maturityMatchesZone(r,zone){
+  return maturityZone(r)===Number(zone);
+}
+
+function maturityEntriesByZone(zone){
+  zone=Number(zone);
+  return refsWithLocations(r=>maturityMatchesZone(r,zone));
 }
 
 function moduleEnabled(name){
@@ -1111,11 +1116,13 @@ function renderStats(){
   renderCasierTabs(s);
 
   const maturityCounts={0:0,1:0,2:0,3:0,4:0};
-  s.occ.forEach(x=>{
-    const r=ref(x.refId),mi=maturityInfo(r),z=mi.known?mi.zone:0;
-    if(maturityCounts[z]!==undefined) maturityCounts[z]++;
+  [0,1,2,3,4].forEach(z=>{
+    maturityCounts[z]=maturityEntriesByZone(z).length;
   });
-  [1,2,3,4,0].forEach(z=>{const el=$('#matCount'+z);if(el)el.textContent=`${maturityCounts[z]} bt`;});
+  [1,2,3,4,0].forEach(z=>{
+    const el=$('#matCount'+z);
+    if(el) el.textContent=`${maturityCounts[z]} bt`;
+  });
 
   const years=Object.entries(s.byYear).sort((a,b)=>{
     if(a[0]==='Sans année')return 1;if(b[0]==='Sans année')return -1;return Number(b[0])-Number(a[0]);
@@ -1281,13 +1288,12 @@ function showMaturityResults(zone){
     4:'Surmaturité'
   };
 
-  const matches=refsWithLocations(r=>{
-    const mi=maturityInfo(r);
-    if(zone===0) return !mi.known;
-    return mi.known && mi.zone===zone;
-  });
+  const matches=maturityEntriesByZone(zone);
 
   const items=groupedResultItems(matches);
+
+  const countEl=$('#matCount'+zone);
+  if(countEl) countEl.textContent=`${matches.length} bt`;
 
   showResultPanel(
     `${labels[zone]} · ${items.length} vin${items.length>1?'s':''} · ${matches.length} bouteille${matches.length>1?'s':''}`,
@@ -3879,15 +3885,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:314,
-    app:'ma-cave-configurable-v3.14',
+    version:315,
+    app:'ma-cave-configurable-v3.15',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-14.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-15.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
