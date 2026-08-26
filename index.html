@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.9</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.9">
+<title>Ma Cave à Vin – Configurable v3.10</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.10">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2552,11 +2552,40 @@ header{
   margin:0!important;
 }
 
+
+/* V3.10 — indication Magnum visible dans les casiers et le Vrac */
+.slot .magnum-badge{
+  display:inline-block!important;
+  margin-top:3px!important;
+  padding:2px 5px!important;
+  border-radius:5px!important;
+  background:rgba(0,0,0,.46)!important;
+  border:1px solid rgba(255,255,255,.62)!important;
+  color:#fff!important;
+  font-size:7px!important;
+  line-height:1.15!important;
+  font-weight:900!important;
+}
+.bulk-magnum-badge{
+  display:inline-block!important;
+  width:max-content!important;
+  margin:4px 0 1px!important;
+  padding:2px 6px!important;
+  border-radius:5px!important;
+  background:rgba(0,0,0,.40)!important;
+  border:1px solid rgba(255,255,255,.58)!important;
+  color:#fff!important;
+  font-size:8px!important;
+  line-height:1.2!important;
+  font-style:normal!important;
+  font-weight:900!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.9</span>
+  <span class="app-version">v3.10</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3077,6 +3106,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.9"></script>
+<script src="app.js?v=3.10"></script>
 </body>
 </html>

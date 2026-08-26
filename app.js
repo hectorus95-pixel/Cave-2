@@ -847,6 +847,20 @@ function wineClass(c){
   ) return 'spark';
   return 'red';
 }
+
+function isMagnumFormat(format){
+  const f=normalizeSearchText(String(format||''))
+    .replace(/,/g,'.')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  return (
+    f.includes('magnum') ||
+    /(^|\D)150\s*cl(\D|$)/.test(f) ||
+    /(^|\D)1\.5(?:0)?\s*l(?:itre)?s?(\D|$)/.test(f)
+  );
+}
+
 function currentDecimalYear(){
   const d=new Date(), y=d.getFullYear();
   const start=new Date(y,0,1), end=new Date(y+1,0,1);
@@ -2047,6 +2061,7 @@ function renderBulk(){
     return `<button type="button" class="bulk-card wine-color ${wineClass(r.couleur)}" data-bulk-open="${esc(sample.id)}">
       <span class="bulk-qty">×${items.length}</span>
       <b>${esc(r.vin)}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
+      ${isMagnumFormat(r.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}
       <span>${esc(r.domaine||'')}</span>
       <small>📍 ${esc(bulkLocationLabel(sample.locationText))} · ${euro((Number(r.prix)||0)*items.length)}</small>
     </button>`;
@@ -2120,7 +2135,7 @@ function openBulkGroup(id){
   bulkActionIds=ids;
   const r=ref(seed.refId),cave=caveById(seed.caveId);
   $('#bulkActionTitle').textContent=r?.vin||'Vin en vrac';
-  $('#bulkActionInfo').innerHTML=`<b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b><span>${esc(r?.domaine||'')}</span><small>${esc(cave?.code||'')} · 📍 ${esc(bulkLocationLabel(seed.locationText))} · ${ids.length} bouteille${ids.length>1?'s':''}</small>`;
+  $('#bulkActionInfo').innerHTML=`<b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b>${isMagnumFormat(r?.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}<span>${esc(r?.domaine||'')}</span><small>${esc(cave?.code||'')} · 📍 ${esc(bulkLocationLabel(seed.locationText))} · ${ids.length} bouteille${ids.length>1?'s':''}</small>`;
   $('#bulkActionQty').max=ids.length;
   $('#bulkActionQty').value=ids.length;
   $('#bulkActionSell').hidden=!moduleEnabled('sales');
@@ -2731,6 +2746,7 @@ function render(){
         <span class="vintage-strip age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
         <span class="slot-main wine-color ${wc}">
           <span class="pos">L${x.ligne}·P${x.position}</span>
+          ${isMagnumFormat(r.format)?'<span class="magnum-badge">Magnum</span>':''}
           <span class="name">${esc(r.vin)}</span>
           ${r.domaine?`<span class="domain">${esc(r.domaine)}</span>`:''}
           ${maturityGaugeHtml(r)}
@@ -3863,15 +3879,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:39,
-    app:'ma-cave-configurable-v3.9',
+    version:310,
+    app:'ma-cave-configurable-v3.10',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-9.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-10.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
