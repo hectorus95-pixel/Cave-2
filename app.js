@@ -21,7 +21,8 @@ const DEFAULT_CONFIG={
     code:'C1',
     ...DEFAULT_DIMENSIONS
   }],
-  modules:{sales:true,bulk:true}
+  modules:{sales:true,bulk:true},
+  stockThresholds:{low:1,medium:6,high:12}
 };
 
 let config=load(KCFG,null);
@@ -153,6 +154,52 @@ function normalizeCave(raw,index=0){
   return cave;
 }
 
+function normalizeStockThresholds(raw){
+  const defaults={low:1,medium:6,high:12};
+  if(!raw) return defaults;
+
+  const low=Number(raw.low);
+  const medium=Number(raw.medium);
+  const high=Number(raw.high);
+
+  if(
+    !Number.isInteger(low) ||
+    !Number.isInteger(medium) ||
+    !Number.isInteger(high) ||
+    low<1 ||
+    low>=medium ||
+    medium>=high ||
+    high>999
+  ){
+    return defaults;
+  }
+
+  return {low,medium,high};
+}
+
+function stockThresholdValues(){
+  return normalizeStockThresholds(config?.stockThresholds);
+}
+
+function stockFilterText(){
+  const {low,medium,high}=stockThresholdValues();
+  return {
+    high:`${high}+ bt`,
+    medium:`${medium} à ${high} bt`,
+    low:`${low} à ${medium-1} bt`
+  };
+}
+
+function renderStockFilterLabels(){
+  const labels=stockFilterText();
+  const high=$('#stockLabelHigh');
+  const medium=$('#stockLabelMedium');
+  const low=$('#stockLabelLow');
+  if(high) high.textContent=labels.high;
+  if(medium) medium.textContent=labels.medium;
+  if(low) low.textContent=labels.low;
+}
+
 function normalizeConfig(raw){
   if(!raw) return null;
 
@@ -166,7 +213,7 @@ function normalizeConfig(raw){
       lignes:raw.lignes,
       positions:raw.positions
     },0);
-    return legacy ? {caves:[legacy],modules:{sales:true}} : null;
+    return legacy ? {caves:[legacy],modules:{sales:true},stockThresholds:normalizeStockThresholds(raw.stockThresholds)} : null;
   }
 
   if(raw.caves.length<1 || raw.caves.length>12) return null;
@@ -188,7 +235,8 @@ function normalizeConfig(raw){
   const modules={
     sales:raw.modules?.sales!==undefined ? !!raw.modules.sales : true
   };
-  return {caves,modules};
+  const stockThresholds=normalizeStockThresholds(raw.stockThresholds);
+  return {caves,modules,stockThresholds};
 }
 
 function caveById(id){
@@ -305,12 +353,48 @@ function readConfigForm(){
   if(!caves.length || caves.some(c=>!c)) return null;
   const codes=caves.map(c=>c.code);
   if(new Set(codes).size!==codes.length) return null;
+
+  const low=Number($('#cfgStockLow')?.value);
+  const medium=Number($('#cfgStockMedium')?.value);
+  const high=Number($('#cfgStockHigh')?.value);
+  if(
+    !Number.isInteger(low) ||
+    !Number.isInteger(medium) ||
+    !Number.isInteger(high) ||
+    low<1 ||
+    low>=medium ||
+    medium>=high ||
+    high>999
+  ) return null;
+
   return {
     caves,
     modules:{
       sales:!!$('#cfgModuleSales')?.checked
-    }
+    },
+    stockThresholds:{low,medium,high}
   };
+}
+
+function renderStockThresholdPreview(){
+  const low=Number($('#cfgStockLow')?.value);
+  const medium=Number($('#cfgStockMedium')?.value);
+  const high=Number($('#cfgStockHigh')?.value);
+  const el=$('#stockThresholdPreview');
+  if(!el) return;
+
+  if(
+    Number.isInteger(low) &&
+    Number.isInteger(medium) &&
+    Number.isInteger(high) &&
+    low>=1 && low<medium && medium<high
+  ){
+    el.textContent=`${low} à ${medium-1} · ${medium} à ${high} · ${high}+`;
+    el.classList.remove('invalid');
+  }else{
+    el.textContent='Seuils invalides : faible < moyen < élevé';
+    el.classList.add('invalid');
+  }
 }
 
 function updateConfigCapacityPreview(){
@@ -334,9 +418,14 @@ function openConfigDialog(firstRun=false){
   $('#cfgCaveCount').value=cfg.caves.length;
   renderConfigEditors(cfg.caves);
   $('#cfgModuleSales').checked=cfg.modules?.sales!==false;
+  const thresholds=normalizeStockThresholds(cfg.stockThresholds);
+  $('#cfgStockLow').value=thresholds.low;
+  $('#cfgStockMedium').value=thresholds.medium;
+  $('#cfgStockHigh').value=thresholds.high;
   $('#configError').hidden=true;
   $('#configError').innerHTML='';
   $('#configCancel').hidden=firstRun;
+  renderStockThresholdPreview();
   updateConfigCapacityPreview();
 
   if(firstRun) $('#configDialog').showModal();
@@ -347,7 +436,7 @@ function applyConfiguration(){
   const next=readConfigForm();
   if(!next){
     $('#configError').hidden=false;
-    $('#configError').textContent='Vérifie les noms, codes et dimensions. Chaque code doit être unique (3 caractères maximum).';
+    $('#configError').textContent='Vérifie les noms, codes, dimensions et seuils de stock. Les seuils doivent respecter : faible < moyen < élevé.';
     return;
   }
 
@@ -1357,6 +1446,7 @@ function renderCasierTabs(s){
 
 function renderStats(){
   const s=statsData();
+  renderStockFilterLabels();
   $('#count').textContent=s.occ.length;
   $('#free').textContent=inv.length-s.gridOcc.length;
   renderCaveTabs(s);
@@ -1533,9 +1623,10 @@ function stockCountByRef(){
 
 function stockBucketMatches(count,bucket){
   count=Number(count)||0;
-  if(bucket==='12plus') return count>=12;
-  if(bucket==='6to12') return count>=6 && count<=12;
-  if(bucket==='1to5') return count>=1 && count<=5;
+  const {low,medium,high}=stockThresholdValues();
+  if(bucket==='12plus') return count>=high;
+  if(bucket==='6to12') return count>=medium && count<=high;
+  if(bucket==='1to5') return count>=low && count<medium;
   return false;
 }
 
@@ -1543,7 +1634,6 @@ function showStockResults(bucket){
   $('#search').value='';
   clearYearFilter();
   clearMaturityFilter();
-  clearStockFilter();
   clearStockFilter();
 
   const active=$$('.stock-filter').find(b=>b.dataset.stock===bucket);
@@ -1562,10 +1652,11 @@ function showStockResults(bucket){
       normalizeSearchText(a.r.vin).localeCompare(normalizeSearchText(b.r.vin),'fr')
     );
 
+  const t=stockFilterText();
   const labels={
-    '12plus':'12+ bouteilles',
-    '6to12':'6 à 12 bouteilles',
-    '1to5':'1 à 5 bouteilles'
+    '12plus':t.high.replace(' bt',' bouteilles'),
+    '6to12':t.medium.replace(' bt',' bouteilles'),
+    '1to5':t.low.replace(' bt',' bouteilles')
   };
 
   showResultPanel(
@@ -4013,6 +4104,12 @@ $('#cfgCavesList').addEventListener('change',e=>{
   }
 });
 ['cfgModuleSales'].forEach(id=>$('#'+id).addEventListener('change',()=>{$('#configError').hidden=true;}));
+['cfgStockLow','cfgStockMedium','cfgStockHigh'].forEach(id=>{
+  $('#'+id).addEventListener('input',()=>{
+    $('#configError').hidden=true;
+    renderStockThresholdPreview();
+  });
+});
 
 $('#search').addEventListener('input',showSearchResults);
 $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
@@ -4222,15 +4319,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:460,
-    app:'ma-cave-configurable-v4.6',
+    version:470,
+    app:'ma-cave-configurable-v4.7',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v4-6.json';
+  a.download='sauvegarde-ma-cave-configurable-v4-7.json';
   a.click();
 
   const backupAt=new Date().toISOString();
