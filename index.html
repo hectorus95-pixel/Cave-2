@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v4.0</title>
-<link rel="manifest" href="manifest.webmanifest?v=4.0">
+<title>Ma Cave à Vin – Configurable v4.1</title>
+<link rel="manifest" href="manifest.webmanifest?v=4.1">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2906,11 +2906,31 @@ header{
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
 }
 
+
+/* =========================================================
+   V4.1 — sélection d'année visuellement cohérente
+   ========================================================= */
+.year-chip.active{
+  outline:none!important;
+  box-shadow:none!important;
+  border-color:transparent!important;
+}
+.year-chip.active::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:30!important;
+  pointer-events:none!important;
+  border:3px solid rgba(255,255,255,.98)!important;
+  border-radius:9px!important;
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.72)!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v4.0</span>
+  <span class="app-version">v4.1</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3431,6 +3451,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=4.0"></script>
+<script src="app.js?v=4.1"></script>
 </body>
 </html>
