@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
 <title>Ma Cave à Vin – Configurable v2.1</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.1">
+<link rel="manifest" href="manifest.webmanifest?v=3.2">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2165,87 +2165,115 @@ header{
 }
 
 
-/* V3.1 — déplacement visuel des bouteilles */
-.move-mode-bar{
+/* V3.1 — déplacement visuel d'une bouteille */
+.move-btn{
+  background:#3f566c!important;
+  color:#fff!important;
+}
+.move-banner{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:10px;
   margin:10px 0;
   padding:12px;
-  border:2px solid #d2a52c;
+  border:2px solid #76a7d4;
   border-radius:12px;
-  background:#302817;
+  background:#1d2b38;
 }
-.move-mode-bar[hidden]{display:none!important}
-.move-mode-bar>div{min-width:0}
-.move-mode-bar b{
-  display:block;
+.move-banner[hidden]{display:none!important}
+.move-banner>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.move-banner b{
   font-size:14px;
 }
-.move-mode-bar span{
-  display:block;
-  margin-top:3px;
-  font-size:12px;
-  font-weight:750;
-  overflow-wrap:anywhere;
+.move-banner span{
+  font-size:11px;
+  line-height:1.35;
+  color:#c7d5e2;
 }
-.move-mode-bar small{
-  display:block;
-  margin-top:4px;
-  color:#c7bfae;
-  font-size:10px;
-  line-height:1.25;
-}
-.move-mode-bar button{
+.move-banner button{
   flex:0 0 auto;
 }
-.slot.move-target{
-  outline:3px solid #d2a52c;
+.move-mode .slot.empty.move-target{
+  border:2px dashed #84c795!important;
+  box-shadow:inset 0 0 0 2px rgba(132,199,149,.12);
+}
+.move-mode .slot.empty.move-target .name{
+  font-weight:900!important;
+  color:#b6e7c1!important;
+}
+.move-mode .slot.occupied:not(.move-source){
+  opacity:.5;
+}
+.slot.move-source{
+  position:relative;
+  outline:3px solid #76a7d4!important;
   outline-offset:-3px;
 }
-.slot.move-target .name{
+.move-source-badge{
+  position:absolute;
+  z-index:5;
+  top:3px;
+  right:3px;
+  padding:2px 5px;
+  border-radius:6px;
+  background:#234c70;
+  color:#fff;
+  font-size:7px;
   font-weight:900;
 }
-.slot.move-blocked{
-  opacity:.55;
+#moveToBulk{
+  min-height:38px;
+  white-space:nowrap;
 }
-.bulk-head-actions{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  gap:6px;
+.move-mode #bulkPanel{
+  border-color:#76a7d4!important;
 }
-.move-to-bulk{
-  border:1px solid #d2a52c!important;
-  background:#3a2d13!important;
-  color:#fff!important;
-  font-weight:850!important;
-}
-.move-bulk-dialog{
-  width:min(94vw,520px);
-}
-.move-bulk-dialog label{
+
+
+/* V3.2 — déplacement groupé */
+.move-banner-actions{
   display:flex;
   flex-direction:column;
   gap:6px;
-  margin:12px 0;
+  flex:0 0 auto;
 }
-.move-bulk-dialog input{
-  min-height:46px;
-  padding:10px 12px;
-  border:1px solid #514b4b;
-  border-radius:10px;
-  background:#292525;
-  color:#fff;
-  font-size:15px;
+.move-banner-actions button{
+  min-height:36px;
+}
+.move-mode .slot.empty.move-target.move-target-selected{
+  border:3px solid #8ed49e!important;
+  background:#1d3825!important;
+  box-shadow:inset 0 0 0 2px rgba(142,212,158,.18)!important;
+}
+.move-mode .slot.empty.move-target.move-target-selected .name{
+  color:#d6f3dd!important;
+  font-weight:950!important;
+}
+@media (max-width:520px){
+  .move-banner{
+    align-items:flex-start;
+  }
+  .move-banner-actions{
+    min-width:104px;
+  }
+  #confirmMoveTargets{
+    font-size:11px;
+    line-height:1.15;
+    padding:7px 8px;
+  }
 }
 
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.1</span>
+  <span class="app-version">v3.2</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -2282,25 +2310,24 @@ header{
     <div id="resultList" class="result-list"></div>
   </div>
 
+  <section id="moveBanner" class="move-banner" hidden>
+    <div>
+      <b id="moveBannerTitle">📦 Déplacer une bouteille</b>
+      <span id="moveBannerText">Choisis une cave, un casier puis touche un emplacement libre.</span>
+    </div>
+    <div class="move-banner-actions">
+      <button id="confirmMoveTargets" type="button" class="primary" hidden>Confirmer</button>
+      <button id="cancelMove" type="button" class="secondary">Annuler</button>
+    </div>
+  </section>
 
   <div id="grid"></div>
-
-  <section id="moveModeBar" class="move-mode-bar" hidden>
-    <div>
-      <b>↔️ Déplacement en cours</b>
-      <span id="moveModeInfo"></span>
-      <small>Choisis une cave, un casier puis touche directement un emplacement vide.</small>
-    </div>
-    <button id="cancelMove" type="button" class="secondary">Annuler</button>
-  </section>
 
   <section id="bulkPanel" class="bulk-panel" hidden>
     <div class="bulk-head">
       <div><h2>📦 Vrac</h2><small id="bulkCaveLabel"></small></div>
-      <div class="bulk-head-actions">
-        <button type="button" id="moveToBulk" class="move-to-bulk" hidden>↔️ Déplacer ici en vrac</button>
-        <button type="button" id="openBulkAdd">＋ Ajouter en vrac</button>
-      </div>
+      <button type="button" id="openBulkAdd">＋ Ajouter en vrac</button>
+      <button type="button" id="moveToBulk" class="move-btn" hidden>📦 Déplacer ici</button>
     </div>
     <div id="bulkList" class="bulk-list"></div>
   </section>
@@ -2593,9 +2620,9 @@ header{
     <div id="viewActions" class="dlgactions">
       <button id="editOneBottle" class="primary">✏️ Éditer cette bouteille</button>
       <button id="editAllBottles" class="primary">✏️ Éditer toutes les bouteilles</button>
-      <button id="moveBottle" class="primary">↔️ Déplacer cette bouteille</button>
       <button id="sellBottle" class="sell-btn">💶 Vendre</button>
       <button id="consumed" class="consumed-btn">🍷 Bue</button>
+      <button id="moveBottle" class="move-btn">📦 Déplacer</button>
       <button id="remove" class="danger">Sortir cette bouteille</button>
       <button id="cancel" class="secondary">Fermer</button>
     </div>
@@ -2633,16 +2660,16 @@ header{
   </div>
 </dialog>
 
-<dialog id="moveBulkDialog" class="move-bulk-dialog">
+<dialog id="moveBulkDialog" class="bulk-dialog">
   <div class="dlg">
-    <h2>↔️ Déplacer vers le vrac</h2>
+    <h2>📦 Déplacer vers le vrac</h2>
     <p class="where">Destination : <b id="moveBulkCave"></b></p>
     <label class="wide">Emplacement (facultatif)
       <input id="moveBulkLocation" maxlength="120" placeholder="Ex. Frigo, carton 2, étagère…">
     </label>
     <div class="dlgactions">
       <button id="confirmMoveBulk" type="button" class="primary">Déplacer ici</button>
-      <button id="cancelMoveBulk" type="button" class="secondary">Annuler</button>
+      <button id="cancelMoveBulk" type="button" class="secondary">Retour</button>
     </div>
   </div>
 </dialog>
@@ -2674,6 +2701,7 @@ header{
     <div class="dlgactions bulk-actions">
       <button id="bulkActionDrink" class="consumed-btn">🍷 Bue</button>
       <button id="bulkActionSell" class="sell-btn">💶 Vendre</button>
+      <button id="bulkActionMove" class="move-btn">📦 Déplacer</button>
       <button id="bulkActionEdit" class="primary">✏️ Éditer le vin</button>
       <button id="bulkActionRemove" class="danger">Sortir sans vente</button>
       <button id="bulkActionClose" class="secondary">Fermer</button>
@@ -2683,7 +2711,7 @@ header{
 
 <dialog id="batchExitDialog" class="batch-exit-dialog">
   <div class="dlg"><h2>Sortie groupée</h2><p id="batchExitCount" class="where"></p><div id="batchExitList" class="batch-exit-list"></div>
-    <div class="dlgactions"><button id="batchSell" class="sell-btn">💶 Vendre la sélection</button><button id="batchRemove" class="danger">Sortir sans vente</button><button id="batchCancel" class="secondary">Annuler</button></div>
+    <div class="dlgactions"><button id="batchMove" class="move-btn">📦 Déplacer la sélection</button><button id="batchSell" class="sell-btn">💶 Vendre la sélection</button><button id="batchRemove" class="danger">Sortir sans vente</button><button id="batchCancel" class="secondary">Annuler</button></div>
   </div>
 </dialog>
 
@@ -2727,6 +2755,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.1"></script>
+<script src="app.js?v=3.2"></script>
 </body>
 </html>

@@ -59,6 +59,8 @@ config=normalizeConfig(config);
 let activeCaveId=config?.caves?.[0]?.id||'';
 let activeCasier=1;
 let selected=null;
+let moveSource=null; // {items:[{type:'grid'|'bulk', key|id, refId}, ...]}
+let moveTargetKeys=new Set();
 let pendingAddRefId='';
 let editScope=null; // 'single' | 'all' | 'new'
 let selectedEmptyKeys=new Set();
@@ -70,7 +72,6 @@ let pendingBulkRefId='';
 let bulkDraft=null;
 let bulkActionIds=[];
 let drinkTargets=[];
-let moveSource=null;
 let emptyTapTimers=new Map();
 let occupiedTapTimers=new Map();
 let voiceRecognition=null;
@@ -1647,8 +1648,8 @@ function renderBulk(){
   const cave=activeCave();
   $('#bulkCaveLabel').textContent=cave?`${cave.code} · ${cave.name}`:'';
 
-  if($('#moveToBulk')) $('#moveToBulk').hidden=!moveSource;
-  if($('#openBulkAdd')) $('#openBulkAdd').hidden=!!moveSource;
+  if($('#openBulkAdd')) $('#openBulkAdd').hidden=!!moveSource?.items?.length;
+  if($('#moveToBulk')) $('#moveToBulk').hidden=!moveSource?.items?.length;
 
   const items=bulk.filter(x=>x.caveId===activeCaveId&&x.refId&&ref(x.refId));
   const groups=new Map();
@@ -1839,171 +1840,298 @@ function removeBulkSelection(){
   requestClose($('#bulkActionDialog'));
 }
 
-function moveSourceItem(){
-  if(!moveSource) return null;
-
-  if(moveSource.bulk){
-    return bulk.find(x=>x.id===moveSource.id)||null;
-  }
-
-  return inv.find(x=>slotKey(x)===moveSource.key)||null;
+function moveDescriptorFromItem(item){
+  if(!item||!item.refId) return null;
+  return item.bulk
+    ? {type:'bulk',id:item.id,refId:item.refId}
+    : {type:'grid',key:slotKey(item),refId:item.refId};
 }
 
-function moveSourceReference(){
-  const item=moveSourceItem();
-  return item?.refId ? ref(item.refId) : null;
+function moveSourceItems(){
+  if(!moveSource?.items?.length) return [];
+
+  return moveSource.items.map(d=>{
+    if(d.type==='bulk'){
+      const item=bulk.find(x=>x.id===d.id&&x.refId===d.refId);
+      return item ? {descriptor:d,item,ref:ref(item.refId)} : null;
+    }
+
+    const item=inv.find(x=>slotKey(x)===d.key&&x.refId===d.refId);
+    return item ? {descriptor:d,item,ref:ref(item.refId)} : null;
+  }).filter(x=>x&&x.ref);
 }
 
-function moveOriginLabel(item){
-  if(!item) return '';
-  return item.bulk ? bulkTarget(item).emplacement : item.emplacement;
+function moveSourceCount(){
+  return moveSource?.items?.length||0;
 }
 
-function renderMoveMode(){
-  const bar=$('#moveModeBar');
-  if(!bar) return;
+function isMoveSourceGridSlot(x){
+  if(!moveSource?.items?.length) return false;
+  const key=slotKey(x);
+  return moveSource.items.some(d=>d.type==='grid'&&d.key===key);
+}
 
-  const source=moveSourceItem();
-  const r=moveSourceReference();
+function validMoveTargets(){
+  return [...moveTargetKeys]
+    .map(key=>inv.find(x=>slotKey(x)===key&&!x.refId))
+    .filter(Boolean);
+}
 
-  if(!moveSource || !source || !r){
-    moveSource=null;
-    bar.hidden=true;
+function updateMoveBanner(){
+  const banner=$('#moveBanner');
+  if(!banner) return;
+
+  if(!moveSource?.items?.length){
+    banner.hidden=true;
+    document.body.classList.remove('move-mode');
+    $('#confirmMoveTargets').hidden=true;
     return;
   }
 
-  bar.hidden=false;
-  $('#moveModeInfo').textContent=
-    `${r.vin}${r.millesime?` · ${r.millesime}`:''} — depuis ${moveOriginLabel(source)}`;
+  const sources=moveSourceItems();
+  const needed=moveSourceCount();
+
+  if(sources.length!==needed){
+    moveSource=null;
+    moveTargetKeys.clear();
+    banner.hidden=true;
+    document.body.classList.remove('move-mode');
+    $('#confirmMoveTargets').hidden=true;
+    return;
+  }
+
+  // Remove destinations that became occupied while navigating.
+  [...moveTargetKeys].forEach(key=>{
+    const x=inv.find(p=>slotKey(p)===key);
+    if(!x||x.refId) moveTargetKeys.delete(key);
+  });
+
+  const selectedCount=moveTargetKeys.size;
+  const first=sources[0]?.ref;
+
+  banner.hidden=false;
+  document.body.classList.add('move-mode');
+
+  $('#moveBannerTitle').textContent=needed===1
+    ? `📦 Déplacer : ${first.vin}${first.millesime?` · ${first.millesime}`:''}`
+    : `📦 Déplacer ${needed} bouteilles`;
+
+  if(needed===1){
+    $('#moveBannerText').textContent=moduleEnabled('bulk')
+      ? 'Navigue entre les caves/casiers puis touche une place vide, ou choisis « Déplacer ici » dans Vrac.'
+      : 'Navigue entre les caves/casiers puis touche directement une place vide.';
+    $('#confirmMoveTargets').hidden=true;
+  }else{
+    $('#moveBannerText').textContent=moduleEnabled('bulk')
+      ? `${selectedCount}/${needed} destinations choisies · touche des places libres dans les caves/casiers, ou déplace tout le lot vers Vrac.`
+      : `${selectedCount}/${needed} destinations choisies · touche des places libres dans les caves/casiers.`;
+
+    $('#confirmMoveTargets').hidden=selectedCount!==needed;
+    $('#confirmMoveTargets').textContent=`Confirmer ${needed} déplacements`;
+  }
+}
+
+function finishMoveMode(message){
+  moveSource=null;
+  moveTargetKeys.clear();
+  selected=null;
+  clearEmptySelection();
+  clearOccupiedSelection();
+  persist();
+  render();
+  if(dialogHistory) history.back();
+  if(message) setTimeout(()=>alert(message),80);
 }
 
 function cancelMoveMode(){
   moveSource=null;
-  $('#moveModeBar').hidden=true;
+  moveTargetKeys.clear();
+  selected=null;
+  clearEmptySelection();
+  clearOccupiedSelection();
+  render();
+  if(dialogHistory) history.back();
+}
+
+function beginMoveFromItems(items,sourceDialog=null){
+  const descriptors=(items||[]).map(moveDescriptorFromItem).filter(Boolean);
+  if(!descriptors.length) return;
+
+  moveSource={items:descriptors};
+  moveTargetKeys.clear();
+
+  clearEmptySelection();
+  clearOccupiedSelection();
+  $('#search').value='';
+  clearMaturityFilter();
+  clearYearFilter();
+  hideResultPanel();
+
+  if(sourceDialog?.open) sourceDialog.close();
+  if($('#dialog').open) $('#dialog').close();
+
+  selected=null;
   render();
 }
 
-function startMoveBottle(){
-  if(!selected || !selected.refId) return;
-
-  const r=ref(selected.refId);
-  if(!r) return;
-
-  moveSource=selected.bulk
-    ? {bulk:true,id:selected.id,refId:selected.refId}
-    : {bulk:false,key:slotKey(selected),refId:selected.refId};
-
-  // Fermer la fiche puis revenir à la vue des caves/casiers.
-  if($('#dialog').open) $('#dialog').close();
-
-  if(dialogHistory){
-    history.back();
-    setTimeout(()=>{ if(moveSource) render(); },80);
-  }else{
-    render();
-  }
+function beginMoveBottle(){
+  if(!selected||!selected.refId) return;
+  beginMoveFromItems([selected],$('#dialog'));
 }
 
-function moveBottleToSlot(target){
-  if(!moveSource || !target || target.refId) return;
+function beginMoveBatch(){
+  const items=exitTargets.filter(x=>x?.refId&&ref(x.refId));
+  if(!items.length) return;
+  exitTargets=[];
+  beginMoveFromItems(items,$('#batchExitDialog'));
+}
 
-  const source=moveSourceItem();
-  if(!source || !source.refId){
-    cancelMoveMode();
-    return alert('La bouteille à déplacer n’est plus disponible.');
+function beginMoveBulkSelection(){
+  const items=selectedBulkActionItems();
+  if(!items.length) return;
+  bulkActionIds=[];
+  beginMoveFromItems(items,$('#bulkActionDialog'));
+}
+
+function moveSourcesToGrid(targets){
+  const sources=moveSourceItems();
+  const needed=moveSourceCount();
+
+  if(!needed||sources.length!==needed){
+    moveSource=null;
+    moveTargetKeys.clear();
+    render();
+    return alert('Une des bouteilles à déplacer n’est plus disponible.');
   }
 
-  const r=ref(source.refId);
-  if(!r){
-    cancelMoveMode();
+  const validTargets=(targets||[]).filter(x=>x&&!x.refId);
+  if(validTargets.length!==needed){
+    return alert(`Choisis exactement ${needed} emplacement${needed>1?'s':''} libre${needed>1?'s':''}.`);
+  }
+
+  // Save source references before modifying either stock.
+  const assignments=sources.map((s,i)=>({
+    source:s,
+    target:validTargets[i],
+    refId:s.item.refId
+  }));
+
+  assignments.forEach(a=>{ a.target.refId=a.refId; });
+
+  const bulkIds=[];
+  assignments.forEach(a=>{
+    if(a.source.descriptor.type==='bulk') bulkIds.push(a.source.item.id);
+    else a.source.item.refId=null;
+  });
+  if(bulkIds.length) removeBulkIds(bulkIds);
+
+  const last=validTargets[validTargets.length-1];
+  activeCaveId=last.caveId;
+  activeCasier=last.casier;
+
+  finishMoveMode(
+    needed===1
+      ? `Bouteille déplacée vers ${last.emplacement}.`
+      : `${needed} bouteilles déplacées vers les emplacements sélectionnés.`
+  );
+}
+
+function completeMoveToGrid(target){
+  if(!moveSource?.items?.length || !target || target.refId) return;
+
+  const needed=moveSourceCount();
+
+  // Single bottle keeps the fast V3.1 behavior.
+  if(needed===1){
+    moveSourcesToGrid([target]);
     return;
   }
 
-  const origin=moveOriginLabel(source);
-  if(!confirm(`Déplacer « ${r.vin} »\n\n${origin}\n→ ${target.emplacement} ?`)) return;
-
-  const refId=source.refId;
-
-  if(moveSource.bulk){
-    removeBulkIds([source.id]);
+  const key=slotKey(target);
+  if(moveTargetKeys.has(key)){
+    moveTargetKeys.delete(key);
   }else{
-    source.refId=null;
+    if(moveTargetKeys.size>=needed){
+      alert(`Tu as déjà choisi ${needed} destinations. Retire-en une pour en choisir une autre.`);
+      return;
+    }
+    moveTargetKeys.add(key);
   }
-
-  target.refId=refId;
-
-  activeCaveId=target.caveId;
-  activeCasier=target.casier;
-  moveSource=null;
-  persist();
   render();
-  refreshPhotoButtons();
-  setTimeout(()=>alert(`Bouteille déplacée vers ${target.emplacement}.`),60);
+}
+
+function confirmMoveTargets(){
+  if(!moveSource?.items?.length) return;
+  const targets=validMoveTargets();
+  moveSourcesToGrid(targets);
 }
 
 function openMoveToBulk(){
-  if(!moveSource || !moduleEnabled('bulk')) return;
+  if(!moveSource?.items?.length || !moduleEnabled('bulk')) return;
+
+  const sources=moveSourceItems();
+  if(sources.length!==moveSourceCount()){
+    moveSource=null;
+    moveTargetKeys.clear();
+    render();
+    return alert('Une des bouteilles à déplacer n’est plus disponible.');
+  }
 
   const cave=activeCave();
-  if(!cave) return;
-
   $('#moveBulkCave').textContent=`${cave.code} · ${cave.name}`;
-  $('#moveBulkLocation').value='';
-  showDialog($('#moveBulkDialog'));
+
+  const sameBulkLocation=sources.length===1 &&
+    sources[0].descriptor.type==='bulk' &&
+    sources[0].item.caveId===activeCaveId;
+
+  $('#moveBulkLocation').value=sameBulkLocation
+    ? String(sources[0].item.locationText||'')
+    : '';
+
+  $('#moveBulkDialog').showModal();
 }
 
-function confirmMoveToBulk(){
-  if(!moveSource || !moduleEnabled('bulk')) return;
+function completeMoveToBulk(){
+  if(!moveSource?.items?.length || !moduleEnabled('bulk')) return;
 
-  const source=moveSourceItem();
-  if(!source || !source.refId){
-    if($('#moveBulkDialog').open) requestClose($('#moveBulkDialog'));
-    cancelMoveMode();
-    return alert('La bouteille à déplacer n’est plus disponible.');
+  const sources=moveSourceItems();
+  const needed=moveSourceCount();
+
+  if(sources.length!==needed){
+    if($('#moveBulkDialog').open) $('#moveBulkDialog').close();
+    moveSource=null;
+    moveTargetKeys.clear();
+    render();
+    return alert('Une des bouteilles à déplacer n’est plus disponible.');
   }
-
-  const r=ref(source.refId);
-  const cave=activeCave();
-  if(!r || !cave) return;
 
   const location=$('#moveBulkLocation').value.trim();
-  const destination=`${cave.code} · Vrac · ${bulkLocationLabel(location)}`;
-  const origin=moveOriginLabel(source);
+  const cave=activeCave();
 
-  if(!confirm(`Déplacer « ${r.vin} »\n\n${origin}\n→ ${destination} ?`)) return;
+  sources.forEach(({descriptor,item})=>{
+    if(descriptor.type==='bulk'){
+      item.caveId=activeCaveId;
+      item.locationText=location;
+    }else{
+      bulk.push({
+        id:`bulk_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+        caveId:activeCaveId,
+        refId:item.refId,
+        locationText:location,
+        addedAt:new Date().toISOString(),
+        bulk:true
+      });
+      item.refId=null;
+    }
+  });
 
-  if(moveSource.bulk){
-    source.caveId=cave.id;
-    source.locationText=location;
-  }else{
-    const refId=source.refId;
-    source.refId=null;
-    bulk.push({
-      id:`bulk_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-      caveId:cave.id,
-      refId,
-      locationText:location,
-      addedAt:new Date().toISOString(),
-      bulk:true
-    });
-  }
+  if($('#moveBulkDialog').open) $('#moveBulkDialog').close();
 
-  activeCaveId=cave.id;
-  activeCasier=cave.casiers===0 ? 0 : Math.max(1,activeCasier);
-  moveSource=null;
-  persist();
-
-  // Ici le dialog a été ouvert pendant un mode de déplacement déjà sur la page.
-  if($('#moveBulkDialog').open){
-    if(dialogHistory) history.back();
-    else $('#moveBulkDialog').close();
-  }
-
-  setTimeout(()=>{
-    render();
-    refreshPhotoButtons();
-    alert(`Bouteille déplacée vers ${destination}.`);
-  },80);
+  finishMoveMode(
+    needed===1
+      ? `Bouteille déplacée vers ${cave.code} · Vrac · ${bulkLocationLabel(location)}.`
+      : `${needed} bouteilles déplacées vers ${cave.code} · Vrac · ${bulkLocationLabel(location)}.`
+  );
 }
 
 function slotKey(x){
@@ -2044,8 +2172,9 @@ function prepareExitTargets(x){
   selected=x;
 }
 function handleOccupiedSlotClick(x,r){
-  if(moveSource){
-    alert('Cet emplacement est déjà occupé. Choisis un emplacement vide.');
+  if(moveSource?.items?.length){
+    if(isMoveSourceGridSlot(x)) return;
+    alert('Cet emplacement est déjà occupé. Choisis une place vide.');
     return;
   }
 
@@ -2082,8 +2211,8 @@ function toggleEmptySelection(x){
 }
 
 function handleEmptySlotClick(x){
-  if(moveSource){
-    moveBottleToSlot(x);
+  if(moveSource?.items?.length){
+    completeMoveToGrid(x);
     return;
   }
 
@@ -2158,7 +2287,7 @@ function render(){
 
   renderStats();
   applyModuleVisibility();
-  renderMoveMode();
+  updateMoveBanner();
   renderBulk();
   const q=$('#search').value.trim().toLowerCase();
   const cave=activeCave();
@@ -2179,12 +2308,16 @@ function render(){
     b.dataset.line=x.ligne; b.dataset.pos=x.position;
     const isMultiSelected=!r && selectedEmptyKeys.has(slotKey(x));
     const isExitSelected=!!r && selectedOccupiedKeys.has(slotKey(x));
-    b.className=`slot ${r?'occupied':'empty'}${isMultiSelected?' multi-selected':''}${isExitSelected?' exit-selected':''}${moveSource&&!r?' move-target':''}${moveSource&&r?' move-blocked':''}`;
+    const isMoveSource=isMoveSourceGridSlot(x);
+    const isMoveTarget=!!moveSource?.items?.length && !r;
+    const isMoveTargetSelected=isMoveTarget && moveTargetKeys.has(slotKey(x));
+    b.className=`slot ${r?'occupied':'empty'}${isMultiSelected?' multi-selected':''}${isExitSelected?' exit-selected':''}${isMoveSource?' move-source':''}${isMoveTarget?' move-target':''}${isMoveTargetSelected?' move-target-selected':''}`;
     if(r){
       const wc=wineClass(r.couleur);
       const ac=ageClass(r.millesime);
       b.innerHTML=`
         ${isExitSelected?'<span class="exit-check">✓</span>':''}
+        ${isMoveSource?'<span class="move-source-badge">Départ</span>':''}
         <span class="vintage-strip age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
         <span class="slot-main wine-color ${wc}">
           <span class="pos">L${x.ligne}·P${x.position}</span>
@@ -2196,7 +2329,9 @@ function render(){
     }else{
       b.innerHTML=`
         <span class="pos">L${x.ligne}·P${x.position}</span>
-        <span class="name">${moveSource?'↔️ Déplacer ici':(isMultiSelected?'✓ Sélectionnée':'＋ Vide')}</span>
+        <span class="name">${moveSource?.items?.length
+          ? (isMoveTargetSelected ? `✓ Destination ${[...moveTargetKeys].indexOf(slotKey(x))+1}` : '→ Déplacer ici')
+          : (isMultiSelected?'✓ Sélectionnée':'＋ Vide')}</span>
       `;
     }
     b.addEventListener('click',()=>r?handleOccupiedSlotClick(x,r):handleEmptySlotClick(x));
@@ -2225,7 +2360,7 @@ function closeDialogsFromPop(){
   addTargets=[];
   exitTargets=[];
   saleTargets=[];
-  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];
+  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];moveSource=null;moveTargetKeys.clear();
   voiceExactRefId='';
   voiceSimilarRefId='';
   if(voiceRecognition){
@@ -3023,13 +3158,6 @@ $('#save').addEventListener('click',()=>{
     requestClose($('#dialog'));
   }
 });
-$('#moveBottle').addEventListener('click',startMoveBottle);
-$('#cancelMove').addEventListener('click',cancelMoveMode);
-$('#moveToBulk').addEventListener('click',openMoveToBulk);
-$('#confirmMoveBulk').addEventListener('click',confirmMoveToBulk);
-$('#cancelMoveBulk').addEventListener('click',()=>requestClose($('#moveBulkDialog')));
-$('#moveBulkDialog').addEventListener('click',backdropClose);
-
 $('#editOneBottle').addEventListener('click',()=>{
   if(!selected || !selected.refId) return;
   const r=ref(selected.refId);
@@ -3059,6 +3187,7 @@ $('#sellBottle').addEventListener('click',()=>{
   openSaleDialog(saleTargets,true);
 });
 
+$('#batchMove').addEventListener('click',beginMoveBatch);
 $('#batchSell').addEventListener('click',()=>{
   const targets=exitTargets.slice();
   $('#batchExitDialog').close();
@@ -3089,6 +3218,8 @@ $('#consumed').addEventListener('click',()=>{
   if(!ref(selected.refId)) return;
   openDrinkRatingDialog([{item:selected}]);
 });
+
+$('#moveBottle').addEventListener('click',beginMoveBottle);
 
 $('#remove').addEventListener('click',()=>{
   if(!selected || !confirm('Sortir cette bouteille de la cave ?')) return;
@@ -3149,6 +3280,12 @@ $('#casierTabs').addEventListener('click',async e=>{
 });
 
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
+$('#moveToBulk').addEventListener('click',openMoveToBulk);
+$('#confirmMoveBulk').addEventListener('click',completeMoveToBulk);
+$('#cancelMoveBulk').addEventListener('click',()=>$('#moveBulkDialog').close());
+$('#moveBulkDialog').addEventListener('click',backdropClose);
+$('#cancelMove').addEventListener('click',cancelMoveMode);
+$('#confirmMoveTargets').addEventListener('click',confirmMoveTargets);
 $('#bulkPickSearch').addEventListener('input',()=>{pendingBulkRefId='';renderBulkPickResults();});
 $('#bulkPickResults').addEventListener('click',e=>{
   const b=e.target.closest('[data-bulk-pick]');if(!b)return;
@@ -3173,15 +3310,7 @@ $('#bulkNewRef').addEventListener('click',()=>{
   $('#dialog').showModal();
 });
 $('#bulkAddCancel').addEventListener('click',()=>requestClose($('#bulkAddDialog')));
-$('#bulkList').addEventListener('click',e=>{
-  const b=e.target.closest('[data-bulk-open]');
-  if(!b)return;
-  if(moveSource){
-    alert('Pour déplacer vers le vrac, utilise le bouton « Déplacer ici en vrac ».');
-    return;
-  }
-  openBulkGroup(b.dataset.bulkOpen);
-});
+$('#bulkList').addEventListener('click',e=>{const b=e.target.closest('[data-bulk-open]');if(b)openBulkGroup(b.dataset.bulkOpen);});
 $('#bulkActionDrink').addEventListener('click',drinkBulkSelection);
 $$('[data-drink-rating]').forEach(btn=>btn.addEventListener('click',()=>finalizeDrinkRating(btn.dataset.drinkRating)));
 $('#drinkLater').addEventListener('click',()=>finalizeDrinkRating('neutral'));
@@ -3195,6 +3324,7 @@ $('#bulkActionSell').addEventListener('click',()=>{
   const items=selectedBulkActionItems();if(!items.length||!moduleEnabled('sales'))return;
   $('#bulkActionDialog').close();openSaleDialog(items.map(bulkTarget),true);
 });
+$('#bulkActionMove').addEventListener('click',beginMoveBulkSelection);
 $('#bulkActionEdit').addEventListener('click',()=>{
   const item=selectedBulkActionItems()[0];if(!item)return;
   const r=ref(item.refId);if(!r)return;
