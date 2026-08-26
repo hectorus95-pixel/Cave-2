@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v3.11</title>
-<link rel="manifest" href="manifest.webmanifest?v=3.11">
+<title>Ma Cave à Vin – Configurable v3.12</title>
+<link rel="manifest" href="manifest.webmanifest?v=3.12">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -2660,11 +2660,92 @@ header{
   }
 }
 
+
+/* =========================================================
+   V3.12 — Magnum compact + actions des vins bus sur la ligne
+   ========================================================= */
+
+/* Magnum ne prend plus aucune hauteur dans la case :
+   badge posé en haut à droite de la zone d'information. */
+.slot .magnum-badge{
+  position:absolute!important;
+  top:7px!important;
+  right:6px!important;
+  z-index:4!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+  padding:2px 4px!important;
+  max-width:45px!important;
+  border-radius:5px!important;
+  background:rgba(0,0,0,.48)!important;
+  border:1px solid rgba(255,255,255,.68)!important;
+  color:#fff!important;
+  font-size:6.5px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  pointer-events:none!important;
+}
+.slot .slot-main:has(.magnum-badge) .pos{
+  padding-right:48px!important;
+}
+
+/* Dans "Bouteilles bues", infos à gauche et actions à droite.
+   flex-wrap permet aux boutons de descendre automatiquement
+   uniquement quand la largeur disponible est insuffisante. */
+#consumptionDialog .consumed-entry{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:58px!important;
+  height:auto!important;
+  overflow:visible!important;
+}
+
+#consumptionDialog .consumed-entry-info{
+  flex:1 1 170px!important;
+  min-width:140px!important;
+}
+
+#consumptionDialog .consumed-entry-actions{
+  flex:0 1 auto!important;
+  margin-left:auto!important;
+  align-self:center!important;
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:5px!important;
+}
+
+/* Si les actions passent à la ligne, elles restent alignées à droite. */
+#consumptionDialog .consumed-entry-actions > *{
+  flex:0 0 auto!important;
+}
+
+/* Annule le forçage V3.11 qui mettait systématiquement
+   les actions dessous sur les petits téléphones. */
+@media (max-width:430px){
+  #consumptionDialog .consumed-entry{
+    display:flex!important;
+    grid-template-columns:none!important;
+  }
+  #consumptionDialog .consumed-entry-actions{
+    width:auto!important;
+    flex-wrap:nowrap!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v3.11</span>
+  <span class="app-version">v3.12</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3185,6 +3266,6 @@ header{
   </div>
 </dialog>
 
-<script src="app.js?v=3.11"></script>
+<script src="app.js?v=3.12"></script>
 </body>
 </html>
