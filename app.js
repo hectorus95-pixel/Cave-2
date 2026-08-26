@@ -20,7 +20,7 @@ const DEFAULT_CONFIG={
     code:'C1',
     ...DEFAULT_DIMENSIONS
   }],
-  modules:{sales:true,bulk:false}
+  modules:{sales:true,bulk:true}
 };
 
 let config=load(KCFG,null);
@@ -66,6 +66,12 @@ sales.forEach(e=>{
 });
 
 config=normalizeConfig(config);
+if(config?.caves?.length){
+  const cavesWithBulk=new Set(bulk.filter(x=>x&&x.refId).map(x=>x.caveId));
+  config.caves.forEach(c=>{
+    if(cavesWithBulk.has(c.id)) c.bulkEnabled=true;
+  });
+}
 let activeCaveId=config?.caves?.[0]?.id||'';
 let activeCasier=1;
 let selected=null;
@@ -127,7 +133,8 @@ function normalizeCave(raw,index=0){
     code:cleanCaveCode(raw.code,index),
     casiers:Number(raw.casiers),
     lignes:Number(raw.lignes),
-    positions:Number(raw.positions)
+    positions:Number(raw.positions),
+    bulkEnabled:raw.bulkEnabled!==undefined ? !!raw.bulkEnabled : true
   };
   const bulkOnly=
     cave.casiers===0 &&
@@ -158,11 +165,15 @@ function normalizeConfig(raw){
       lignes:raw.lignes,
       positions:raw.positions
     },0);
-    return legacy ? {caves:[legacy],modules:{sales:true,bulk:false}} : null;
+    return legacy ? {caves:[legacy],modules:{sales:true}} : null;
   }
 
   if(raw.caves.length<1 || raw.caves.length>12) return null;
-  const caves=raw.caves.map((c,i)=>normalizeCave(c,i));
+  const legacyBulkDefault=raw.modules?.bulk!==undefined ? !!raw.modules.bulk : true;
+  const caves=raw.caves.map((c,i)=>normalizeCave({
+    ...c,
+    bulkEnabled:c?.bulkEnabled!==undefined ? c.bulkEnabled : legacyBulkDefault
+  },i));
   if(caves.some(c=>!c)) return null;
 
   // IDs et codes doivent être uniques.
@@ -174,8 +185,7 @@ function normalizeConfig(raw){
     codes.add(c.code);
   }
   const modules={
-    sales:raw.modules?.sales!==undefined ? !!raw.modules.sales : true,
-    bulk:raw.modules?.bulk!==undefined ? !!raw.modules.bulk : false
+    sales:raw.modules?.sales!==undefined ? !!raw.modules.sales : true
   };
   return {caves,modules};
 }
@@ -242,7 +252,8 @@ function configEditorValues(){
     code:card.querySelector('[data-field="code"]').value,
     casiers:Number(card.querySelector('[data-field="casiers"]').value),
     lignes:Number(card.querySelector('[data-field="lignes"]').value),
-    positions:Number(card.querySelector('[data-field="positions"]').value)
+    positions:Number(card.querySelector('[data-field="positions"]').value),
+    bulkEnabled:!!card.querySelector('[data-field="bulkEnabled"]')?.checked
   }));
 }
 
@@ -263,6 +274,10 @@ function renderConfigEditors(caves){
         <label>Lignes<input data-field="lignes" type="number" min="0" max="50" inputmode="numeric" value="${Number.isInteger(Number(c.lignes))?Number(c.lignes):15}"></label>
         <label>Bouteilles / ligne<input data-field="positions" type="number" min="0" max="12" inputmode="numeric" value="${Number.isInteger(Number(c.positions))?Number(c.positions):5}"></label>
       </div>
+      <label class="cave-bulk-toggle">
+        <span><strong>📦 Vrac dans cette cave</strong><small>Activé par défaut. Désactivation possible uniquement si le Vrac de cette cave est vide.</small></span>
+        <input data-field="bulkEnabled" type="checkbox" ${c.bulkEnabled!==false?'checked':''}>
+      </label>
     </section>
   `).join('');
 }
@@ -275,7 +290,8 @@ function syncConfigCaveCount(){
     const i=current.length;
     current.push({
       id:makeCaveId(i),name:`Cave ${i+1}`,code:`C${i+1}`.slice(0,3),
-      ...DEFAULT_DIMENSIONS
+      ...DEFAULT_DIMENSIONS,
+      bulkEnabled:true
     });
   }
   current.length=n;
@@ -291,8 +307,7 @@ function readConfigForm(){
   return {
     caves,
     modules:{
-      sales:!!$('#cfgModuleSales')?.checked,
-      bulk:!!$('#cfgModuleBulk')?.checked
+      sales:!!$('#cfgModuleSales')?.checked
     }
   };
 }
@@ -303,10 +318,12 @@ function updateConfigCapacityPreview(){
     $('#configCapacity').textContent='Structure normale : valeurs supérieures à 0. Cave vrac uniquement : mets 0 / 0 / 0.';
     return;
   }
-  const details=cfg.caves.map(c=>c.casiers===0&&c.lignes===0&&c.positions===0
-    ? `${c.code}: vrac uniquement`
-    : `${c.code}: ${caveCapacity(c)} emplacement${caveCapacity(c)>1?'s':''}`
-  ).join(' · ');
+  const details=cfg.caves.map(c=>{
+    const stock=c.casiers===0&&c.lignes===0&&c.positions===0
+      ? '0 emplacement'
+      : `${caveCapacity(c)} emplacement${caveCapacity(c)>1?'s':''}`;
+    return `${c.code}: ${stock} · Vrac ${c.bulkEnabled!==false?'ON':'OFF'}`;
+  }).join(' · ');
   $('#configCapacity').textContent=`${cfg.caves.length} cave${cfg.caves.length>1?'s':''} · ${details} · Total ${configCapacity(cfg)} emplacements de casier`;
 }
 
@@ -316,7 +333,6 @@ function openConfigDialog(firstRun=false){
   $('#cfgCaveCount').value=cfg.caves.length;
   renderConfigEditors(cfg.caves);
   $('#cfgModuleSales').checked=cfg.modules?.sales!==false;
-  $('#cfgModuleBulk').checked=!!cfg.modules?.bulk;
   $('#configError').hidden=true;
   $('#configError').innerHTML='';
   $('#configCancel').hidden=firstRun;
@@ -331,6 +347,24 @@ function applyConfiguration(){
   if(!next){
     $('#configError').hidden=false;
     $('#configError').textContent='Vérifie les noms, codes et dimensions. Chaque code doit être unique (3 caractères maximum).';
+    return;
+  }
+
+  const blockedBulkDisable=next.caves
+    .filter(c=>c.bulkEnabled===false)
+    .map(c=>({
+      cave:c,
+      count:bulk.filter(x=>x&&x.refId&&x.caveId===c.id).length
+    }))
+    .find(x=>x.count>0);
+
+  if(blockedBulkDisable){
+    const {cave,count}=blockedBulkDisable;
+    $('#configError').hidden=false;
+    $('#configError').innerHTML=`<b>Impossible de désactiver le Vrac de ${esc(cave.code)} · ${esc(cave.name)}.</b><br>${count} bouteille${count>1?'s sont':' est'} encore enregistrée${count>1?'s':''} en Vrac dans cette cave.<br>Déplace ou sors d’abord ${count>1?'ces bouteilles':'cette bouteille'}.`;
+    const card=$(`.cave-config-card[data-cave-id="${CSS.escape(cave.id)}"]`);
+    const checkbox=card?.querySelector('[data-field="bulkEnabled"]');
+    if(checkbox) checkbox.checked=true;
     return;
   }
 
@@ -934,7 +968,7 @@ function maturityInfo(r){
 
 function moduleEnabled(name){
   if(name==='sales') return config?.modules?.sales!==false;
-  if(name==='bulk') return !!config?.modules?.bulk;
+  if(name==='bulk') return activeCave()?.bulkEnabled!==false;
   return false;
 }
 
@@ -3642,7 +3676,13 @@ $('#cfgCavesList').addEventListener('input',e=>{
   if(e.target.matches('[data-field="code"]')) e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);
   $('#configError').hidden=true;updateConfigCapacityPreview();
 });
-['cfgModuleSales','cfgModuleBulk'].forEach(id=>$('#'+id).addEventListener('change',()=>{$('#configError').hidden=true;}));
+$('#cfgCavesList').addEventListener('change',e=>{
+  if(e.target.matches('[data-field="bulkEnabled"]')){
+    $('#configError').hidden=true;
+    updateConfigCapacityPreview();
+  }
+});
+['cfgModuleSales'].forEach(id=>$('#'+id).addEventListener('change',()=>{$('#configError').hidden=true;}));
 
 $('#search').addEventListener('input',showSearchResults);
 $$('.maturity-filter').forEach(b=>b.addEventListener('click',()=>{
@@ -3823,15 +3863,15 @@ $('#consumptionList').addEventListener('click',e=>{
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:35,
-    app:'ma-cave-configurable-v3.5',
+    version:39,
+    app:'ma-cave-configurable-v3.9',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v3-5.json';
+  a.download='sauvegarde-ma-cave-configurable-v3-9.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
@@ -3870,6 +3910,12 @@ $('#import').addEventListener('change',async e=>{
       addedAt:e.addedAt||new Date().toISOString(),
       bulk:true
     }));
+    if(bulk.length){
+      const cavesWithBulk=new Set(bulk.map(x=>x.caveId));
+      config.caves.forEach(c=>{
+        if(cavesWithBulk.has(c.id)) c.bulkEnabled=true;
+      });
+    }
     sales.forEach(e=>{
       e.costPrice=Number(e.costPrice??0)||0;e.salePrice=Number(e.salePrice??0)||0;
       e.costKnown=e.costKnown!==undefined?!!e.costKnown:e.costPrice>0;
