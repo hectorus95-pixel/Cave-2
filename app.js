@@ -4602,15 +4602,15 @@ function renderLastBackup(){
 
 $('#export').addEventListener('click',()=>{
   const payload={
-    version:5300,
-    app:'ma-cave-configurable-v5.3',
+    version:5400,
+    app:'ma-cave-configurable-v5.4',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='sauvegarde-ma-cave-configurable-v5-3.json';
+  a.download='sauvegarde-ma-cave-configurable-v5-4.json';
   a.click();
 
   const backupAt=new Date().toISOString();
