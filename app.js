@@ -4052,7 +4052,7 @@ function continueVoiceBottle(){
   $('#dialog').showModal();
 }
 
-function maturityChatGPTPrompt(r){
+function maturityPerplexityPrompt(r){
   if(!r) return '';
 
   const details=[
@@ -4062,67 +4062,33 @@ function maturityChatGPTPrompt(r){
     r.couleur ? `Couleur : ${r.couleur}` : ''
   ].filter(Boolean).join('\n');
 
-  return `Recherche sur le Web la période de maturité de ce vin :
+  return `Recherche la période de maturité de ce vin :
 
 ${details}
 
 Je veux une estimation pratique pour gérer ma cave :
 - année de début de maturité ;
 - année de fin de maturité ;
-- indique clairement les deux années proposées ;
 - compare plusieurs sources fiables si possible ;
-- cite tes sources ;
+- cite les sources ;
 - distingue les informations du producteur des estimations de critiques/cavistes ;
-- si les sources divergent, explique brièvement l'incertitude et propose la fenêtre la plus raisonnable ;
-- ne te contente pas du potentiel de garde maximal : je veux la période où le vin a de bonnes chances d'être agréable à boire.
+- si les sources divergent, explique brièvement l'incertitude ;
+- ne donne pas seulement le potentiel de garde maximal : je veux surtout la période où le vin a de bonnes chances d'être agréable à boire.
 
-Réponds d'abord sous la forme :
+Commence la réponse par :
 Début de maturité : AAAA
-Fin de maturité : AAAA
-
-Puis donne une courte justification avec les sources.`;
+Fin de maturité : AAAA`;
 }
 
-async function openMaturityChatGPT(){
+function openMaturityPerplexity(){
   const r=selected?.refId ? ref(selected.refId) : null;
   if(!r) return alert('Aucun vin sélectionné.');
 
-  const prompt=maturityChatGPTPrompt(r);
-
-  // Ouvrir immédiatement afin que Chrome Android ne bloque pas le nouvel onglet.
-  window.open('https://chatgpt.com/','_blank','noopener');
-
-  let copied=false;
-  try{
-    if(navigator.clipboard?.writeText){
-      await navigator.clipboard.writeText(prompt);
-      copied=true;
-    }
-  }catch(e){
-    copied=false;
-  }
-
-  if(!copied){
-    try{
-      const ta=document.createElement('textarea');
-      ta.value=prompt;
-      ta.setAttribute('readonly','');
-      ta.style.position='fixed';
-      ta.style.opacity='0';
-      document.body.appendChild(ta);
-      ta.select();
-      copied=document.execCommand('copy');
-      ta.remove();
-    }catch(e){
-      copied=false;
-    }
-  }
-
-  alert(copied
-    ? 'La demande de maturité a été copiée. Colle-la dans ChatGPT puis envoie-la.'
-    : 'ChatGPT a été ouvert, mais la demande n’a pas pu être copiée automatiquement.'
-  );
+  const prompt=maturityPerplexityPrompt(r);
+  const url=`https://www.perplexity.ai/search?q=${encodeURIComponent(prompt)}`;
+  window.open(url,'_blank','noopener');
 }
+
 
 function deleteReference(id){
   const r=ref(id);
@@ -4341,7 +4307,7 @@ $('#save').addEventListener('click',()=>{
     requestClose($('#dialog'));
   }
 });
-$('#searchMaturityChatGPT').addEventListener('click',openMaturityChatGPT);
+$('#searchMaturityPerplexity').addEventListener('click',openMaturityPerplexity);
 
 $('#editOneBottle').addEventListener('click',()=>{
   if(!selected || !selected.refId) return;
@@ -4741,8 +4707,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:5800,
-    app:'ma-cave-configurable-v5.8',
+    version:5900,
+    app:'ma-cave-configurable-v5.9',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -4829,7 +4795,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v5-8.json';
+  const filename='sauvegarde-ma-cave-configurable-v5-9.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;

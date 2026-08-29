@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v5.8</title>
-<link rel="manifest" href="manifest.webmanifest?v=5.8">
+<title>Ma Cave à Vin – Configurable v5.9</title>
+<link rel="manifest" href="manifest.webmanifest?v=5.9">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3305,9 +3305,9 @@ header .stock-filter.active{
 
 
 /* =========================================================
-   V5.8 — recherche de maturité avec ChatGPT
+   V5.9 — recherche de maturité avec Perplexity
    ========================================================= */
-.chatgpt-maturity-btn{
+.perplexity-maturity-btn{
   width:100%;
   min-height:43px;
   margin-top:10px;
@@ -3319,7 +3319,7 @@ header .stock-filter.active{
   font-size:10px;
   font-weight:800;
 }
-.chatgpt-maturity-hint{
+.perplexity-maturity-hint{
   display:block;
   margin:4px 2px 0;
   color:#999;
@@ -3332,7 +3332,7 @@ header .stock-filter.active{
 </head>
 <body>
 <header>
-  <span class="app-version">v5.8</span>
+  <span class="app-version">v5.9</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3736,11 +3736,11 @@ header .stock-filter.active{
         <div id="viewMaturityBar" class="maturity-bar four-zone"></div>
       </div>
 
-      <button type="button" id="searchMaturityChatGPT" class="chatgpt-maturity-btn">
-        🤖 Rechercher la maturité avec ChatGPT
+      <button type="button" id="searchMaturityPerplexity" class="perplexity-maturity-btn">
+        🔎 Rechercher la maturité avec Perplexity
       </button>
-      <small id="chatgptMaturityHint" class="chatgpt-maturity-hint">
-        La demande sera copiée puis ChatGPT sera ouvert.
+      <small id="perplexityMaturityHint" class="perplexity-maturity-hint">
+        La recherche est envoyée directement à Perplexity.
       </small>
     </div>
 
@@ -3916,6 +3916,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=5.8"></script>
+<script src="app.js?v=5.9"></script>
 </body>
 </html>
