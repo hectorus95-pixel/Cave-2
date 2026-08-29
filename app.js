@@ -4052,7 +4052,7 @@ function continueVoiceBottle(){
   $('#dialog').showModal();
 }
 
-function maturityPerplexityPrompt(r){
+function maturityGoogleAIPrompt(r){
   if(!r) return '';
 
   const details=[
@@ -4062,30 +4062,27 @@ function maturityPerplexityPrompt(r){
     r.couleur ? `Couleur : ${r.couleur}` : ''
   ].filter(Boolean).join('\n');
 
-  return `Recherche la période de maturité de ce vin :
+  return `${details}
 
-${details}
+Fais une recherche web approfondie pour déterminer la période de maturité la plus raisonnable de ce vin.
 
-Je veux une estimation pratique pour gérer ma cave :
-- année de début de maturité ;
-- année de fin de maturité ;
-- compare plusieurs sources fiables si possible ;
-- cite les sources ;
-- distingue les informations du producteur des estimations de critiques/cavistes ;
-- si les sources divergent, explique brièvement l'incertitude ;
-- ne donne pas seulement le potentiel de garde maximal : je veux surtout la période où le vin a de bonnes chances d'être agréable à boire.
+Travaille en comparant plusieurs sources fiables : producteur/domaine, critiques spécialisés, cavistes reconnus et bases de données vin. Croise les informations, résous les divergences et prends toi-même une décision raisonnable. Ne recopie pas simplement la première source trouvée.
 
-Commence la réponse par :
-Début de maturité : AAAA
-Fin de maturité : AAAA`;
+Je veux la fenêtre où le vin a de bonnes chances d'être agréable à boire, pas uniquement sa durée maximale de conservation.
+
+IMPORTANT : après ton analyse, n'affiche aucune source, aucune explication et aucune autre date.
+
+Réponds exactement sous cette forme :
+Début : AAAA
+Fin : AAAA`;
 }
 
-function openMaturityPerplexity(){
+function openMaturityGoogleAI(){
   const r=selected?.refId ? ref(selected.refId) : null;
   if(!r) return alert('Aucun vin sélectionné.');
 
-  const prompt=maturityPerplexityPrompt(r);
-  const url=`https://www.perplexity.ai/search?q=${encodeURIComponent(prompt)}`;
+  const prompt=maturityGoogleAIPrompt(r);
+  const url=`https://www.google.com/search?udm=50&q=${encodeURIComponent(prompt)}`;
   window.open(url,'_blank','noopener');
 }
 
@@ -4307,7 +4304,7 @@ $('#save').addEventListener('click',()=>{
     requestClose($('#dialog'));
   }
 });
-$('#searchMaturityPerplexity').addEventListener('click',openMaturityPerplexity);
+$('#searchMaturityGoogleAI').addEventListener('click',openMaturityGoogleAI);
 
 $('#editOneBottle').addEventListener('click',()=>{
   if(!selected || !selected.refId) return;
@@ -4707,8 +4704,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:5900,
-    app:'ma-cave-configurable-v5.9',
+    version:51000,
+    app:'ma-cave-configurable-v5.10',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -4795,7 +4792,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v5-9.json';
+  const filename='sauvegarde-ma-cave-configurable-v5-10.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
