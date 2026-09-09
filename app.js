@@ -97,6 +97,7 @@ let voiceRecognition=null;
 let voiceExactRefId='';
 let voiceSimilarRefId='';
 let dialogHistory=false;
+let preserveMoveOnNextPop=false;
 
 if(config){
   inv=buildInventory(config,inv);
@@ -2470,8 +2471,9 @@ function renderBulk(){
   const cave=activeCave();
   $('#bulkCaveLabel').textContent=cave?`${cave.code} · ${cave.name}`:'';
 
-  if($('#openBulkAdd')) $('#openBulkAdd').hidden=!!moveSource?.items?.length;
-  if($('#moveToBulk')) $('#moveToBulk').hidden=!moveSource?.items?.length;
+  const moving=!!moveSource?.items?.length && moveSourceItems().length===moveSourceCount();
+  if($('#openBulkAdd')) $('#openBulkAdd').hidden=moving;
+  if($('#moveToBulk')) $('#moveToBulk').hidden=!moving;
 
   const items=bulk.filter(x=>x.caveId===activeCaveId&&x.refId&&ref(x.refId));
   const groups=new Map();
@@ -2707,6 +2709,7 @@ function updateMoveBanner(){
   if(!moveSource?.items?.length){
     banner.hidden=true;
     document.body.classList.remove('move-mode');
+    if($('#moveBannerToBulk')) $('#moveBannerToBulk').hidden=true;
     return;
   }
 
@@ -2732,6 +2735,13 @@ function updateMoveBanner(){
 
   banner.hidden=false;
   document.body.classList.add('move-mode');
+
+  const bulkButton=$('#moveBannerToBulk');
+  if(bulkButton){
+    bulkButton.hidden=!moduleEnabled('bulk');
+    const cave=activeCave();
+    bulkButton.textContent=cave ? `📦 Vers Vrac ${cave.code}` : '📦 Vers Vrac';
+  }
 
   $('#moveBannerTitle').textContent=needed===1
     ? `📦 Déplacer : ${first.vin}${first.millesime?` · ${first.millesime}`:''}`
@@ -2793,8 +2803,14 @@ function beginMoveFromItems(items,sourceDialog=null){
 
   selected=null;
   render();
-}
 
+  // Les fiches utilisent une entrée d'historique pour le bouton Retour Android.
+  // On la retire proprement sans annuler le déplacement qui vient de commencer.
+  if(dialogHistory){
+    preserveMoveOnNextPop=true;
+    history.back();
+  }
+}
 function beginMoveBottle(){
   if(!selected||!selected.refId) return;
   beginMoveFromItems([selected],$('#dialog'));
@@ -3208,6 +3224,9 @@ function showDialog(d){
   d.showModal();
 }
 function closeDialogsFromPop(){
+  const keepMove=preserveMoveOnNextPop && !!moveSource?.items?.length;
+  preserveMoveOnNextPop=false;
+
   [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
@@ -3216,10 +3235,16 @@ function closeDialogsFromPop(){
   addTargets=[];
   exitTargets=[];
   saleTargets=[];
-  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];moveSource=null;moveTargetKeys.clear();
+  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];
+  if(!keepMove){
+    moveSource=null;
+    moveTargetKeys.clear();
+  }
   voiceExactRefId='';
   voiceSimilarRefId='';
   stopVoiceRecognition(true);
+
+  if(keepMove) render();
 }
 window.addEventListener('popstate',closeDialogsFromPop);
 
@@ -4481,6 +4506,7 @@ $('#casierTabs').addEventListener('click',async e=>{
 });
 
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
+$('#moveBannerToBulk').addEventListener('click',openMoveToBulk);
 $('#moveToBulk').addEventListener('click',openMoveToBulk);
 $('#confirmMoveBulk').addEventListener('click',completeMoveToBulk);
 $('#cancelMoveBulk').addEventListener('click',()=>$('#moveBulkDialog').close());
@@ -4704,8 +4730,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:51000,
-    app:'ma-cave-configurable-v5.10',
+    version:51100,
+    app:'ma-cave-configurable-v5.11',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -4792,7 +4818,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v5-10.json';
+  const filename='sauvegarde-ma-cave-configurable-v5-11.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
