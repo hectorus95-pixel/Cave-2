@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.3</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.3">
+<title>Ma Cave à Vin – Configurable v6.4</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.4">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3535,11 +3535,52 @@ header .stock-filter.active{
   opacity:1!important;
 }
 
+
+/* =========================================================
+   V6.4 — déplacement entre casiers de la même cave
+   ========================================================= */
+.move-banner-main{
+  flex:1 1 auto;
+  min-width:0;
+}
+.move-casier-choices{
+  display:flex!important;
+  flex-direction:row!important;
+  gap:5px!important;
+  margin-top:5px;
+  overflow-x:auto;
+  padding:1px 0 2px;
+  scrollbar-width:none;
+}
+.move-casier-choices[hidden]{
+  display:none!important;
+}
+.move-casier-choices::-webkit-scrollbar{
+  display:none;
+}
+.move-casier-choices button{
+  flex:0 0 auto!important;
+  min-height:31px!important;
+  padding:5px 8px!important;
+  border:1px solid #6689a8!important;
+  border-radius:7px!important;
+  background:#26394a!important;
+  color:#d7e5f1!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  white-space:nowrap;
+}
+.move-casier-choices button.active{
+  background:#527da4!important;
+  border-color:#9cc5e8!important;
+  color:#fff!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.3</span>
+  <span class="app-version">v6.4</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3592,9 +3633,10 @@ header .stock-filter.active{
   </div>
 
   <section id="moveBanner" class="move-banner" hidden>
-    <div>
+    <div class="move-banner-main">
       <b id="moveBannerTitle">📦 Déplacer une bouteille</b>
       <span id="moveBannerText">Choisis une cave, un casier puis touche un emplacement libre.</span>
+      <div id="moveCasierChoices" class="move-casier-choices" hidden></div>
     </div>
     <div class="move-banner-actions">
       <button id="moveBannerToBulk" type="button" class="move-btn" hidden>📦 Vers Vrac</button>
@@ -4150,6 +4192,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.3"></script>
+<script src="app.js?v=6.4"></script>
 </body>
 </html>

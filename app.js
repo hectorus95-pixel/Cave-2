@@ -2847,11 +2847,26 @@ function updateMoveBanner(){
   banner.hidden=false;
   document.body.classList.add('move-mode');
 
+  const cave=activeCave();
+
   const bulkButton=$('#moveBannerToBulk');
   if(bulkButton){
     bulkButton.hidden=!moduleEnabled('bulk');
-    const cave=activeCave();
     bulkButton.textContent=cave ? `📦 Vers Vrac ${cave.code}` : '📦 Vers Vrac';
+  }
+
+  const casierChoices=$('#moveCasierChoices');
+  if(casierChoices){
+    if(cave && cave.casiers>0){
+      casierChoices.hidden=false;
+      casierChoices.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
+        const n=i+1;
+        return `<button type="button" class="${n===activeCasier?'active':''}" data-move-casier="${n}">Casier ${n}</button>`;
+      }).join('');
+    }else{
+      casierChoices.hidden=true;
+      casierChoices.innerHTML='';
+    }
   }
 
   $('#moveBannerTitle').textContent=needed===1
@@ -4708,6 +4723,13 @@ $('#caveTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.cave-tab');if(!b)return;
   activeCaveId=b.dataset.caveId;
   activeCasier=activeCave()?.casiers===0 ? 0 : 1;
+
+  if(moveSource?.items?.length){
+    render();
+    await refreshPhotoButtons();
+    return;
+  }
+
   $('#search').value='';clearMaturityFilter();clearYearFilter();clearStockFilter();hideResultPanel();
   render();await refreshPhotoButtons();
 });
@@ -4716,6 +4738,14 @@ $('#casierTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.tab');
   if(!b) return;
   activeCasier=Number(b.dataset.c);
+
+  if(moveSource?.items?.length){
+    render();
+    await refreshPhotoButtons();
+    requestAnimationFrame(()=>$('#grid')?.scrollIntoView({behavior:'smooth',block:'start'}));
+    return;
+  }
+
   $('#search').value='';
   clearMaturityFilter();
   clearYearFilter();
@@ -4723,6 +4753,20 @@ $('#casierTabs').addEventListener('click',async e=>{
   hideResultPanel();
   render();
   await refreshPhotoButtons();
+});
+
+$('#moveCasierChoices').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-move-casier]');
+  if(!b || !moveSource?.items?.length) return;
+
+  const n=Number(b.dataset.moveCasier);
+  const cave=activeCave();
+  if(!cave || !Number.isInteger(n) || n<1 || n>cave.casiers) return;
+
+  activeCasier=n;
+  render();
+  await refreshPhotoButtons();
+  requestAnimationFrame(()=>$('#grid')?.scrollIntoView({behavior:'smooth',block:'start'}));
 });
 
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
@@ -4962,8 +5006,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60300,
-    app:'ma-cave-configurable-v6.3',
+    version:60400,
+    app:'ma-cave-configurable-v6.4',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5054,7 +5098,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-3.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-4.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
