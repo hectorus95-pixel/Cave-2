@@ -2495,6 +2495,7 @@ function renderBulk(){
       ${isMagnumFormat(r.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}
       <span>${esc(r.domaine||'')}</span>
       <small>📍 ${esc(bulkLocationLabel(sample.locationText))} · ${euro((Number(r.prix)||0)*items.length)}</small>
+      ${maturityGaugeHtml(r)?`<span class="bulk-maturity-gauge">${maturityGaugeHtml(r)}</span>`:''}
     </button>`;
   }).join('');
 }
@@ -2566,7 +2567,7 @@ function openBulkGroup(id){
   bulkActionIds=ids;
   const r=ref(seed.refId),cave=caveById(seed.caveId);
   $('#bulkActionTitle').textContent=r?.vin||'Vin en vrac';
-  $('#bulkActionInfo').innerHTML=`<b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b>${isMagnumFormat(r?.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}<span>${esc(r?.domaine||'')}</span><small>${esc(cave?.code||'')} · 📍 ${esc(bulkLocationLabel(seed.locationText))} · ${ids.length} bouteille${ids.length>1?'s':''}</small>`;
+  $('#bulkActionInfo').innerHTML=`<b>${esc(r?.vin||'Vin')}${r?.millesime?` · ${esc(r.millesime)}`:''}</b>${isMagnumFormat(r?.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}<span>${esc(r?.domaine||'')}</span><small>${esc(cave?.code||'')} · 📍 ${esc(bulkLocationLabel(seed.locationText))} · ${ids.length} bouteille${ids.length>1?'s':''}</small>${maturityGaugeHtml(r)?`<span class="bulk-action-maturity-gauge">${maturityGaugeHtml(r)}</span>`:''}`;
   $('#bulkActionQty').max=ids.length;
   $('#bulkActionQty').value=ids.length;
   $('#bulkActionSell').hidden=!moduleEnabled('sales');
@@ -4839,8 +4840,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:51200,
-    app:'ma-cave-configurable-v5.12',
+    version:60000,
+    app:'ma-cave-configurable-v6.0',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -4931,7 +4932,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v5-12.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-0.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
