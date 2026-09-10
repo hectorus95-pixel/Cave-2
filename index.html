@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.4</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.4">
+<title>Ma Cave à Vin – Configurable v6.5</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.5">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3576,11 +3576,70 @@ header .stock-filter.active{
   color:#fff!important;
 }
 
+
+/* =========================================================
+   V6.5 — destinations visibles pendant un déplacement
+   ========================================================= */
+.move-destination-info{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin:8px 0 6px;
+  padding:8px 10px;
+  border:1px solid #78a8d1;
+  border-radius:9px;
+  background:#172634;
+  color:#fff;
+}
+.move-destination-info[hidden]{
+  display:none!important;
+}
+.move-destination-info b{
+  font-size:11px;
+}
+.move-destination-info span{
+  font-size:9px;
+  color:#b8dfc2;
+  font-weight:800;
+  white-space:nowrap;
+}
+.move-casier-choices button{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:1px!important;
+}
+.move-casier-choices button b{
+  font-size:9px!important;
+}
+.move-casier-choices button small{
+  font-size:7px!important;
+  color:#b8dfc2!important;
+  line-height:1.1!important;
+}
+.move-mode .slot.empty.move-target{
+  background:#183021!important;
+  border:2px dashed #8ed49e!important;
+  opacity:1!important;
+}
+.move-mode .slot.empty.move-target .pos{
+  color:#d8f3df!important;
+  opacity:.9!important;
+}
+.move-mode .slot.empty.move-target .name{
+  color:#c9f0d2!important;
+  font-weight:900!important;
+}
+.move-mode .slot.occupied:not(.move-source){
+  opacity:.28!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.4</span>
+  <span class="app-version">v6.5</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3644,6 +3703,7 @@ header .stock-filter.active{
     </div>
   </section>
 
+  <div id="moveDestinationInfo" class="move-destination-info" hidden></div>
   <div id="grid"></div>
 
   <section id="bulkPanel" class="bulk-panel" hidden>
@@ -4192,6 +4252,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.4"></script>
+<script src="app.js?v=6.5"></script>
 </body>
 </html>

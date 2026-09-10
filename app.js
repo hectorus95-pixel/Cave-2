@@ -1447,9 +1447,14 @@ function renderCasierTabs(s){
 
   tabs.hidden=false;
   const counts=s.byCaveCasier[cave.id]||{};
+  const moving=!!moveSource?.items?.length;
   tabs.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
     const c=i+1;
-    return `<button class="tab ${c===activeCasier?'active':''}" data-c="${c}"><b>Casier ${c}</b><small>${counts[c]||0} bt</small></button>`;
+    const free=inv.filter(x=>x.caveId===cave.id && x.casier===c && !x.refId).length;
+    const sub=moving
+      ? `${free} libre${free>1?'s':''}`
+      : `${counts[c]||0} bt`;
+    return `<button class="tab ${c===activeCasier?'active':''}" data-c="${c}"><b>Casier ${c}</b><small>${sub}</small></button>`;
   }).join('');
   scheduleTabCentering();
 }
@@ -2861,7 +2866,11 @@ function updateMoveBanner(){
       casierChoices.hidden=false;
       casierChoices.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
         const n=i+1;
-        return `<button type="button" class="${n===activeCasier?'active':''}" data-move-casier="${n}">Casier ${n}</button>`;
+        const free=inv.filter(x=>x.caveId===cave.id && x.casier===n && !x.refId).length;
+        return `<button type="button" class="${n===activeCasier?'active':''}" data-move-casier="${n}">
+          <b>Casier ${n}</b>
+          <small>${free} libre${free>1?'s':''}</small>
+        </button>`;
       }).join('');
     }else{
       casierChoices.hidden=true;
@@ -3293,6 +3302,22 @@ function render(){
   g.style.setProperty('--bpl',cave.positions);
   g.innerHTML='';
 
+  const moveInfo=$('#moveDestinationInfo');
+  if(moveInfo){
+    if(moveSource?.items?.length && cave.casiers>0 && activeCasier>0){
+      const freeCount=inv.filter(x=>
+        x.caveId===activeCaveId &&
+        x.casier===activeCasier &&
+        !x.refId
+      ).length;
+      moveInfo.hidden=false;
+      moveInfo.innerHTML=`<b>Destination : ${esc(cave.code)} · Casier ${activeCasier}</b><span>${freeCount} emplacement${freeCount>1?'s':''} libre${freeCount>1?'s':''}</span>`;
+    }else{
+      moveInfo.hidden=true;
+      moveInfo.innerHTML='';
+    }
+  }
+
   if(cave.casiers===0&&cave.lignes===0&&cave.positions===0){
     g.innerHTML='<div class="bulk-only-grid-message"><b>📦 Cave en vrac uniquement</b><span>Aucun casier n’est configuré pour cette cave.</span></div>';
   }
@@ -3328,7 +3353,9 @@ function render(){
       b.innerHTML=`
         <span class="pos">L${x.ligne}·P${x.position}</span>
         <span class="name">${moveSource?.items?.length
-          ? (isMoveTargetSelected ? `✓ Destination ${[...moveTargetKeys].indexOf(slotKey(x))+1} · toucher pour valider` : '→ Déplacer ici')
+          ? (isMoveTargetSelected
+              ? `✓ Destination ${[...moveTargetKeys].indexOf(slotKey(x))+1} · toucher pour valider`
+              : `Libre · déplacer ici`)
           : (isMultiSelected?'✓ Sélectionnée':'＋ Vide')}</span>
       `;
     }
@@ -4742,7 +4769,7 @@ $('#casierTabs').addEventListener('click',async e=>{
   if(moveSource?.items?.length){
     render();
     await refreshPhotoButtons();
-    requestAnimationFrame(()=>$('#grid')?.scrollIntoView({behavior:'smooth',block:'start'}));
+    requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'start'}));
     return;
   }
 
@@ -4766,7 +4793,7 @@ $('#moveCasierChoices').addEventListener('click',async e=>{
   activeCasier=n;
   render();
   await refreshPhotoButtons();
-  requestAnimationFrame(()=>$('#grid')?.scrollIntoView({behavior:'smooth',block:'start'}));
+  requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'start'}));
 });
 
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
@@ -5006,8 +5033,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60400,
-    app:'ma-cave-configurable-v6.4',
+    version:60500,
+    app:'ma-cave-configurable-v6.5',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5098,7 +5125,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-4.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-5.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
@@ -5320,7 +5347,8 @@ $('#grid').addEventListener('touchend',e=>{
   else if(dx>0&&activeCasier>1) activeCasier--;
   else return;
   render(); refreshPhotoButtons();
-  document.querySelector('.tabs').scrollIntoView({behavior:'smooth',block:'start'});
+  const scrollTarget=moveSource?.items?.length ? $('#moveDestinationInfo') : document.querySelector('.tabs');
+  if(scrollTarget) scrollTarget.scrollIntoView({behavior:'smooth',block:'start'});
 },{passive:true});
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
