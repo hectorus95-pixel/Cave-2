@@ -98,6 +98,7 @@ let voiceExactRefId='';
 let voiceSimilarRefId='';
 let dialogHistory=false;
 let preserveMoveOnNextPop=false;
+let priceRankingMode='unit';
 
 if(config){
   inv=buildInventory(config,inv);
@@ -1453,6 +1454,86 @@ function renderCasierTabs(s){
   scheduleTabCentering();
 }
 
+function priceRankingItems(){
+  const counts=new Map();
+
+  inv.forEach(x=>{
+    if(!x?.refId || !ref(x.refId)) return;
+    counts.set(x.refId,(counts.get(x.refId)||0)+1);
+  });
+  bulk.forEach(x=>{
+    if(!x?.refId || !ref(x.refId)) return;
+    counts.set(x.refId,(counts.get(x.refId)||0)+1);
+  });
+
+  const items=refs
+    .filter(r=>r?.id && counts.get(r.id))
+    .map(r=>{
+      const count=counts.get(r.id)||0;
+      const unitPrice=Number(r.prix)||0;
+      return {
+        r,
+        count,
+        unitPrice,
+        lotPrice:unitPrice*count
+      };
+    });
+
+  return items.sort((a,b)=>{
+    const av=priceRankingMode==='lot' ? a.lotPrice : a.unitPrice;
+    const bv=priceRankingMode==='lot' ? b.lotPrice : b.unitPrice;
+
+    return (
+      bv-av ||
+      b.count-a.count ||
+      normalizeSearchText(a.r.domaine||'').localeCompare(normalizeSearchText(b.r.domaine||''),'fr') ||
+      normalizeSearchText(a.r.vin||'').localeCompare(normalizeSearchText(b.r.vin||''),'fr')
+    );
+  });
+}
+
+function renderPriceRanking(){
+  const list=$('#priceRankingList');
+  if(!list) return;
+
+  const unitMode=priceRankingMode!=='lot';
+  const unitBtn=$('#priceModeUnit');
+  const lotBtn=$('#priceModeLot');
+  if(unitBtn) unitBtn.classList.toggle('active',unitMode);
+  if(lotBtn) lotBtn.classList.toggle('active',!unitMode);
+
+  const subtitle=$('#priceRankingSubtitle');
+  if(subtitle){
+    subtitle.textContent=unitMode
+      ? 'Classement par prix unitaire décroissant'
+      : 'Classement par valeur totale du lot décroissante';
+  }
+
+  const items=priceRankingItems();
+  if(!items.length){
+    list.innerHTML='<div class="price-ranking-empty">Aucun vin en stock.</div>';
+    return;
+  }
+
+  list.innerHTML=items.map(({r,count,unitPrice,lotPrice},index)=>`
+    <div class="price-ranking-row wine-color ${wineClass(r.couleur)}">
+      <span class="price-ranking-rank">${index+1}</span>
+      <span class="price-ranking-main">
+        <b>${esc(r.vin||'Vin')}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
+        <small>${esc(r.domaine||'')}${count>1?` · ×${count}`:''}</small>
+        ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
+      </span>
+      <strong>${unitMode ? euro(unitPrice) : euro(lotPrice)}</strong>
+    </div>
+  `).join('');
+}
+
+function openPriceRanking(){
+  renderPriceRanking();
+  showDialog($('#priceRankingDialog'));
+}
+
+
 function renderStats(){
   const s=statsData();
   renderStockFilterLabels();
@@ -2494,7 +2575,7 @@ function renderBulk(){
       <b>${esc(r.vin)}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
       ${isMagnumFormat(r.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}
       <span>${esc(r.domaine||'')}</span>
-      <small>📍 ${esc(bulkLocationLabel(sample.locationText))} · ${euro((Number(r.prix)||0)*items.length)}</small>
+      <small>${esc(bulkLocationLabel(sample.locationText))}</small>
       ${maturityGaugeHtml(r)?`<span class="bulk-maturity-gauge">${maturityGaugeHtml(r)}</span>`:''}
     </button>`;
   }).join('');
@@ -3228,7 +3309,7 @@ function closeDialogsFromPop(){
   const keepMove=preserveMoveOnNextPop && !!moveSource?.items?.length;
   preserveMoveOnNextPop=false;
 
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -4672,6 +4753,18 @@ $('#bulkActionEdit').addEventListener('click',()=>{
 $('#bulkActionClose').addEventListener('click',()=>requestClose($('#bulkActionDialog')));
 
 
+$('#openPriceRanking').addEventListener('click',openPriceRanking);
+$('#priceRankingClose').addEventListener('click',()=>requestClose($('#priceRankingDialog')));
+$('#priceRankingDialog').addEventListener('click',backdropClose);
+$('#priceModeUnit').addEventListener('click',()=>{
+  priceRankingMode='unit';
+  renderPriceRanking();
+});
+$('#priceModeLot').addEventListener('click',()=>{
+  priceRankingMode='lot';
+  renderPriceRanking();
+});
+
 $('#openConsumptionWindow').addEventListener('click',()=>{
   $('#consumptionSearch').value='';
   renderConsumption();
@@ -4840,8 +4933,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60000,
-    app:'ma-cave-configurable-v6.0',
+    version:60200,
+    app:'ma-cave-configurable-v6.2',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -4932,7 +5025,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-0.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-2.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
