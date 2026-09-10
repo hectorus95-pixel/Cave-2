@@ -3310,10 +3310,16 @@ function render(){
         x.casier===activeCasier &&
         !x.refId
       ).length;
+
       moveInfo.hidden=false;
-      moveInfo.innerHTML=`<b>Destination : ${esc(cave.code)} · Casier ${activeCasier}</b><span>${freeCount} emplacement${freeCount>1?'s':''} libre${freeCount>1?'s':''}</span>`;
+      moveInfo.style.display='flex';
+      moveInfo.innerHTML=`
+        <span class="move-destination-title">Destination : <b>${esc(cave.code)} · Casier ${activeCasier}</b></span>
+        <span class="move-destination-free">${freeCount} place${freeCount>1?'s':''} libre${freeCount>1?'s':''}</span>
+      `;
     }else{
       moveInfo.hidden=true;
+      moveInfo.style.display='none';
       moveInfo.innerHTML='';
     }
   }
@@ -4769,7 +4775,7 @@ $('#casierTabs').addEventListener('click',async e=>{
   if(moveSource?.items?.length){
     render();
     await refreshPhotoButtons();
-    requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'start'}));
+    requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'center'}));
     return;
   }
 
@@ -4793,7 +4799,7 @@ $('#moveCasierChoices').addEventListener('click',async e=>{
   activeCasier=n;
   render();
   await refreshPhotoButtons();
-  requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'start'}));
+  requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'center'}));
 });
 
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
@@ -5033,8 +5039,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60500,
-    app:'ma-cave-configurable-v6.5',
+    version:60600,
+    app:'ma-cave-configurable-v6.6',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5125,7 +5131,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-5.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-6.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;

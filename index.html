@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.5</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.5">
+<title>Ma Cave à Vin – Configurable v6.6</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.6">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3635,11 +3635,50 @@ header .stock-filter.active{
   opacity:.28!important;
 }
 
+
+/* =========================================================
+   V6.6 — casier destination clairement identifié
+   ========================================================= */
+#moveDestinationInfo.move-destination-info{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin:10px 0 8px;
+  padding:10px 12px;
+  border:2px solid #82b7e4;
+  border-radius:10px;
+  background:#18314a;
+  color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08) inset;
+}
+#moveDestinationInfo.move-destination-info[hidden]{
+  display:none!important;
+}
+.move-destination-title{
+  font-size:13px;
+  font-weight:700;
+}
+.move-destination-title b{
+  font-size:14px;
+  color:#fff;
+}
+.move-destination-free{
+  flex:0 0 auto;
+  padding:4px 7px;
+  border-radius:999px;
+  background:#1f5131;
+  color:#d8f7e0;
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.5</span>
+  <span class="app-version">v6.6</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4252,6 +4291,6 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.5"></script>
+<script src="app.js?v=6.6"></script>
 </body>
 </html>
