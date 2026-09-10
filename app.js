@@ -3380,6 +3380,127 @@ function applyMaturityToIdenticalBottles(reference,start,end){
   return matches.length;
 }
 
+
+function wineIdentityKey(r){
+  return [
+    normalizeSearchText(r?.vin||''),
+    normalizeSearchText(r?.domaine||''),
+    String(r?.millesime||'').trim(),
+    normalizeSearchText(r?.couleur||''),
+    normalizeSearchText(r?.format||'')
+  ].join('|');
+}
+
+function fullWineReferenceKey(r){
+  const price=Number(r?.prix)||0;
+  return [
+    wineIdentityKey(r),
+    price.toFixed(4),
+    String(r?.maturiteDebut||'').trim(),
+    String(r?.maturiteFin||'').trim()
+  ].join('|');
+}
+
+function mergeFullyIdenticalReferences(preferredRefId=''){
+  const groups=new Map();
+
+  refs.forEach(r=>{
+    if(!r?.id) return;
+    const key=fullWineReferenceKey(r);
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(r);
+  });
+
+  const redirect=new Map();
+  let mergedRefs=0;
+  let mergedGroups=0;
+
+  groups.forEach(group=>{
+    if(group.length<2) return;
+
+    const preferred=group.find(r=>r.id===preferredRefId);
+    const canonical=preferred||group[0];
+    const duplicates=group.filter(r=>r.id!==canonical.id);
+
+    if(!duplicates.length) return;
+    mergedGroups++;
+
+    duplicates.forEach(r=>{
+      redirect.set(r.id,canonical.id);
+      mergedRefs++;
+    });
+  });
+
+  if(!redirect.size){
+    return {mergedRefs:0,mergedGroups:0};
+  }
+
+  const remap=id=>redirect.get(id)||id;
+
+  inv.forEach(x=>{ if(x?.refId) x.refId=remap(x.refId); });
+  bulk.forEach(x=>{ if(x?.refId) x.refId=remap(x.refId); });
+  consumed.forEach(x=>{ if(x?.refId) x.refId=remap(x.refId); });
+  sales.forEach(x=>{ if(x?.refId) x.refId=remap(x.refId); });
+
+  if(selected?.refId) selected.refId=remap(selected.refId);
+  if(pendingAddRefId) pendingAddRefId=remap(pendingAddRefId);
+  if(pendingBulkRefId) pendingBulkRefId=remap(pendingBulkRefId);
+  if(voiceExactRefId) voiceExactRefId=remap(voiceExactRefId);
+  if(voiceSimilarRefId) voiceSimilarRefId=remap(voiceSimilarRefId);
+
+  refs=refs.filter(r=>!redirect.has(r.id));
+
+  return {mergedRefs,mergedGroups};
+}
+
+function reconcileIdenticalWineMaturityAndReferences(){
+  const identityGroups=new Map();
+
+  refs.forEach(r=>{
+    if(!r?.id) return;
+    const key=wineIdentityKey(r);
+    if(!identityGroups.has(key)) identityGroups.set(key,[]);
+    identityGroups.get(key).push(r);
+  });
+
+  let maturitySynced=0;
+
+  identityGroups.forEach(group=>{
+    if(group.length<2) return;
+
+    // Une seule maturité renseignée parmi plusieurs références du même vin :
+    // elle devient la maturité commune. Si deux maturités différentes sont
+    // déjà renseignées, on ne tranche pas automatiquement au démarrage.
+    const known=new Map();
+
+    group.forEach(r=>{
+      const start=String(r.maturiteDebut||'').trim();
+      const end=String(r.maturiteFin||'').trim();
+      if(!start && !end) return;
+      known.set(`${start}|${end}`,{start,end});
+    });
+
+    if(known.size===1){
+      const {start,end}=[...known.values()][0];
+      group.forEach(r=>{
+        if(String(r.maturiteDebut||'').trim()!==start ||
+           String(r.maturiteFin||'').trim()!==end){
+          r.maturiteDebut=start;
+          r.maturiteFin=end;
+          maturitySynced++;
+        }
+      });
+    }
+  });
+
+  const merged=mergeFullyIdenticalReferences();
+  return {
+    maturitySynced,
+    mergedRefs:merged.mergedRefs,
+    mergedGroups:merged.mergedGroups
+  };
+}
+
 function showBottleEdit(r,scope='all'){
   editScope=scope;
   fill(r);
@@ -4242,49 +4363,28 @@ $('#save').addEventListener('click',()=>{
   }
 
   const existed=!!selected.refId;
-  let maturityPropagation=null;
+  let maturityChanged=false;
+  let sameIdentityBeforeSave=false;
 
   if(existed){
     const originalId=selected.refId;
     const original=ref(originalId);
-    const sameCount=inv.filter(p=>p.refId===originalId).length+bulk.filter(p=>p.refId===originalId).length;
+    if(!original) return alert('Référence introuvable.');
 
-    const maturityChanged=
-      String(original?.maturiteDebut||'')!==String(vals.maturiteDebut||'') ||
-      String(original?.maturiteFin||'')!==String(vals.maturiteFin||'');
+    const sameCount=
+      inv.filter(p=>p.refId===originalId).length+
+      bulk.filter(p=>p.refId===originalId).length;
 
-    // Même si une ancienne modification a déjà séparé une bouteille dans une
-    // nouvelle référence, on retrouve les bouteilles identiques par
-    // domaine + cuvée + millésime + couleur + format, en ignorant la maturité.
-    const identicalBeforeSave =
-      editScope==='single' && identityUnchanged(original,vals)
-        ? currentIdenticalBottles(original)
-        : [];
+    maturityChanged=
+      String(original.maturiteDebut||'')!==String(vals.maturiteDebut||'') ||
+      String(original.maturiteFin||'')!==String(vals.maturiteFin||'');
 
-    if(editScope==='single' && maturityChanged && identicalBeforeSave.length>1){
-      const maturityLabel=
-        vals.maturiteDebut || vals.maturiteFin
-          ? `${vals.maturiteDebut||'…'} → ${vals.maturiteFin||'…'}`
-          : 'non renseignée';
-
-      const applyToAll=confirm(
-        `La maturité a été modifiée (${maturityLabel}).\n\n`+
-        `Appliquer cette maturité aux ${identicalBeforeSave.length} bouteilles identiques ?\n\n`+
-        `Oui = maturité pour toutes les bouteilles identiques.\n`+
-        `Annuler = maturité uniquement pour cette bouteille.`
-      );
-
-      if(applyToAll){
-        maturityPropagation={
-          reference:{...original},
-          start:vals.maturiteDebut,
-          end:vals.maturiteFin
-        };
-      }
-    }
+    sameIdentityBeforeSave=identityUnchanged(original,vals);
 
     if(editScope==='single' && sameCount>1){
-      // Dupliquer la référence : les autres champs restent propres à cette bouteille.
+      // Les champs propres à cette bouteille peuvent rester indépendants.
+      // La maturité, elle, sera synchronisée juste après avec toutes les
+      // bouteilles correspondant au même vin.
       const clone={
         ...original,
         ...vals,
@@ -4293,15 +4393,18 @@ $('#save').addEventListener('click',()=>{
       refs.push(clone);
       selected.refId=clone.id;
     }else{
-      // Une seule bouteille utilise cette référence, ou l'utilisateur a choisi "toutes".
       Object.assign(original,vals);
     }
 
-    if(maturityPropagation){
+    // Règle V5.12 :
+    // même cuvée + domaine + millésime + couleur + format = même maturité.
+    // Cela fonctionne même si une ancienne modification avait créé plusieurs
+    // références distinctes pour le même vin.
+    if(maturityChanged && sameIdentityBeforeSave){
       applyMaturityToIdenticalBottles(
-        maturityPropagation.reference,
-        maturityPropagation.start,
-        maturityPropagation.end
+        vals,
+        vals.maturiteDebut,
+        vals.maturiteFin
       );
     }
   }else{
@@ -4318,12 +4421,18 @@ $('#save').addEventListener('click',()=>{
     }
   }
 
+  // Si plusieurs références possèdent désormais exactement les mêmes données,
+  // elles sont réunies automatiquement sous une seule référence.
+  // Les bouteilles en casier, en vrac et les historiques sont remappés.
+  mergeFullyIdenticalReferences(selected?.refId||'');
+
   persist();
   render();
 
   if(existed){
     const updated=ref(selected.refId);
-    showBottleView(updated);
+    if(updated) showBottleView(updated);
+    else requestClose($('#dialog'));
   }else{
     editScope=null;
     requestClose($('#dialog'));
@@ -4730,8 +4839,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:51100,
-    app:'ma-cave-configurable-v5.11',
+    version:51200,
+    app:'ma-cave-configurable-v5.12',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -4807,6 +4916,10 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
   activeCasier=config.caves[0]?.casiers===0 ? 0 : 1;
   clearEmptySelection();
   clearOccupiedSelection();
+
+  // Répare aussi les anciennes références séparées à tort.
+  reconcileIdenticalWineMaturityAndReferences();
+
   persist(`Restauration · ${sourceLabel}`);
   render();
   renderSales();
@@ -4818,7 +4931,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v5-11.json';
+  const filename='sauvegarde-ma-cave-configurable-v5-12.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
@@ -5049,6 +5162,13 @@ initSalesPeriod();
 
 if(config){
   inv=buildInventory(config,inv);
+
+  // Migration V5.12 :
+  // - une maturité unique renseignée pour un même vin est propagée aux
+  //   anciennes références identiques restées sans maturité ;
+  // - les références ensuite totalement identiques sont fusionnées.
+  reconcileIdenticalWineMaturityAndReferences();
+
   persist(); // historyReady=false : simple normalisation de démarrage, non historisée
   historyReady=true;
   render();
