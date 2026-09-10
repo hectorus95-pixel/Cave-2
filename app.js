@@ -1454,6 +1454,34 @@ function renderCasierTabs(s){
   scheduleTabCentering();
 }
 
+function isStandard75clFormat(format){
+  const raw=String(format||'').trim();
+  if(!raw) return true;
+
+  const f=normalizeSearchText(raw)
+    .replace(/,/g,'.')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  return (
+    f==='75 cl' ||
+    f==='75cl' ||
+    f==='750 ml' ||
+    f==='750ml' ||
+    f==='0.75 l' ||
+    f==='0.75l' ||
+    f==='0.750 l' ||
+    f==='0.750l'
+  );
+}
+
+function priceRankingFormatLabel(r){
+  const format=String(r?.format||'').trim();
+  if(!format || isStandard75clFormat(format)) return '';
+  if(isMagnumFormat(format)) return 'Magnum';
+  return format;
+}
+
 function priceRankingItems(){
   const counts=new Map();
 
@@ -1521,6 +1549,7 @@ function renderPriceRanking(){
       <span class="price-ranking-main">
         <b>${esc(r.vin||'Vin')}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
         <small>${esc(r.domaine||'')}${count>1?` · ×${count}`:''}</small>
+        ${priceRankingFormatLabel(r)?`<span class="price-ranking-format">${esc(priceRankingFormatLabel(r))}</span>`:''}
         ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
       </span>
       <strong>${unitMode ? euro(unitPrice) : euro(lotPrice)}</strong>
@@ -4933,8 +4962,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60200,
-    app:'ma-cave-configurable-v6.2',
+    version:60300,
+    app:'ma-cave-configurable-v6.3',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5025,7 +5054,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-2.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-3.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
