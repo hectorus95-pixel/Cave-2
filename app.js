@@ -80,6 +80,7 @@ let activeCasier=1;
 let selected=null;
 let moveSource=null; // {items:[{type:'grid'|'bulk', key|id, refId}, ...]}
 let moveTargetKeys=new Set();
+let moveDestinationCasier=null;
 let pendingAddRefId='';
 let editScope=null; // 'single' | 'all' | 'new'
 let selectedEmptyKeys=new Set();
@@ -1434,6 +1435,13 @@ function renderCaveTabs(s){
   scheduleTabCentering();
 }
 
+function displayedCasier(){
+  if(moveSource?.items?.length && Number.isInteger(moveDestinationCasier)){
+    return moveDestinationCasier;
+  }
+  return activeCasier;
+}
+
 function renderCasierTabs(s){
   const tabs=$('#casierTabs');
   const cave=activeCave();
@@ -1448,13 +1456,14 @@ function renderCasierTabs(s){
   tabs.hidden=false;
   const counts=s.byCaveCasier[cave.id]||{};
   const moving=!!moveSource?.items?.length;
+  const shownCasier=displayedCasier();
   tabs.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
     const c=i+1;
     const free=inv.filter(x=>x.caveId===cave.id && x.casier===c && !x.refId).length;
     const sub=moving
       ? `${free} libre${free>1?'s':''}`
       : `${counts[c]||0} bt`;
-    return `<button class="tab ${c===activeCasier?'active':''}" data-c="${c}"><b>Casier ${c}</b><small>${sub}</small></button>`;
+    return `<button class="tab ${c===shownCasier?'active':''}" data-c="${c}"><b>Casier ${c}</b><small>${sub}</small></button>`;
   }).join('');
   scheduleTabCentering();
 }
@@ -2835,6 +2844,7 @@ function updateMoveBanner(){
   if(sources.length!==needed){
     moveSource=null;
     moveTargetKeys.clear();
+    moveDestinationCasier=null;
     banner.hidden=true;
     document.body.classList.remove('move-mode');
     return;
@@ -2864,10 +2874,11 @@ function updateMoveBanner(){
   if(casierChoices){
     if(cave && cave.casiers>0){
       casierChoices.hidden=false;
+      const shownCasier=displayedCasier();
       casierChoices.innerHTML=Array.from({length:cave.casiers},(_,i)=>{
         const n=i+1;
         const free=inv.filter(x=>x.caveId===cave.id && x.casier===n && !x.refId).length;
-        return `<button type="button" class="${n===activeCasier?'active':''}" data-move-casier="${n}">
+        return `<button type="button" class="${n===shownCasier?'active':''}" data-move-casier="${n}">
           <b>Casier ${n}</b>
           <small>${free} libre${free>1?'s':''}</small>
         </button>`;
@@ -2899,6 +2910,7 @@ function updateMoveBanner(){
 function finishMoveMode(message){
   moveSource=null;
   moveTargetKeys.clear();
+  moveDestinationCasier=null;
   selected=null;
   clearEmptySelection();
   clearOccupiedSelection();
@@ -2911,6 +2923,7 @@ function finishMoveMode(message){
 function cancelMoveMode(){
   moveSource=null;
   moveTargetKeys.clear();
+  moveDestinationCasier=null;
   selected=null;
   clearEmptySelection();
   clearOccupiedSelection();
@@ -2924,6 +2937,7 @@ function beginMoveFromItems(items,sourceDialog=null){
 
   moveSource={items:descriptors};
   moveTargetKeys.clear();
+  moveDestinationCasier=activeCasier;
 
   clearEmptySelection();
   clearOccupiedSelection();
@@ -3279,8 +3293,20 @@ function render(){
   if(!config) return;
   if(!caveById(activeCaveId)) activeCaveId=config.caves[0].id;
   const activeDef=activeCave();
-  if(activeDef.casiers===0) activeCasier=0;
-  else if(activeCasier<1 || activeCasier>activeDef.casiers) activeCasier=1;
+  if(activeDef.casiers===0){
+    activeCasier=0;
+    if(moveSource?.items?.length) moveDestinationCasier=0;
+  }else{
+    if(activeCasier<1 || activeCasier>activeDef.casiers) activeCasier=1;
+    if(moveSource?.items?.length){
+      if(!Number.isInteger(moveDestinationCasier) ||
+         moveDestinationCasier<1 ||
+         moveDestinationCasier>activeDef.casiers){
+        moveDestinationCasier=activeCasier;
+      }
+      activeCasier=moveDestinationCasier;
+    }
+  }
 
   selectedEmptyKeys.forEach(key=>{
     const x=inv.find(p=>slotKey(p)===key);
@@ -3301,20 +3327,21 @@ function render(){
   const g=$('#grid');
   g.style.setProperty('--bpl',cave.positions);
   g.innerHTML='';
+  const shownCasier=displayedCasier();
 
   const moveInfo=$('#moveDestinationInfo');
   if(moveInfo){
     if(moveSource?.items?.length && cave.casiers>0 && activeCasier>0){
       const freeCount=inv.filter(x=>
         x.caveId===activeCaveId &&
-        x.casier===activeCasier &&
+        x.casier===shownCasier &&
         !x.refId
       ).length;
 
       moveInfo.hidden=false;
       moveInfo.style.display='flex';
       moveInfo.innerHTML=`
-        <span class="move-destination-title">Destination : <b>${esc(cave.code)} · Casier ${activeCasier}</b></span>
+        <span class="move-destination-title">Destination : <b>${esc(cave.code)} · Casier ${shownCasier}</b></span>
         <span class="move-destination-free">${freeCount} place${freeCount>1?'s':''} libre${freeCount>1?'s':''}</span>
       `;
     }else{
@@ -3328,7 +3355,7 @@ function render(){
     g.innerHTML='<div class="bulk-only-grid-message"><b>📦 Cave en vrac uniquement</b><span>Aucun casier n’est configuré pour cette cave.</span></div>';
   }
 
-  inv.filter(x=>x.caveId===activeCaveId && x.casier===activeCasier).forEach(x=>{
+  inv.filter(x=>x.caveId===activeCaveId && x.casier===shownCasier).forEach(x=>{
     const r=ref(x.refId);
     const hay=r?[r.vin,r.domaine,r.millesime,r.couleur,r.format,x.emplacement].join(' ').toLowerCase():'';
     const b=document.createElement('button');
@@ -3348,7 +3375,7 @@ function render(){
         ${isMoveSource?'<span class="move-source-badge">Départ</span>':''}
         <span class="vintage-strip age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
         <span class="slot-main wine-color ${wc}">
-          <span class="pos">L${x.ligne}·P${x.position}</span>
+          <span class="pos">${moveSource?.items?.length?`C${shownCasier}·`:``}L${x.ligne}·P${x.position}</span>
           ${isMagnumFormat(r.format)?'<span class="magnum-badge">Magnum</span>':''}
           <span class="name">${esc(r.vin)}</span>
           ${r.domaine?`<span class="domain">${esc(r.domaine)}</span>`:''}
@@ -3357,7 +3384,7 @@ function render(){
       `;
     }else{
       b.innerHTML=`
-        <span class="pos">L${x.ligne}·P${x.position}</span>
+        <span class="pos">${moveSource?.items?.length?`C${shownCasier}·`:``}L${x.ligne}·P${x.position}</span>
         <span class="name">${moveSource?.items?.length
           ? (isMoveTargetSelected
               ? `✓ Destination ${[...moveTargetKeys].indexOf(slotKey(x))+1} · toucher pour valider`
@@ -3368,7 +3395,7 @@ function render(){
     b.addEventListener('click',()=>r?handleOccupiedSlotClick(x,r):handleEmptySlotClick(x));
     g.appendChild(b);
   });
-  $$('.tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.c)===activeCasier));
+  $$('.tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.c)===shownCasier));
   renderConsumption();
   if(moduleEnabled('sales')) renderSales();
 }
@@ -3398,6 +3425,7 @@ function closeDialogsFromPop(){
   if(!keepMove){
     moveSource=null;
     moveTargetKeys.clear();
+    moveDestinationCasier=null;
   }
   voiceExactRefId='';
   voiceSimilarRefId='';
@@ -4758,6 +4786,7 @@ $('#caveTabs').addEventListener('click',async e=>{
   activeCasier=activeCave()?.casiers===0 ? 0 : 1;
 
   if(moveSource?.items?.length){
+    moveDestinationCasier=activeCasier;
     render();
     await refreshPhotoButtons();
     return;
@@ -4773,6 +4802,7 @@ $('#casierTabs').addEventListener('click',async e=>{
   activeCasier=Number(b.dataset.c);
 
   if(moveSource?.items?.length){
+    moveDestinationCasier=activeCasier;
     render();
     await refreshPhotoButtons();
     requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'center'}));
@@ -4796,6 +4826,7 @@ $('#moveCasierChoices').addEventListener('click',async e=>{
   const cave=activeCave();
   if(!cave || !Number.isInteger(n) || n<1 || n>cave.casiers) return;
 
+  moveDestinationCasier=n;
   activeCasier=n;
   render();
   await refreshPhotoButtons();
@@ -5039,8 +5070,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60600,
-    app:'ma-cave-configurable-v6.6',
+    version:60700,
+    app:'ma-cave-configurable-v6.7',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5131,7 +5162,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-6.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-7.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
@@ -5349,9 +5380,18 @@ $('#grid').addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-swipeStartX,dy=e.changedTouches[0].clientY-swipeStartY;
   swipeStartX=swipeStartY=null;
   if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.35)return;
-  if(dx<0&&activeCave()&&activeCasier<activeCave().casiers) activeCasier++;
-  else if(dx>0&&activeCasier>1) activeCasier--;
-  else return;
+  if(moveSource?.items?.length){
+    let next=displayedCasier();
+    if(dx<0&&activeCave()&&next<activeCave().casiers) next++;
+    else if(dx>0&&next>1) next--;
+    else return;
+    moveDestinationCasier=next;
+    activeCasier=next;
+  }else{
+    if(dx<0&&activeCave()&&activeCasier<activeCave().casiers) activeCasier++;
+    else if(dx>0&&activeCasier>1) activeCasier--;
+    else return;
+  }
   render(); refreshPhotoButtons();
   const scrollTarget=moveSource?.items?.length ? $('#moveDestinationInfo') : document.querySelector('.tabs');
   if(scrollTarget) scrollTarget.scrollIntoView({behavior:'smooth',block:'start'});
