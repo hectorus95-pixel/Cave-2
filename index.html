@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.10</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.10">
+<title>Ma Cave à Vin – Configurable v6.11</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.11">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3876,11 +3876,135 @@ header .stock-filter.active{
   margin-top:11px;
 }
 
+
+/* =========================================================
+   V6.11 — casier complet dans la fenêtre de déplacement
+   ========================================================= */
+.move-slot-grid{
+  align-items:stretch;
+}
+.move-slot-place{
+  position:relative;
+  min-height:118px!important;
+  height:118px!important;
+  padding:0!important;
+  overflow:hidden;
+  border-radius:11px!important;
+  text-align:left;
+}
+.move-slot-place.occupied{
+  border:0!important;
+  background:transparent!important;
+  cursor:default;
+  opacity:.72;
+}
+.move-slot-place.empty{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:8px!important;
+  border:2px dashed #86cf98!important;
+  background:#343131!important;
+  color:#fff!important;
+}
+.move-slot-place.empty small{
+  display:block;
+  margin-bottom:7px;
+  font-size:8px;
+  opacity:.8;
+}
+.move-slot-place.empty b{
+  display:block;
+  font-size:11px;
+}
+.move-slot-place.empty span{
+  display:block;
+  margin-top:6px;
+  color:#ccefd4;
+  font-size:8px;
+  font-weight:900;
+}
+.move-slot-vintage{
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:900;
+}
+.move-slot-main{
+  position:absolute;
+  top:28px;
+  left:0;
+  right:0;
+  bottom:0;
+  display:block;
+  padding:8px 7px 24px;
+}
+.move-slot-main small{
+  display:block;
+  font-size:8px;
+  opacity:.72;
+  white-space:nowrap;
+}
+.move-slot-main b{
+  display:block;
+  margin-top:5px;
+  font-size:11px;
+  line-height:1.08;
+  overflow:hidden;
+}
+.move-slot-main em{
+  display:block;
+  margin-top:3px;
+  font-size:8px;
+  line-height:1.05;
+  font-style:normal;
+  opacity:.76;
+  overflow:hidden;
+}
+.move-slot-main .maturity-gauge{
+  position:absolute!important;
+  left:7px!important;
+  right:7px!important;
+  bottom:7px!important;
+  width:auto!important;
+  margin:0!important;
+}
+.move-slot-source{
+  box-shadow:0 0 0 2px #7db9e8 inset;
+}
+.move-slot-source-badge{
+  position:absolute;
+  z-index:5;
+  top:31px;
+  right:4px;
+  padding:2px 4px;
+  border-radius:5px;
+  background:#3d6f96;
+  color:#fff;
+  font-size:7px;
+  font-weight:900;
+}
+@media(max-width:430px){
+  .move-slot-grid{
+    gap:5px;
+  }
+  .move-slot-place{
+    min-height:110px!important;
+    height:110px!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.10</span>
+  <span class="app-version">v6.11</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4527,7 +4651,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app-v6-10.js?v=61000"></script>
+<script src="app-v6-11.js?v=61100"></script>
 \n\n
 </body>
 </html>
