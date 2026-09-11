@@ -2922,6 +2922,7 @@ function updateMoveBanner(){
 }
 
 function finishMoveMode(message){
+  if($('#moveSlotDialog')?.open) $('#moveSlotDialog').close();
   moveSource=null;
   moveTargetKeys.clear();
   moveDestinationCasier=null;
@@ -3097,6 +3098,7 @@ function confirmMoveTargets(){
   if(!moveSource?.items?.length) return;
   const targets=validMoveTargets();
   if($('#moveConfirmDialog').open) $('#moveConfirmDialog').close();
+  if($('#moveSlotDialog')?.open) $('#moveSlotDialog').close();
   moveSourcesToGrid(targets);
 }
 
@@ -3198,15 +3200,21 @@ function renderMoveSlotDialog(){
           `;
         }
 
+        const moveKey=slotKey(x);
+        const preselected=moveTargetKeys.has(moveKey);
+        const selectedIndex=preselected ? [...moveTargetKeys].indexOf(moveKey)+1 : 0;
+
         return `
-          <button type="button" class="move-slot-place empty"
+          <button type="button"
+            class="move-slot-place empty${preselected?' preselected':''}"
             data-move-slot-cave-id="${esc(x.caveId)}"
             data-move-slot-casier-id="${Number(x.casier)}"
             data-move-slot-line="${Number(x.ligne)}"
             data-move-slot-pos="${Number(x.position)}">
+            ${preselected?`<span class="move-slot-selected-badge">✓ ${selectedIndex}</span>`:''}
             <small>C${Number(x.casier)} · L${Number(x.ligne)} · P${Number(x.position)}</small>
-            <b>＋ Vide</b>
-            <span>Déplacer ici</span>
+            <b>${preselected?'✓ Sélectionnée':'＋ Vide'}</b>
+            <span>${preselected?'Retoucher pour valider':'Déplacer ici'}</span>
           </button>
         `;
       }).join('')
@@ -5042,6 +5050,8 @@ $('#moveSlotGrid').addEventListener('click',e=>{
 
   if(!single && moveSource?.items?.length){
     renderMoveSlotDialog();
+  }else{
+    closeMoveSlotDialog();
   }
 });
 
@@ -5304,8 +5314,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:61300,
-    app:'ma-cave-configurable-v6.13',
+    version:61400,
+    app:'ma-cave-configurable-v6.14',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5396,7 +5406,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-13.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-14.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
