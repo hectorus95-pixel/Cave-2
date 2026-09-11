@@ -81,6 +81,8 @@ let selected=null;
 let moveSource=null; // {items:[{type:'grid'|'bulk', key|id, refId}, ...]}
 let moveTargetKeys=new Set();
 let moveDestinationCasier=null;
+let moveSlotDialogCaveId='';
+let moveSlotDialogCasier=1;
 let pendingAddRefId='';
 let editScope=null; // 'single' | 'all' | 'new'
 let selectedEmptyKeys=new Set();
@@ -1433,6 +1435,18 @@ function renderCaveTabs(s){
     </button>
   `).join('');
   scheduleTabCentering();
+}
+
+function setMoveDestinationCasier(n){
+  const cave=activeCave();
+  const target=Number(n);
+  if(!moveSource?.items?.length || !cave) return false;
+  if(!Number.isInteger(target) || target<1 || target>cave.casiers) return false;
+
+  moveDestinationCasier=target;
+  activeCasier=target;
+  render();
+  return true;
 }
 
 function displayedCasier(){
@@ -3086,6 +3100,146 @@ function confirmMoveTargets(){
   moveSourcesToGrid(targets);
 }
 
+function renderMoveSlotDialog(){
+  if(!moveSource?.items?.length) return;
+
+  let cave=caveById(moveSlotDialogCaveId);
+  if(!cave){
+    cave=activeCave();
+    moveSlotDialogCaveId=cave?.id||'';
+  }
+  if(!cave) return;
+
+  const sources=moveSourceItems();
+  const first=sources[0]?.ref;
+  const needed=moveSourceCount();
+
+  $('#moveSlotWine').textContent=needed===1
+    ? `${first?.vin||'Vin'}${first?.millesime?` · ${first.millesime}`:''}`
+    : `${needed} bouteilles à déplacer`;
+
+  $('#moveSlotCaves').innerHTML=config.caves.map(c=>{
+    const free=inv.filter(x=>x.caveId===c.id && !x.refId).length;
+    return `<button type="button"
+      class="${c.id===cave.id?'active':''}"
+      data-move-slot-cave="${esc(c.id)}">
+      <b>${esc(c.code)}</b>
+      <span>${esc(c.name)}</span>
+      <small>${free} place${free>1?'s':''} libre${free>1?'s':''}</small>
+    </button>`;
+  }).join('');
+
+  const casiers=Number(cave.casiers)||0;
+
+  if(casiers<=0){
+    moveSlotDialogCasier=0;
+    $('#moveSlotCasiers').innerHTML='<div class="move-slot-no-casier">Cette cave est configurée uniquement en Vrac.</div>';
+    $('#moveSlotTitle').textContent=`${cave.code} · Vrac uniquement`;
+    $('#moveSlotCount').textContent='';
+    $('#moveSlotGrid').innerHTML='<div class="move-slot-empty">Aucun casier dans cette cave.</div>';
+    $('#moveSlotToBulk').hidden=cave.bulkEnabled===false;
+    return;
+  }
+
+  if(!Number.isInteger(moveSlotDialogCasier) ||
+     moveSlotDialogCasier<1 ||
+     moveSlotDialogCasier>casiers){
+    moveSlotDialogCasier=1;
+  }
+
+  $('#moveSlotCasiers').innerHTML=Array.from({length:casiers},(_,i)=>{
+    const n=i+1;
+    const free=inv.filter(x=>x.caveId===cave.id && Number(x.casier)===n && !x.refId).length;
+    return `<button type="button"
+      class="${n===moveSlotDialogCasier?'active':''}"
+      data-move-slot-casier="${n}">
+      <b>Casier ${n}</b>
+      <small>${free} libre${free>1?'s':''}</small>
+    </button>`;
+  }).join('');
+
+  const slots=inv
+    .filter(x=>
+      x.caveId===cave.id &&
+      Number(x.casier)===moveSlotDialogCasier
+    )
+    .sort((a,b)=>
+      Number(a.ligne)-Number(b.ligne) ||
+      Number(a.position)-Number(b.position)
+    );
+
+  const freeCount=slots.filter(x=>!x.refId).length;
+
+  $('#moveSlotTitle').textContent=`${cave.code} · Casier ${moveSlotDialogCasier}`;
+  $('#moveSlotCount').textContent=
+    `${freeCount} place${freeCount>1?'s':''} libre${freeCount>1?'s':''}`;
+
+  $('#moveSlotGrid').style.setProperty('--move-slot-bpl',String(cave.positions||5));
+
+  $('#moveSlotGrid').innerHTML=slots.length
+    ? slots.map(x=>{
+        const r=ref(x.refId);
+        const occupied=!!r;
+        const wc=occupied?wineClass(r.couleur):'';
+        const ac=occupied?ageClass(r.millesime):'';
+        const source=occupied && isMoveSourceGridSlot(x);
+
+        if(occupied){
+          return `
+            <div class="move-slot-place occupied ${source?'move-source':''}">
+              ${source?'<span class="move-slot-source-badge">Départ</span>':''}
+              <span class="move-slot-vintage age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
+              <span class="move-slot-main wine-color ${wc}">
+                <small>C${Number(x.casier)} · L${Number(x.ligne)} · P${Number(x.position)}</small>
+                <b>${esc(r.vin||'Vin')}</b>
+                ${r.domaine?`<em>${esc(r.domaine)}</em>`:''}
+              </span>
+            </div>
+          `;
+        }
+
+        return `
+          <button type="button" class="move-slot-place empty"
+            data-move-slot-cave-id="${esc(x.caveId)}"
+            data-move-slot-casier-id="${Number(x.casier)}"
+            data-move-slot-line="${Number(x.ligne)}"
+            data-move-slot-pos="${Number(x.position)}">
+            <small>C${Number(x.casier)} · L${Number(x.ligne)} · P${Number(x.position)}</small>
+            <b>＋ Vide</b>
+            <span>Déplacer ici</span>
+          </button>
+        `;
+      }).join('')
+    : '<div class="move-slot-empty">Aucun emplacement configuré dans ce casier.</div>';
+
+  $('#moveSlotToBulk').hidden=cave.bulkEnabled===false;
+}
+
+function openMoveSlotDialog(caveId=activeCaveId,casier=1){
+  if(!moveSource?.items?.length) return;
+
+  const cave=caveById(caveId)||activeCave();
+  if(!cave) return;
+
+  moveSlotDialogCaveId=cave.id;
+
+  const max=Number(cave.casiers)||0;
+  const n=Number(casier);
+  moveSlotDialogCasier=max>0
+    ? (Number.isInteger(n)&&n>=1&&n<=max ? n : 1)
+    : 0;
+
+  renderMoveSlotDialog();
+
+  const d=$('#moveSlotDialog');
+  if(!d.open) d.showModal();
+}
+
+function closeMoveSlotDialog(){
+  const d=$('#moveSlotDialog');
+  if(d?.open) d.close();
+}
+
 function openMoveToBulk(){
   if(!moveSource?.items?.length || !moduleEnabled('bulk')) return;
 
@@ -3355,12 +3509,20 @@ function render(){
     g.innerHTML='<div class="bulk-only-grid-message"><b>📦 Cave en vrac uniquement</b><span>Aucun casier n’est configuré pour cette cave.</span></div>';
   }
 
+  if(moveSource?.items?.length && cave.casiers>0){
+    const freeCount=inv.filter(x=>x.caveId===activeCaveId && x.casier===shownCasier && !x.refId).length;
+    const marker=document.createElement('div');
+    marker.className='move-grid-marker';
+    marker.innerHTML=`<b>CASIER ${shownCasier}</b><span>${freeCount} place${freeCount>1?'s':''} libre${freeCount>1?'s':''}</span>`;
+    g.appendChild(marker);
+  }
+
   inv.filter(x=>x.caveId===activeCaveId && x.casier===shownCasier).forEach(x=>{
     const r=ref(x.refId);
     const hay=r?[r.vin,r.domaine,r.millesime,r.couleur,r.format,x.emplacement].join(' ').toLowerCase():'';
     const b=document.createElement('button');
     b.type='button';
-    b.dataset.line=x.ligne; b.dataset.pos=x.position;
+    b.dataset.casier=shownCasier; b.dataset.line=x.ligne; b.dataset.pos=x.position;
     const isMultiSelected=!r && selectedEmptyKeys.has(slotKey(x));
     const isExitSelected=!!r && selectedOccupiedKeys.has(slotKey(x));
     const isMoveSource=isMoveSourceGridSlot(x);
@@ -3413,7 +3575,7 @@ function closeDialogsFromPop(){
   const keepMove=preserveMoveOnNextPop && !!moveSource?.items?.length;
   preserveMoveOnNextPop=false;
 
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog'),$('#moveSlotDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -4782,16 +4944,16 @@ $$('.stock-filter').forEach(b=>b.addEventListener('click',()=>{
 
 $('#caveTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.cave-tab');if(!b)return;
-  activeCaveId=b.dataset.caveId;
-  activeCasier=activeCave()?.casiers===0 ? 0 : 1;
 
   if(moveSource?.items?.length){
-    moveDestinationCasier=activeCasier;
-    render();
-    await refreshPhotoButtons();
+    const caveId=b.dataset.caveId;
+    const cave=caveById(caveId);
+    openMoveSlotDialog(caveId,Number(cave?.casiers||0)>0?1:0);
     return;
   }
 
+  activeCaveId=b.dataset.caveId;
+  activeCasier=activeCave()?.casiers===0 ? 0 : 1;
   $('#search').value='';clearMaturityFilter();clearYearFilter();clearStockFilter();hideResultPanel();
   render();await refreshPhotoButtons();
 });
@@ -4799,16 +4961,14 @@ $('#caveTabs').addEventListener('click',async e=>{
 $('#casierTabs').addEventListener('click',async e=>{
   const b=e.target.closest('.tab');
   if(!b) return;
-  activeCasier=Number(b.dataset.c);
+  const requestedCasier=Number(b.dataset.c);
 
   if(moveSource?.items?.length){
-    moveDestinationCasier=activeCasier;
-    render();
-    await refreshPhotoButtons();
-    requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'center'}));
+    openMoveSlotDialog(activeCaveId,requestedCasier);
     return;
   }
 
+  activeCasier=requestedCasier;
   $('#search').value='';
   clearMaturityFilter();
   clearYearFilter();
@@ -4818,7 +4978,7 @@ $('#casierTabs').addEventListener('click',async e=>{
   await refreshPhotoButtons();
 });
 
-$('#moveCasierChoices').addEventListener('click',async e=>{
+$('#moveCasierChoices').addEventListener('click',e=>{
   const b=e.target.closest('[data-move-casier]');
   if(!b || !moveSource?.items?.length) return;
 
@@ -4826,12 +4986,86 @@ $('#moveCasierChoices').addEventListener('click',async e=>{
   const cave=activeCave();
   if(!cave || !Number.isInteger(n) || n<1 || n>cave.casiers) return;
 
-  moveDestinationCasier=n;
-  activeCasier=n;
-  render();
-  await refreshPhotoButtons();
-  requestAnimationFrame(()=>$('#moveDestinationInfo')?.scrollIntoView({behavior:'smooth',block:'center'}));
+  openMoveSlotDialog(activeCaveId,n);
 });
+
+$('#moveSlotCaves').addEventListener('click',e=>{
+  const b=e.target.closest('[data-move-slot-cave]');
+  if(!b || !moveSource?.items?.length) return;
+
+  const cave=caveById(b.dataset.moveSlotCave);
+  if(!cave) return;
+
+  moveSlotDialogCaveId=cave.id;
+  moveSlotDialogCasier=Number(cave.casiers||0)>0 ? 1 : 0;
+  renderMoveSlotDialog();
+});
+
+$('#moveSlotCasiers').addEventListener('click',e=>{
+  const b=e.target.closest('[data-move-slot-casier]');
+  if(!b || !moveSource?.items?.length) return;
+
+  const cave=caveById(moveSlotDialogCaveId);
+  const n=Number(b.dataset.moveSlotCasier);
+  if(!cave || !Number.isInteger(n) || n<1 || n>cave.casiers) return;
+
+  moveSlotDialogCasier=n;
+  renderMoveSlotDialog();
+});
+
+$('#moveSlotGrid').addEventListener('click',e=>{
+  const b=e.target.closest('.move-slot-place.empty[data-move-slot-line]');
+  if(!b || !moveSource?.items?.length) return;
+
+  const caveId=b.dataset.moveSlotCaveId;
+  const casier=Number(b.dataset.moveSlotCasierId);
+  const ligne=Number(b.dataset.moveSlotLine);
+  const position=Number(b.dataset.moveSlotPos);
+
+  const target=inv.find(x=>
+    x.caveId===caveId &&
+    Number(x.casier)===casier &&
+    Number(x.ligne)===ligne &&
+    Number(x.position)===position
+  );
+
+  if(!target || target.refId) return;
+
+  const single=moveSourceCount()===1;
+  if(single) closeMoveSlotDialog();
+
+  activeCaveId=caveId;
+  activeCasier=casier;
+  moveDestinationCasier=casier;
+
+  completeMoveToGrid(target);
+
+  if(!single && moveSource?.items?.length){
+    renderMoveSlotDialog();
+  }
+});
+
+$('#moveSlotToBulk').addEventListener('click',()=>{
+  if(!moveSource?.items?.length) return;
+
+  const cave=caveById(moveSlotDialogCaveId);
+  if(!cave || cave.bulkEnabled===false) return;
+
+  activeCaveId=cave.id;
+  activeCasier=Number(cave.casiers||0)>0 ? Math.max(1,moveSlotDialogCasier||1) : 0;
+  moveDestinationCasier=activeCasier;
+
+  closeMoveSlotDialog();
+  render();
+  openMoveToBulk();
+});
+
+$('#moveSlotClose').addEventListener('click',closeMoveSlotDialog);
+$('#moveSlotCancel').addEventListener('click',()=>{
+  closeMoveSlotDialog();
+  cancelMoveMode();
+});
+$('#moveSlotDialog').addEventListener('click',backdropClose);
 
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
 $('#moveBannerToBulk').addEventListener('click',openMoveToBulk);
@@ -5070,8 +5304,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:60700,
-    app:'ma-cave-configurable-v6.7',
+    version:61300,
+    app:'ma-cave-configurable-v6.13',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5162,7 +5396,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-7.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-13.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
