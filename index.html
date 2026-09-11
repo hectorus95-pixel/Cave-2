@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.9</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.9">
+<title>Ma Cave à Vin – Configurable v6.10</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.10">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -3717,11 +3717,170 @@ header .stock-filter.active{
 }
 
 \n/* =========================================================\n   V6.9 — grille de destination dédiée au déplacement\n   ========================================================= */\n.move-direct-panel{margin:10px 0 8px;padding:10px;border:2px solid #80b7e3;border-radius:11px;background:#142a3d}\n.move-direct-panel[hidden]{display:none!important}\n.move-direct-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}\n.move-direct-head b{font-size:14px}\n.move-direct-head span{padding:4px 7px;border-radius:999px;background:#205235;color:#d9f4df;font-size:9px;font-weight:900}\n.move-direct-grid{display:grid;grid-template-columns:repeat(var(--move-bpl,5),minmax(52px,1fr));gap:6px}\n.move-direct-slot{min-height:66px;padding:7px 5px;border:2px dashed #7fc58f;border-radius:9px;background:#1b3a25;color:#fff;text-align:left}\n.move-direct-slot b{display:block;font-size:9px;line-height:1.2}\n.move-direct-slot span{display:block;margin-top:5px;color:#ccefd4;font-size:8px;font-weight:800}\n.move-direct-empty{grid-column:1/-1;padding:14px;border-radius:8px;background:#2b2828;color:#bbb;text-align:center;font-size:10px}\nbody.move-mode #grid{display:none!important}\nbody.move-mode #moveDestinationInfo{display:none!important}\n
+
+/* =========================================================
+   V6.10 — fenêtre de destination pour les déplacements
+   ========================================================= */
+.move-slot-dialog{
+  width:min(96vw,680px);
+  max-height:92vh;
+}
+.move-slot-dlg{
+  padding:14px;
+}
+.move-slot-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.move-slot-head h2{
+  margin:0;
+  font-size:17px;
+}
+.move-slot-head .where{
+  margin:3px 0 0;
+}
+.move-slot-head>button{
+  flex:0 0 auto;
+  padding:8px 10px;
+  border:0;
+  border-radius:8px;
+}
+.move-slot-section{
+  margin-top:10px;
+}
+.move-slot-section>b{
+  display:block;
+  margin-bottom:6px;
+  font-size:10px;
+  color:#bbb;
+}
+.move-slot-caves,
+.move-slot-casiers{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  padding-bottom:2px;
+  scrollbar-width:none;
+}
+.move-slot-caves::-webkit-scrollbar,
+.move-slot-casiers::-webkit-scrollbar{
+  display:none;
+}
+.move-slot-caves button,
+.move-slot-casiers button{
+  flex:0 0 auto;
+  min-width:88px;
+  min-height:48px;
+  padding:7px 8px;
+  border:1px solid #5b5555;
+  border-radius:9px;
+  background:#2a2626;
+  color:#ddd;
+}
+.move-slot-caves button.active,
+.move-slot-casiers button.active{
+  border-color:#9cc9eb;
+  background:#315c7f;
+  color:#fff;
+  box-shadow:0 0 0 1px #fff inset;
+}
+.move-slot-caves b,
+.move-slot-caves span,
+.move-slot-caves small,
+.move-slot-casiers b,
+.move-slot-casiers small{
+  display:block;
+}
+.move-slot-caves b,
+.move-slot-casiers b{
+  font-size:10px;
+}
+.move-slot-caves span{
+  margin-top:1px;
+  font-size:8px;
+}
+.move-slot-caves small,
+.move-slot-casiers small{
+  margin-top:3px;
+  font-size:7px;
+  color:#bde7c7;
+}
+.move-slot-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin:11px 0 7px;
+  padding:8px 9px;
+  border:1px solid #6c9fc6;
+  border-radius:8px;
+  background:#19344b;
+}
+.move-slot-summary b{
+  font-size:12px;
+}
+.move-slot-summary span{
+  padding:3px 6px;
+  border-radius:999px;
+  background:#215b36;
+  color:#d8f6df;
+  font-size:8px;
+  font-weight:900;
+}
+.move-slot-grid{
+  display:grid;
+  grid-template-columns:repeat(var(--move-slot-bpl,5),minmax(52px,1fr));
+  gap:6px;
+  max-height:48vh;
+  overflow:auto;
+  padding:2px;
+}
+.move-slot-place{
+  min-height:68px;
+  padding:7px 5px;
+  border:2px dashed #86cf98;
+  border-radius:9px;
+  background:#1b3b26;
+  color:#fff;
+  text-align:left;
+}
+.move-slot-place b{
+  display:block;
+  font-size:9px;
+  line-height:1.2;
+}
+.move-slot-place span{
+  display:block;
+  margin-top:6px;
+  color:#ccefd4;
+  font-size:8px;
+  font-weight:900;
+}
+.move-slot-empty,
+.move-slot-no-casier{
+  grid-column:1/-1;
+  padding:14px;
+  border-radius:8px;
+  background:#292525;
+  color:#aaa;
+  text-align:center;
+  font-size:10px;
+}
+.move-slot-no-casier{
+  width:100%;
+}
+.move-slot-bottom{
+  margin-top:11px;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.9</span>
+  <span class="app-version">v6.10</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -3783,14 +3942,6 @@ header .stock-filter.active{
       <button id="moveBannerToBulk" type="button" class="move-btn" hidden>📦 Vers Vrac</button>
       <button id="cancelMove" type="button" class="secondary">Annuler</button>
     </div>
-  </section>
-
-  <section id="moveDirectPanel" class="move-direct-panel" hidden>
-    <div class="move-direct-head">
-      <b id="moveDirectTitle">Destination</b>
-      <span id="moveDirectCount"></span>
-    </div>
-    <div id="moveDirectGrid" class="move-direct-grid"></div>
   </section>
 
   <div id="moveDestinationInfo" class="move-destination-info" hidden></div>
@@ -4235,6 +4386,40 @@ header .stock-filter.active{
   </div>
 </dialog>
 
+<dialog id="moveSlotDialog" class="move-slot-dialog">
+  <div class="dlg move-slot-dlg">
+    <div class="move-slot-head">
+      <div>
+        <h2>📦 Choisir la destination</h2>
+        <p id="moveSlotWine" class="where"></p>
+      </div>
+      <button id="moveSlotClose" type="button" class="secondary">Fermer</button>
+    </div>
+
+    <div class="move-slot-section">
+      <b>Cave de destination</b>
+      <div id="moveSlotCaves" class="move-slot-caves"></div>
+    </div>
+
+    <div class="move-slot-section">
+      <b>Casier</b>
+      <div id="moveSlotCasiers" class="move-slot-casiers"></div>
+    </div>
+
+    <div class="move-slot-summary">
+      <b id="moveSlotTitle">Destination</b>
+      <span id="moveSlotCount"></span>
+    </div>
+
+    <div id="moveSlotGrid" class="move-slot-grid"></div>
+
+    <div class="dlgactions move-slot-bottom">
+      <button id="moveSlotToBulk" type="button" class="move-btn">📦 Vers Vrac</button>
+      <button id="moveSlotCancel" type="button" class="secondary">Annuler le déplacement</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="moveConfirmDialog" class="move-confirm-dialog">
   <div class="dlg">
     <h2>📦 Valider le déplacement</h2>
@@ -4342,7 +4527,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app-v6-9.js?v=60900"></script>
-\n<script>\n(function(){\n  function movePatchActive(){\n    try{return !!(moveSource && moveSource.items && moveSource.items.length);}catch(e){return false;}\n  }\n  function currentMoveCave(){\n    try{return activeCave();}catch(e){return null;}\n  }\n  function renderDirectMoveGrid(casier){\n    if(!movePatchActive()) return;\n    const cave=currentMoveCave();\n    const panel=document.getElementById('moveDirectPanel');\n    const grid=document.getElementById('moveDirectGrid');\n    const title=document.getElementById('moveDirectTitle');\n    const count=document.getElementById('moveDirectCount');\n    if(!cave || !panel || !grid) return;\n    const c=Number(casier);\n    if(!Number.isInteger(c) || c<1 || c>Number(cave.casiers||0)) return;\n    try{\n      activeCasier=c;\n      if(typeof moveDestinationCasier!=='undefined') moveDestinationCasier=c;\n    }catch(e){}\n    const slots=(Array.isArray(inv)?inv:[]).filter(x=>x && x.caveId===activeCaveId && Number(x.casier)===c);\n    const free=slots.filter(x=>!x.refId);\n    panel.hidden=false;\n    title.textContent=`Destination : ${cave.code||''} · Casier ${c}`;\n    count.textContent=`${free.length} place${free.length>1?'s':''} libre${free.length>1?'s':''}`;\n    grid.style.setProperty('--move-bpl',String(cave.positions||5));\n    if(!free.length){\n      grid.innerHTML='<div class="move-direct-empty">Aucun emplacement libre dans ce casier.</div>';\n    }else{\n      grid.innerHTML=free.map(x=>`\n        <button type="button" class="move-direct-slot"\n                data-move-cave="${String(x.caveId)}"\n                data-move-casier="${Number(x.casier)}"\n                data-move-line="${Number(x.ligne)}"\n                data-move-pos="${Number(x.position)}">\n          <b>C${Number(x.casier)} · L${Number(x.ligne)} · P${Number(x.position)}</b>\n          <span>Déplacer ici</span>\n        </button>`).join('');\n    }\n    document.querySelectorAll('#moveCasierChoices [data-move-casier]').forEach(btn=>{\n      btn.classList.toggle('active',Number(btn.dataset.moveCasier)===c);\n    });\n    document.querySelectorAll('#casierTabs [data-c]').forEach(btn=>{\n      btn.classList.toggle('active',Number(btn.dataset.c)===c);\n    });\n    requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'start'}));\n  }\n  function hideDirectMoveGrid(){\n    const panel=document.getElementById('moveDirectPanel');\n    if(panel) panel.hidden=true;\n  }\n  document.addEventListener('click',function(e){\n    const direct=e.target.closest('#moveDirectGrid [data-move-casier]');\n    if(direct && movePatchActive()){\n      e.preventDefault(); e.stopPropagation();\n      const caveId=direct.dataset.moveCave;\n      const c=Number(direct.dataset.moveCasier);\n      const l=Number(direct.dataset.moveLine);\n      const p=Number(direct.dataset.movePos);\n      const target=(Array.isArray(inv)?inv:[]).find(x=>x.caveId===caveId && Number(x.casier)===c && Number(x.ligne)===l && Number(x.position)===p);\n      if(target && !target.refId && typeof completeMoveToGrid==='function') completeMoveToGrid(target);\n      return;\n    }\n    const chooser=e.target.closest('#moveCasierChoices [data-move-casier]');\n    if(chooser && movePatchActive()){\n      e.preventDefault(); e.stopImmediatePropagation();\n      renderDirectMoveGrid(Number(chooser.dataset.moveCasier));\n      return;\n    }\n    const topTab=e.target.closest('#casierTabs [data-c]');\n    if(topTab && movePatchActive()){\n      e.preventDefault(); e.stopImmediatePropagation();\n      renderDirectMoveGrid(Number(topTab.dataset.c));\n      return;\n    }\n    const caveTab=e.target.closest('#caveTabs [data-cave-id]');\n    if(caveTab && movePatchActive()){\n      e.preventDefault(); e.stopImmediatePropagation();\n      try{\n        activeCaveId=caveTab.dataset.caveId;\n        const cave=activeCave();\n        const first=Number(cave?.casiers||0)>0 ? 1 : 0;\n        activeCasier=first;\n        if(typeof moveDestinationCasier!=='undefined') moveDestinationCasier=first;\n        if(typeof render==='function') render();\n        if(first>0) setTimeout(()=>renderDirectMoveGrid(first),0);\n      }catch(err){}\n      return;\n    }\n  },true);\n  const observer=new MutationObserver(()=>{\n    if(!movePatchActive()){ hideDirectMoveGrid(); return; }\n    const panel=document.getElementById('moveDirectPanel');\n    if(panel && panel.hidden){\n      let c=1;\n      try{c=Number((typeof moveDestinationCasier!=='undefined' && moveDestinationCasier) || activeCasier || 1);}catch(e){}\n      renderDirectMoveGrid(c);\n    }\n  });\n  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','class']});\n  window.addEventListener('load',()=>{\n    if(movePatchActive()){\n      let c=1; try{c=Number(activeCasier||1);}catch(e){}\n      renderDirectMoveGrid(c);\n    }\n  });\n})();\n</script>\n
+<script src="app-v6-10.js?v=61000"></script>
+\n\n
 </body>
 </html>
