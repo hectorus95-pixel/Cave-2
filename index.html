@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.19</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.19">
+<title>Ma Cave à Vin – Configurable v6.20</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.20">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4359,11 +4359,36 @@ header .stock-filter.active{
   }
 }
 
+
+/* =========================================================
+   V6.20 — choix d'un emplacement Vrac existant ou nouveau
+   ========================================================= */
+.bulk-location-picker,
+.bulk-edit-location-row{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.bulk-location-select,
+.bulk-location-new{
+  width:100%;
+  min-height:38px;
+}
+.bulk-location-picker small,
+.bulk-edit-location-row small{
+  color:#999;
+  font-size:8px;
+  line-height:1.2;
+}
+.bulk-location-new[hidden]{
+  display:none!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.19</span>
+  <span class="app-version">v6.20</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4832,7 +4857,9 @@ header .stock-filter.active{
         <label>Prix (€)<input id="f_prix" inputmode="decimal"></label>
         <label id="bulkEditLocationRow" class="wide bulk-edit-location-row" hidden>
           Emplacement Vrac
-          <input id="f_bulkLocation" maxlength="120" placeholder="Ex. Couloir, carton 2, étagère…">
+          <select id="f_bulkLocationSelect" class="bulk-location-select"></select>
+          <input id="f_bulkLocation" class="bulk-location-new" maxlength="120" placeholder="Nom du nouvel emplacement">
+          <small>Choisis un emplacement existant ou crée-en un nouveau.</small>
         </label>
         <label>Maturité : à partir de<input id="f_maturiteDebut" inputmode="numeric"></label>
         <label>À boire avant / jusqu'à<input id="f_maturiteFin" inputmode="numeric"></label>
@@ -4937,8 +4964,10 @@ header .stock-filter.active{
   <div class="dlg">
     <h2>📦 Déplacer vers le vrac</h2>
     <p class="where">Destination : <b id="moveBulkCave"></b></p>
-    <label class="wide">Emplacement (facultatif)
-      <input id="moveBulkLocation" maxlength="120" placeholder="Ex. Frigo, carton 2, étagère…">
+    <label class="wide bulk-location-picker">Emplacement Vrac
+      <select id="moveBulkLocationSelect" class="bulk-location-select"></select>
+      <input id="moveBulkLocation" class="bulk-location-new" maxlength="120" placeholder="Nom du nouvel emplacement">
+      <small>Choisis un emplacement existant ou crée-en un nouveau.</small>
     </label>
     <div class="dlgactions">
       <button id="confirmMoveBulk" type="button" class="primary">Déplacer ici</button>
@@ -4953,7 +4982,11 @@ header .stock-filter.active{
     <p class="where">Cave : <b id="bulkAddCave"></b></p>
     <div class="bulk-add-fields">
       <label>Quantité<input id="bulkQty" type="number" min="1" max="999" inputmode="numeric" value="6"></label>
-      <label class="wide">Emplacement (facultatif)<input id="bulkLocation" maxlength="120" placeholder="Ex. Garage, carton 3, étagère du fond"></label>
+      <label class="wide bulk-location-picker">Emplacement Vrac
+        <select id="bulkLocationSelect" class="bulk-location-select"></select>
+        <input id="bulkLocation" class="bulk-location-new" maxlength="120" placeholder="Nom du nouvel emplacement">
+        <small>Choisis un emplacement existant ou crée-en un nouveau.</small>
+      </label>
     </div>
     <label class="add-search-label">Rechercher un vin existant<input id="bulkPickSearch" type="search" autocomplete="off" placeholder="Cuvée, domaine, millésime…"></label>
     <div id="bulkPickResults" class="bulk-pick-results"></div>
@@ -5029,7 +5062,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.19"></script>
+<script src="app.js?v=6.20"></script>
 \n\n
 </body>
 </html>

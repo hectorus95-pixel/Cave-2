@@ -2773,6 +2773,88 @@ function createBulkEntries(refId,caveId,locationText,qty){
   return n;
 }
 
+const BULK_LOCATION_NEW='__new_bulk_location__';
+const BULK_LOCATION_NONE='__no_bulk_location__';
+
+function bulkLocationsForCave(caveId){
+  const byNorm=new Map();
+
+  bulk.forEach(x=>{
+    if(x?.caveId!==caveId) return;
+    const loc=String(x.locationText||'').trim();
+    if(!loc) return;
+    const key=normalizeSearchText(loc);
+    if(!byNorm.has(key)) byNorm.set(key,loc);
+  });
+
+  return [...byNorm.values()].sort((a,b)=>
+    a.localeCompare(b,'fr',{sensitivity:'base'})
+  );
+}
+
+function populateBulkLocationPicker(selectId,inputId,caveId,currentValue=''){
+  const select=$('#'+selectId);
+  const input=$('#'+inputId);
+  if(!select || !input) return;
+
+  const locations=bulkLocationsForCave(caveId);
+  const current=String(currentValue||'').trim();
+  const currentMatch=current
+    ? locations.find(x=>normalizeSearchText(x)===normalizeSearchText(current))
+    : '';
+
+  const options=[
+    `<option value="${BULK_LOCATION_NONE}">Sans emplacement</option>`,
+    ...locations.map(loc=>`<option value="${esc(loc)}">${esc(loc)}</option>`),
+    `<option value="${BULK_LOCATION_NEW}">＋ Nouvel emplacement…</option>`
+  ];
+
+  select.innerHTML=options.join('');
+
+  if(currentMatch){
+    select.value=currentMatch;
+    input.value='';
+    input.hidden=true;
+  }else if(current){
+    select.value=BULK_LOCATION_NEW;
+    input.value=current;
+    input.hidden=false;
+  }else if(locations.length){
+    select.value=locations[0];
+    input.value='';
+    input.hidden=true;
+  }else{
+    select.value=BULK_LOCATION_NEW;
+    input.value='';
+    input.hidden=false;
+  }
+
+  updateBulkLocationPickerInput(selectId,inputId);
+}
+
+function updateBulkLocationPickerInput(selectId,inputId){
+  const select=$('#'+selectId);
+  const input=$('#'+inputId);
+  if(!select || !input) return;
+
+  const creating=select.value===BULK_LOCATION_NEW;
+  input.hidden=!creating;
+
+  if(!creating){
+    input.value='';
+  }
+}
+
+function readBulkLocationPicker(selectId,inputId){
+  const select=$('#'+selectId);
+  const input=$('#'+inputId);
+  if(!select) return String(input?.value||'').trim();
+
+  if(select.value===BULK_LOCATION_NONE) return '';
+  if(select.value===BULK_LOCATION_NEW) return String(input?.value||'').trim();
+  return String(select.value||'').trim();
+}
+
 function bulkGroupKey(x){
   return `${x.caveId}|${x.refId}|${normalizeSearchText(x.locationText||'')||'__sans_emplacement__'}`;
 }
@@ -2830,7 +2912,7 @@ function openBulkAdd(){
   pendingBulkRefId='';
   $('#bulkAddCave').textContent=`${cave.code} · ${cave.name}`;
   $('#bulkQty').value='6';
-  $('#bulkLocation').value='';
+  populateBulkLocationPicker('bulkLocationSelect','bulkLocation',activeCaveId,'');
   $('#bulkPickSearch').value='';
   renderBulkPickResults();
   showDialog($('#bulkAddDialog'));
@@ -2838,8 +2920,11 @@ function openBulkAdd(){
 
 function bulkAddValues(){
   const qty=Math.max(1,Math.min(999,Number($('#bulkQty').value)||0));
-  const location=$('#bulkLocation').value.trim();
+  const location=readBulkLocationPicker('bulkLocationSelect','bulkLocation');
   if(!qty){alert('Indique la quantité.');return null;}
+  if($('#bulkLocationSelect')?.value===BULK_LOCATION_NEW && !location){
+    return alert('Indique le nom du nouvel emplacement Vrac.');
+  }
   return {qty,location,caveId:activeCaveId};
 }
 
@@ -3442,9 +3527,16 @@ function openMoveToBulk(){
     sources[0].descriptor.type==='bulk' &&
     sources[0].item.caveId===activeCaveId;
 
-  $('#moveBulkLocation').value=sameBulkLocation
+  const currentLocation=sameBulkLocation
     ? String(sources[0].item.locationText||'')
     : '';
+
+  populateBulkLocationPicker(
+    'moveBulkLocationSelect',
+    'moveBulkLocation',
+    activeCaveId,
+    currentLocation
+  );
 
   $('#moveBulkDialog').showModal();
 }
@@ -3463,7 +3555,10 @@ function completeMoveToBulk(){
     return alert('Une des bouteilles à déplacer n’est plus disponible.');
   }
 
-  const location=$('#moveBulkLocation').value.trim();
+  const location=readBulkLocationPicker('moveBulkLocationSelect','moveBulkLocation');
+  if($('#moveBulkLocationSelect')?.value===BULK_LOCATION_NEW && !location){
+    return alert('Indique le nom du nouvel emplacement Vrac.');
+  }
   const cave=activeCave();
 
   sources.forEach(({descriptor,item})=>{
@@ -4038,7 +4133,8 @@ function showBottleEdit(r,scope='all'){
   editScope=scope;
   fill(r);
   if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
-  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
+  if($('#f_bulkLocationSelect')) $('#f_bulkLocationSelect').innerHTML='';
+  if($('#f_bulkLocation')){$('#f_bulkLocation').value='';$('#f_bulkLocation').hidden=true;}
 
   const sameCount=inv.filter(p=>p.refId===r.id).length+bulk.filter(p=>p.refId===r.id).length;
   if(scope==='single'){
@@ -4072,7 +4168,12 @@ function editBulkLot(items){
   fill(r);
 
   if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=false;
-  if($('#f_bulkLocation')) $('#f_bulkLocation').value=String(first.locationText||'');
+  populateBulkLocationPicker(
+    'f_bulkLocationSelect',
+    'f_bulkLocation',
+    first.caveId,
+    String(first.locationText||'')
+  );
 
   const cave=caveById(first.caveId);
   $('#dialogTitle').textContent=r.vin||'Vin';
@@ -4915,7 +5016,8 @@ $('#newRef').addEventListener('click',()=>{
   pendingAddRefId='';
   editScope='new';
   if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
-  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
+  if($('#f_bulkLocationSelect')) $('#f_bulkLocationSelect').innerHTML='';
+  if($('#f_bulkLocation')){$('#f_bulkLocation').value='';$('#f_bulkLocation').hidden=true;}
   $('#dialogTitle').textContent='Nouveau vin';
   $('#where').textContent=selected.emplacement+' · nouvelle référence';
   fill(null);
@@ -4966,7 +5068,14 @@ $('#save').addEventListener('click',()=>{
         id:`r${Date.now()}_${Math.random().toString(36).slice(2,6)}`
       };
 
-      const newBulkLocation=String($('#f_bulkLocation')?.value||'').trim();
+      const newBulkLocation=readBulkLocationPicker(
+        'f_bulkLocationSelect',
+        'f_bulkLocation'
+      );
+
+      if($('#f_bulkLocationSelect')?.value===BULK_LOCATION_NEW && !newBulkLocation){
+        return alert('Indique le nom du nouvel emplacement Vrac.');
+      }
 
       refs.push(lotRef);
       targets.forEach(x=>{
@@ -5076,7 +5185,8 @@ $('#editAllBottles').addEventListener('click',()=>{
 $('#cancelEdit').addEventListener('click',()=>{
   bulkEditIds=[];
   if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
-  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
+  if($('#f_bulkLocationSelect')) $('#f_bulkLocationSelect').innerHTML='';
+  if($('#f_bulkLocation')){$('#f_bulkLocation').value='';$('#f_bulkLocation').hidden=true;}
   editScope=null;
   if(selected?.refId){
     const r=ref(selected.refId);
@@ -5344,6 +5454,16 @@ $('#moveSlotCancel').addEventListener('click',()=>{
 });
 $('#moveSlotDialog').addEventListener('click',backdropClose);
 
+$('#bulkLocationSelect').addEventListener('change',()=>{
+  updateBulkLocationPickerInput('bulkLocationSelect','bulkLocation');
+});
+$('#moveBulkLocationSelect').addEventListener('change',()=>{
+  updateBulkLocationPickerInput('moveBulkLocationSelect','moveBulkLocation');
+});
+$('#f_bulkLocationSelect').addEventListener('change',()=>{
+  updateBulkLocationPickerInput('f_bulkLocationSelect','f_bulkLocation');
+});
+
 $('#openBulkAdd').addEventListener('click',openBulkAdd);
 $('#moveBannerToBulk').addEventListener('click',openMoveToBulk);
 $('#moveToBulk').addEventListener('click',openMoveToBulk);
@@ -5373,7 +5493,8 @@ $('#bulkNewRef').addEventListener('click',()=>{
   selected={bulk:true,caveId:v.caveId,refId:null,emplacement:`${caveById(v.caveId)?.code||''} · Vrac · ${v.location}`,locationText:v.location};
   editScope='newbulk';
   if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
-  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
+  if($('#f_bulkLocationSelect')) $('#f_bulkLocationSelect').innerHTML='';
+  if($('#f_bulkLocation')){$('#f_bulkLocation').value='';$('#f_bulkLocation').hidden=true;}
   $('#dialogTitle').textContent='Nouveau vin';
   $('#where').textContent=selected.emplacement+' · '+v.qty+' bouteille'+(v.qty>1?'s':'');
   fill(null);$('#bottleView').hidden=true;$('#bottleEdit').hidden=false;$('#viewActions').hidden=true;$('#editActions').hidden=false;
@@ -5606,8 +5727,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:61900,
-    app:'ma-cave-configurable-v6.19',
+    version:62000,
+    app:'ma-cave-configurable-v6.20',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5698,7 +5819,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-19.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-20.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
