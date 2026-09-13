@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.12</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.12">
+<title>Ma Cave à Vin – Configurable v7.13</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.13">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5544,11 +5544,46 @@ dialog:focus{
   }
 }
 
+
+
+/* =========================================================
+   V7.13 — prix IA près de maturité + filtre prix manquant
+   ========================================================= */
+.price-ranking-mode{
+  grid-template-columns:1fr 1fr 1.15fr!important;
+}
+.price-ranking-mode #priceModeUnknown{
+  line-height:1.15;
+}
+.price-ranking-row.price-ranking-unknown .price-ranking-side>strong{
+  font-size:10px!important;
+  line-height:1.05;
+  white-space:normal!important;
+  text-align:right;
+}
+.google-ai-wine-tools{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:6px;
+  margin-top:10px;
+}
+.google-ai-wine-tools .google-ai-maturity-btn{
+  margin-top:0;
+}
+.google-ai-price-btn{
+  border-color:#9c741e!important;
+  background:#5b4516!important;
+}
+@media(min-width:560px){
+  .google-ai-wine-tools{
+    grid-template-columns:1fr 1fr;
+  }
+}
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v7.12</span>
+  <span class="app-version">v7.13</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <span id="count" hidden aria-hidden="true"></span>
   <span id="free" hidden aria-hidden="true"></span>
@@ -5702,6 +5737,7 @@ dialog:focus{
     <div class="price-ranking-mode" role="group" aria-label="Type de classement">
       <button id="priceModeUnit" type="button" class="active">Prix individuel</button>
       <button id="priceModeLot" type="button">Prix du lot</button>
+      <button id="priceModeUnknown" type="button" hidden>Prix non renseigné</button>
     </div>
 
     <div id="priceRankingCaveFilter" class="ranking-cave-filter" aria-label="Filtrer le classement par cave"></div>
@@ -5995,11 +6031,16 @@ dialog:focus{
         <div id="viewMaturityBar" class="maturity-bar four-zone"></div>
       </div>
 
-      <button type="button" id="searchMaturityGoogleAI" class="google-ai-maturity-btn">
-        🔎 Rechercher la maturité avec Google IA
-      </button>
+      <div class="google-ai-wine-tools">
+        <button type="button" id="searchPriceGoogleAI" class="google-ai-maturity-btn google-ai-price-btn">
+          💶 Rechercher le prix avec Google IA
+        </button>
+        <button type="button" id="searchMaturityGoogleAI" class="google-ai-maturity-btn">
+          🔎 Rechercher la maturité avec Google IA
+        </button>
+      </div>
       <small id="googleAiMaturityHint" class="google-ai-maturity-hint">
-        Recherche approfondie · réponse limitée aux 2 années.
+        Recherche approfondie du prix ou de la période de maturité.
       </small>
     </div>
 
@@ -6029,9 +6070,14 @@ dialog:focus{
           <small>La jauge évolue automatiquement avec la date du téléphone. Si tu modifies la maturité d’une seule bouteille, l’application proposera de l’appliquer aux bouteilles identiques.</small>
         </div>
 
-        <button type="button" id="searchMaturityGoogleAIEdit" class="google-ai-maturity-btn maturity-ai-edit-btn">
-          🔎 Rechercher la maturité avec Google IA
-        </button>
+        <div class="google-ai-wine-tools maturity-ai-edit-btn">
+          <button type="button" id="searchPriceGoogleAIEdit" class="google-ai-maturity-btn google-ai-price-btn">
+            💶 Rechercher le prix avec Google IA
+          </button>
+          <button type="button" id="searchMaturityGoogleAIEdit" class="google-ai-maturity-btn">
+            🔎 Rechercher la maturité avec Google IA
+          </button>
+        </div>
         <small class="google-ai-maturity-hint">
           Utilise les informations actuellement saisies, même avant l’enregistrement du vin.
         </small>
@@ -6249,6 +6295,6 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.12"></script>
+<script src="app.js?v=7.13"></script>
 </body>
 </html>

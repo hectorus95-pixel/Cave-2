@@ -1714,6 +1714,24 @@ function priceRankingStockPercent(count,maxCount){
   return Math.max(4,Math.min(100,(n/max)*100));
 }
 
+function priceRankingHasUnknownPrices(scope=priceRankingCaveScope){
+  const ids=new Set();
+
+  inv.forEach(x=>{
+    if(!x?.refId || !ref(x.refId) || !rankingCaveMatches(x.caveId,scope)) return;
+    ids.add(x.refId);
+  });
+  bulk.forEach(x=>{
+    if(!x?.refId || !ref(x.refId) || !rankingCaveMatches(x.caveId,scope)) return;
+    ids.add(x.refId);
+  });
+
+  return Array.from(ids).some(id=>{
+    const r=ref(id);
+    return r && !priceKnown(r.prix);
+  });
+}
+
 function priceRankingItems(){
   const counts=new Map();
 
@@ -1726,11 +1744,15 @@ function priceRankingItems(){
     counts.set(x.refId,(counts.get(x.refId)||0)+1);
   });
 
+  const unknownMode=priceRankingMode==='unknown';
   const items=refs
-    .filter(r=>r?.id && counts.get(r.id) && priceKnown(r.prix))
+    .filter(r=>{
+      if(!r?.id || !counts.get(r.id)) return false;
+      return unknownMode ? !priceKnown(r.prix) : priceKnown(r.prix);
+    })
     .map(r=>{
       const count=counts.get(r.id)||0;
-      const unitPrice=Number(r.prix)||0;
+      const unitPrice=priceKnown(r.prix) ? Number(r.prix) : 0;
       return {
         r,
         count,
@@ -1741,6 +1763,14 @@ function priceRankingItems(){
     });
 
   return items.sort((a,b)=>{
+    if(unknownMode){
+      return (
+        b.count-a.count ||
+        normalizeSearchText(a.r.domaine||'').localeCompare(normalizeSearchText(b.r.domaine||''),'fr') ||
+        normalizeSearchText(a.r.vin||'').localeCompare(normalizeSearchText(b.r.vin||''),'fr')
+      );
+    }
+
     const av=priceRankingMode==='lot' ? a.lotPrice : a.unitPrice;
     const bv=priceRankingMode==='lot' ? b.lotPrice : b.unitPrice;
 
@@ -1757,25 +1787,37 @@ function renderPriceRanking(){
   const list=$('#priceRankingList');
   if(!list) return;
 
-  const unitMode=priceRankingMode!=='lot';
+  const unknownAvailable=priceRankingHasUnknownPrices(priceRankingCaveScope);
+  if(priceRankingMode==='unknown' && !unknownAvailable) priceRankingMode='unit';
+
+  const unitMode=priceRankingMode==='unit';
+  const lotMode=priceRankingMode==='lot';
+  const unknownMode=priceRankingMode==='unknown';
   const unitBtn=$('#priceModeUnit');
   const lotBtn=$('#priceModeLot');
+  const unknownBtn=$('#priceModeUnknown');
   if(unitBtn) unitBtn.classList.toggle('active',unitMode);
-  if(lotBtn) lotBtn.classList.toggle('active',!unitMode);
+  if(lotBtn) lotBtn.classList.toggle('active',lotMode);
+  if(unknownBtn){
+    unknownBtn.hidden=!unknownAvailable;
+    unknownBtn.classList.toggle('active',unknownMode);
+  }
 
   renderRankingCaveFilter('priceRankingCaveFilter',priceRankingCaveScope);
 
   const subtitle=$('#priceRankingSubtitle');
   if(subtitle){
-    const modeLabel=unitMode
-      ? 'Prix unitaire décroissant'
-      : 'Valeur totale du lot décroissante';
+    const modeLabel=unknownMode
+      ? 'Prix non renseigné'
+      : (unitMode ? 'Prix unitaire décroissant' : 'Valeur totale du lot décroissante');
     subtitle.textContent=`${modeLabel} · ${rankingCaveLabel(priceRankingCaveScope)}`;
   }
 
   const items=priceRankingItems();
   if(!items.length){
-    list.innerHTML='<div class="price-ranking-empty">Aucun vin en stock avec un prix renseigné.</div>';
+    list.innerHTML=unknownMode
+      ? '<div class="price-ranking-empty">Aucun vin en stock sans prix renseigné.</div>'
+      : '<div class="price-ranking-empty">Aucun vin en stock avec un prix renseigné.</div>';
     return;
   }
 
@@ -1787,7 +1829,7 @@ function renderPriceRanking(){
 
     return `
       <button type="button"
-        class="price-ranking-row ${unitMode?'price-ranking-unit':'price-ranking-lot'} wine-color ${wineClass(r.couleur)}"
+        class="price-ranking-row ${unitMode?'price-ranking-unit':lotMode?'price-ranking-lot':'price-ranking-unknown'} wine-color ${wineClass(r.couleur)}"
         data-price-ref="${esc(r.id)}">
 
         <span class="price-ranking-rank">${index+1}</span>
@@ -1803,14 +1845,14 @@ function renderPriceRanking(){
             <strong class="price-stock-count">×${count}</strong>
           </span>
 
-          ${(format || !unitMode) ? `<span class="price-ranking-bottom">
+          ${(format || lotMode) ? `<span class="price-ranking-bottom">
             ${format?`<span class="price-ranking-format">${esc(format)}</span>`:''}
-            ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
+            ${lotMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
           </span>` : ''}
         </span>
 
         <span class="price-ranking-side">
-          <strong>${unitMode ? euro(unitPrice) : euro(lotPrice)}</strong>
+          <strong>${unknownMode ? 'Prix non renseigné' : (unitMode ? euro(unitPrice) : euro(lotPrice))}</strong>
           <small>📍 Voir où</small>
         </span>
       </button>
@@ -5182,6 +5224,58 @@ function continueVoiceBottle(){
   $('#dialog').showModal();
 }
 
+function priceGoogleAIPrompt(r){
+  if(!r) return '';
+
+  const details=[
+    r.domaine ? `Domaine : ${r.domaine}` : '',
+    r.vin ? `Cuvée / vin : ${r.vin}` : '',
+    r.millesime ? `Millésime : ${r.millesime}` : '',
+    r.couleur ? `Couleur : ${r.couleur}` : '',
+    r.format ? `Format : ${r.format}` : ''
+  ].filter(Boolean).join('\n');
+
+  return `${details}
+
+Fais une recherche web approfondie pour estimer le prix de vente actuel en France de cette bouteille, à l'unité et dans ce format précis.
+
+Compare plusieurs sources fiables : domaine/producteur lorsqu'un tarif est publié, cavistes français reconnus, marchands spécialisés et bases de données vin. Privilégie le même millésime et le même format. Écarte les prix manifestement aberrants, les enchères atypiques et les lots qui ne permettent pas de connaître un prix unitaire réaliste.
+
+Si le millésime exact est introuvable, utilise les millésimes voisins pour produire une estimation raisonnable.
+
+IMPORTANT : après ton analyse, n'affiche aucune source, aucune explication et aucune fourchette.
+
+Réponds exactement sous cette forme :
+Prix : XX,XX €`;
+}
+
+function openPriceGoogleAIForWine(r){
+  if(!r || !String(r.vin||'').trim()){
+    return alert('Indique au moins la cuvée / le nom du vin avant de lancer la recherche.');
+  }
+
+  const prompt=priceGoogleAIPrompt(r);
+  const url=`https://www.google.com/search?udm=50&q=${encodeURIComponent(prompt)}`;
+  window.open(url,'_blank','noopener');
+}
+
+function openPriceGoogleAI(){
+  const r=selected?.refId ? ref(selected.refId) : null;
+  if(!r) return alert('Aucun vin sélectionné.');
+  openPriceGoogleAIForWine(r);
+}
+
+function openPriceGoogleAIFromEdit(){
+  const draft={
+    vin:$('#f_vin')?.value.trim()||'',
+    domaine:$('#f_domaine')?.value.trim()||'',
+    millesime:$('#f_millesime')?.value.trim()||'',
+    couleur:$('#f_couleur')?.value.trim()||'',
+    format:$('#f_format')?.value.trim()||''
+  };
+  openPriceGoogleAIForWine(draft);
+}
+
 function maturityGoogleAIPrompt(r){
   if(!r) return '';
 
@@ -5504,6 +5598,8 @@ $('#save').addEventListener('click',()=>{
     requestClose($('#dialog'));
   }
 });
+$('#searchPriceGoogleAI').addEventListener('click',openPriceGoogleAI);
+$('#searchPriceGoogleAIEdit').addEventListener('click',openPriceGoogleAIFromEdit);
 $('#searchMaturityGoogleAI').addEventListener('click',openMaturityGoogleAI);
 $('#searchMaturityGoogleAIEdit').addEventListener('click',openMaturityGoogleAIFromEdit);
 
@@ -5882,6 +5978,10 @@ $('#priceModeUnit').addEventListener('click',()=>{
 });
 $('#priceModeLot').addEventListener('click',()=>{
   priceRankingMode='lot';
+  renderPriceRanking();
+});
+$('#priceModeUnknown').addEventListener('click',()=>{
+  priceRankingMode='unknown';
   renderPriceRanking();
 });
 
