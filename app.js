@@ -1481,16 +1481,52 @@ function showAllCavesOverview(){
 
 function renderCaveTabs(s){
   const tabs=$('#caveTabs');
-  const caveButtons=config.caves.map(c=>`
-    <button class="cave-tab ${!mainAllCaves && c.id===activeCaveId?'active':''}" data-cave-id="${esc(c.id)}" title="${esc(c.name)}">
-      <b>${esc(c.code)}</b><span>${esc(c.name)}</span><small>${s.byCave[c.id]||0} bt</small>
+
+  const caveBottleCounts={};
+  const caveGridCounts={};
+  config.caves.forEach(c=>{
+    caveBottleCounts[c.id]=0;
+    caveGridCounts[c.id]=0;
+  });
+
+  s.occ.forEach(x=>{
+    if(caveBottleCounts[x.caveId]!==undefined) caveBottleCounts[x.caveId]++;
+  });
+  s.gridOcc.forEach(x=>{
+    if(caveGridCounts[x.caveId]!==undefined) caveGridCounts[x.caveId]++;
+  });
+
+  const caveMeta=config.caves.map(c=>{
+    const capacity=caveCapacity(c);
+    const free=Math.max(0,capacity-(caveGridCounts[c.id]||0));
+    return {
+      cave:c,
+      bottles:caveBottleCounts[c.id]||0,
+      capacity,
+      free,
+      showFree:capacity>0
+    };
+  });
+
+  const total=s.occ.length;
+  const totalFree=caveMeta.reduce((sum,x)=>sum+(x.showFree?x.free:0),0);
+  const hasFreeInfo=caveMeta.some(x=>x.showFree);
+
+  const caveButtons=caveMeta.map(({cave,bottles,free,showFree})=>`
+    <button class="cave-tab ${!mainAllCaves && cave.id===activeCaveId?'active':''}" data-cave-id="${esc(cave.id)}" title="${esc(cave.name)}">
+      <b>${esc(cave.code)}</b>
+      <span>${esc(cave.name)}</span>
+      <small>${bottles} bt</small>
+      ${showFree?`<small class="cave-free">${free} place${free>1?'s':''} libre${free>1?'s':''}</small>`:''}
     </button>
   `).join('');
 
-  const total=s.occ.length;
   tabs.innerHTML=
     `<button class="cave-tab all-caves-tab ${mainAllCaves?'active':''}" data-cave-id="${MAIN_ALL_CAVES}" title="Toutes les caves">
-      <b>Toutes</b><span>caves</span><small>${total} bt</small>
+      <b>Toutes</b>
+      <span>caves</span>
+      <small>${total} bt</small>
+      ${hasFreeInfo?`<small class="cave-free">${totalFree} place${totalFree>1?'s':''} libre${totalFree>1?'s':''}</small>`:''}
     </button>`+
     caveButtons;
 
@@ -6054,7 +6090,7 @@ async function saveBackupFileOnDevice(json,filename){
 function makeBackupPayload(){
   return {
     version:70800,
-    app:'ma-cave-configurable-v7.9',
+    app:'ma-cave-configurable-v7.10',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
