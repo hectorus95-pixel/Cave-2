@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.4</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.4">
+<title>Ma Cave à Vin – Configurable v7.5</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.5">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5348,82 +5348,95 @@ dialog:focus{
 
 
 /* =========================================================
-   V7.4 — textes plus gros + boutons plus visibles
+   V7.4 — jauge couleur du vin, remplissage noir, boutons visibles
    ========================================================= */
 
-/* Jauge des bouteilles bues : texte nettement plus lisible */
+/* Jauge : fond = couleur du vin */
+.ranking-main.red .ranking-consumption-track{
+  background:#A71930!important;
+}
+.ranking-main.rose .ranking-consumption-track{
+  background:#F06A94!important;
+}
+.ranking-main.white .ranking-consumption-track{
+  background:#E6B92E!important;
+}
+.ranking-main.spark .ranking-consumption-track{
+  background:#FFF2A6!important;
+}
+
+/* La consommation progresse en noir */
+.ranking-consumption-fill{
+  background:#000!important;
+  opacity:1!important;
+}
+
+/* Jauge suffisamment haute et texte lisible */
 .ranking-consumption-track{
-  height:46px!important;
-  padding:0 12px!important;
+  min-height:44px!important;
+  height:44px!important;
+  padding:0 10px!important;
+  border:2px solid rgba(255,255,255,.72)!important;
+  border-radius:9px!important;
 }
 .ranking-consumption-text{
+  color:#fff!important;
   font-size:14px!important;
-  line-height:1.2!important;
   font-weight:900!important;
+  line-height:1.2!important;
+  text-align:center!important;
+  text-shadow:
+    0 1px 2px #000,
+    1px 0 1px #000,
+    -1px 0 1px #000,
+    0 -1px 1px #000!important;
 }
 .ranking-consumption-progress>small{
-  margin-top:7px!important;
+  margin-top:6px!important;
   font-size:11px!important;
   line-height:1.25!important;
   font-weight:750!important;
 }
 
-/* Bouton "Bu" dans la fiche bouteille */
-.consumed-btn{
-  min-height:48px!important;
-  border:2px solid rgba(255,255,255,.92)!important;
-  border-radius:10px!important;
-  background:#9A5D13!important;
+/* Bouton principal Bouteilles bues : détaché du fond sombre */
+#openConsumptionWindow{
+  min-height:54px!important;
+  border:2px solid #bd5879!important;
+  border-radius:11px!important;
+  background:#7a1837!important;
   color:#fff!important;
-  box-shadow:0 2px 0 rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.12) inset!important;
   font-size:15px!important;
   font-weight:900!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.35)!important;
 }
 
-/* Bouton principal "Bouteilles bues" */
-#openConsumptionWindow{
-  min-height:52px!important;
-  border:2px solid rgba(255,255,255,.9)!important;
-  border-radius:11px!important;
-  background:#7A1F36!important;
-  color:#fff!important;
-  box-shadow:0 3px 0 rgba(0,0,0,.45)!important;
-  font-size:16px!important;
-  font-weight:900!important;
-}
-
-/* Classement des vins bus dans l'historique */
+/* Bouton Classement des vins bus : bien visible dans la fenêtre */
 #openConsumedRanking{
   min-height:52px!important;
-  border:2px solid #E3B326!important;
-  border-radius:11px!important;
-  background:#5A3B08!important;
+  margin-top:12px!important;
+  border:2px solid #bd5879!important;
+  border-radius:10px!important;
+  background:#7a1837!important;
   color:#fff!important;
-  box-shadow:0 3px 0 rgba(0,0,0,.45)!important;
-  font-size:15px!important;
+  font-size:14px!important;
   font-weight:900!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.35)!important;
 }
 
-/* Classement des vins par prix sur la page principale */
+/* Le bouton de classement par prix reste lui aussi lisible */
 #openPriceRanking{
-  min-height:52px!important;
-  border:2px solid #E3B326!important;
-  border-radius:11px!important;
-  background:#5A3B08!important;
+  min-height:50px!important;
+  border:2px solid #725e48!important;
+  background:#4b3829!important;
   color:#fff!important;
-  box-shadow:0 3px 0 rgba(0,0,0,.45)!important;
-  font-size:15px!important;
+  font-size:14px!important;
   font-weight:900!important;
-}
-
-.price-ranking-launcher>small{
-  font-size:11px!important;
-  color:#c9c2c2!important;
 }
 
 @media(max-width:390px){
   .ranking-consumption-track{
-    height:48px!important;
+    min-height:46px!important;
+    height:46px!important;
   }
   .ranking-consumption-text{
     font-size:13px!important;
@@ -5431,11 +5444,71 @@ dialog:focus{
   .ranking-consumption-progress>small{
     font-size:10px!important;
   }
-  #openConsumptionWindow,
-  #openConsumedRanking,
-  #openPriceRanking,
-  .consumed-btn{
+  #openConsumptionWindow{
     font-size:14px!important;
+  }
+  #openConsumedRanking,
+  #openPriceRanking{
+    font-size:13px!important;
+  }
+}
+
+
+/* =========================================================
+   V7.5 — classement par prix plus compact en hauteur
+   ========================================================= */
+.price-ranking-inner{
+  padding:10px!important;
+}
+.price-ranking-head{
+  margin-bottom:6px!important;
+}
+.price-ranking-mode{
+  gap:6px!important;
+  margin-bottom:7px!important;
+}
+.price-ranking-mode button{
+  min-height:34px!important;
+  padding:5px 8px!important;
+}
+#priceRankingCaveFilter.ranking-cave-filter{
+  gap:6px!important;
+  margin-bottom:7px!important;
+  padding-bottom:2px!important;
+}
+#priceRankingCaveFilter.ranking-cave-filter button{
+  min-height:40px!important;
+  padding:5px 8px!important;
+}
+.price-ranking-list{
+  gap:5px!important;
+}
+.price-ranking-row{
+  min-height:66px!important;
+  padding:6px 9px!important;
+  gap:7px!important;
+}
+.price-stock-line{
+  margin-top:4px!important;
+}
+.price-stock-track{
+  height:7px!important;
+}
+.price-ranking-format{
+  margin-top:3px!important;
+  padding:2px 6px!important;
+}
+.price-ranking-calc{
+  margin-top:3px!important;
+}
+.price-ranking-side{
+  gap:3px!important;
+}
+@media(max-width:390px){
+  .price-ranking-row{
+    min-height:64px!important;
+    padding:6px 7px!important;
+    gap:6px!important;
   }
 }
 
@@ -5443,7 +5516,7 @@ dialog:focus{
 </head>
 <body>
 <header>
-  <span class="app-version">v7.4</span>
+  <span class="app-version">v7.5</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -6146,7 +6219,7 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.4"></script>
+<script src="app.js?v=7.5"></script>
 \n\n
 </body>
 </html>

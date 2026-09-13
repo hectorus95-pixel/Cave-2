@@ -6051,8 +6051,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:70400,
-    app:'ma-cave-configurable-v7.4',
+    version:70500,
+    app:'ma-cave-configurable-v7.5',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };

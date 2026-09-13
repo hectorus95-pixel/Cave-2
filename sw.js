@@ -1,5 +1,5 @@
-const C='ma-cave-configurable-v7-4';
-const A=['./','./index.html','./app.js?v=7.4','./manifest.webmanifest?v=7.4'];
+const C='ma-cave-configurable-v7-5';
+const A=['./','./index.html','./app.js?v=7.5','./manifest.webmanifest?v=7.5'];
 
 self.addEventListener('install',e=>{
   self.skipWaiting();
