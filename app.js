@@ -1489,10 +1489,10 @@ function renderCaveTabs(s){
 
   const total=s.occ.length;
   tabs.innerHTML=
-    caveButtons+
     `<button class="cave-tab all-caves-tab ${mainAllCaves?'active':''}" data-cave-id="${MAIN_ALL_CAVES}" title="Toutes les caves">
       <b>Toutes</b><span>caves</span><small>${total} bt</small>
-    </button>`;
+    </button>`+
+    caveButtons;
 
   scheduleTabCentering();
 }
@@ -1615,13 +1615,13 @@ function renderRankingCaveFilter(containerId,scope){
   `).join('');
 
   box.innerHTML=
-    buttons+
     `<button type="button"
       class="${scope===RANKING_ALL_CAVES?'active':''}"
       data-ranking-cave="${RANKING_ALL_CAVES}">
       <b>Toutes</b>
       <small>caves</small>
-    </button>`;
+    </button>`+
+    buttons;
 }
 
 function priceRankingLocations(refId,scope=priceRankingCaveScope){
@@ -2451,6 +2451,7 @@ function renderConsumedRanking(){
 
   renderRankingCaveFilter('consumedRankingCaveFilter',consumedRankingCaveScope);
   $('#rankingPeriodLabel').textContent=`Tout l’historique · ${rankingCaveLabel(consumedRankingCaveScope)}`;
+
   const data=consumedRankingData();
 
   if(!data.length){
@@ -2458,14 +2459,28 @@ function renderConsumedRanking(){
     return;
   }
 
-  list.innerHTML=data.map((g,index)=>{
+  const rows=data.map(g=>({
+    g,
+    stock:rankingStockInfo(g.sample,consumedRankingCaveScope)
+  }));
+
+  const maxRemaining=Math.max(...rows.map(x=>x.stock.count),1);
+
+  list.innerHTML=rows.map(({g,stock},index)=>{
     const e=g.sample;
-    const score=Math.round(g.score);
+
+    // Le barème va de -2 à +2 par bouteille,
+    // donc le score final va naturellement de -200 % à +200 %.
+    const score=Math.max(-200,Math.min(200,Math.round(g.score)));
     const scoreClass=score>0?'positive':score<0?'negative':'neutral';
+
     const mill=e.millesime ? ` · ${esc(e.millesime)}` : '';
     const isMagnum=/magnum|150\s*cl|1[.,]5\s*l/i.test(String(e.format||''));
     const format=isMagnum ? ' · Magnum' : '';
-    const stock=rankingStockInfo(e,consumedRankingCaveScope);
+
+    const remainingPct=stock.count
+      ? Math.max(5,Math.min(100,(stock.count/maxRemaining)*100))
+      : 0;
 
     return `
       <button type="button"
@@ -2478,26 +2493,34 @@ function renderConsumedRanking(){
           <b>${esc(e.vin)}${mill}${format}</b>
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
 
-          <span class="ranking-counts">
-            ${g.total} bue${g.total>1?'s':''} · 👍👍 ${g.verygood} · 👍 ${g.good} · 👎 ${g.bad} · 👎👎 ${g.verybad} · neutre ${g.neutral}
+          <span class="ranking-drunk-count">
+            ${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''}
           </span>
 
-          <span class="ranking-stock-summary ${stock.count?'has-stock':'no-stock'}">
-            ${stock.count
-              ? `🍾 ${stock.count} restante${stock.count>1?'s':''} · toucher pour voir où`
-              : 'Stock : aucune bouteille restante'}
+          <span class="ranking-remaining-block">
+            <span class="ranking-remaining-label">
+              ${stock.count
+                ? `${stock.count} bouteille${stock.count>1?'s':''} restante${stock.count>1?'s':''}`
+                : 'Aucune bouteille restante'}
+            </span>
+            <span class="ranking-remaining-line">
+              <span class="ranking-remaining-track" aria-label="${stock.count} bouteille${stock.count>1?'s':''} restante${stock.count>1?'s':''}">
+                <span class="ranking-remaining-fill" style="width:${remainingPct}%"></span>
+              </span>
+              <strong>×${stock.count}</strong>
+            </span>
+            <small>${stock.count?'Toucher pour voir où':'Stock épuisé'}</small>
           </span>
         </span>
 
         <span class="ranking-score ${scoreClass}">
           <b>${score>0?'+':''}${score}%</b>
-          <small>${score<0?'score négatif':'score'}</small>
+          <small>score</small>
         </span>
       </button>
     `;
   }).join('');
 }
-
 function openRankingStockDialog(index){
   const data=consumedRankingData();
   const g=data[Number(index)];
@@ -5989,8 +6012,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:62400,
-    app:'ma-cave-configurable-v6.24',
+    version:62600,
+    app:'ma-cave-configurable-v6.26',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -6081,7 +6104,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-24.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-26.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
