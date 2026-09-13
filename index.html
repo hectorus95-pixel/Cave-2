@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.15</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.15">
+<title>Ma Cave à Vin – Configurable v6.16</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.16">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4106,11 +4106,23 @@ header .stock-filter.active{
   line-height:1.25;
 }
 
+
+/* =========================================================
+   V6.16 — édition indépendante d'un lot Vrac
+   ========================================================= */
+.bulk-edit-scope-note{
+  display:block;
+  margin:5px 0 8px;
+  color:#aaa;
+  font-size:8px;
+  line-height:1.25;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.15</span>
+  <span class="app-version">v6.16</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4699,12 +4711,13 @@ header .stock-filter.active{
   <div class="dlg">
     <h2 id="bulkActionTitle">Vin en vrac</h2>
     <div id="bulkActionInfo" class="bulk-action-info"></div>
+    <small class="bulk-edit-scope-note">Cette édition ne modifiera que le lot Vrac sélectionné.</small>
     <label class="bulk-action-qty">Nombre de bouteilles concernées<input id="bulkActionQty" type="number" min="1" inputmode="numeric"></label>
     <div class="dlgactions bulk-actions">
       <button id="bulkActionDrink" class="consumed-btn">🍷 Bue</button>
       <button id="bulkActionSell" class="sell-btn">💶 Vendre</button>
       <button id="bulkActionMove" class="move-btn">📦 Déplacer</button>
-      <button id="bulkActionEdit" class="primary">✏️ Éditer le vin</button>
+      <button id="bulkActionEdit" class="primary">✏️ Éditer ce lot Vrac</button>
       <button id="bulkActionRemove" class="danger">Sortir sans vente</button>
       <button id="bulkActionClose" class="secondary">Fermer</button>
     </div>
@@ -4757,7 +4770,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.15"></script>
+<script src="app.js?v=6.16"></script>
 \n\n
 </body>
 </html>

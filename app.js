@@ -84,7 +84,8 @@ let moveDestinationCasier=null;
 let moveSlotDialogCaveId='';
 let moveSlotDialogCasier=1;
 let pendingAddRefId='';
-let editScope=null; // 'single' | 'all' | 'new'
+let editScope=null; // 'single' | 'all' | 'new' | 'bulklot'
+let bulkEditIds=[];
 let selectedEmptyKeys=new Set();
 let selectedOccupiedKeys=new Set();
 let addTargets=[];
@@ -3661,7 +3662,7 @@ function closeDialogsFromPop(){
   addTargets=[];
   exitTargets=[];
   saleTargets=[];
-  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];drinkTargets=[];
+  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];bulkEditIds=[];drinkTargets=[];
   if(!keepMove){
     moveSource=null;
     moveTargetKeys.clear();
@@ -3947,6 +3948,40 @@ function showBottleEdit(r,scope='all'){
   $('#bottleEdit').hidden=false;
   $('#viewActions').hidden=true;
   $('#editActions').hidden=false;
+}
+
+function editBulkLot(items){
+  const lot=(items||[]).filter(x=>x?.id&&x?.refId);
+  if(!lot.length) return;
+
+  const first=lot[0];
+  const r=ref(first.refId);
+  if(!r) return;
+
+  bulkEditIds=lot.map(x=>x.id);
+  selected=first;
+  editScope='bulklot';
+
+  fill(r);
+
+  const cave=caveById(first.caveId);
+  $('#dialogTitle').textContent=r.vin||'Vin';
+  $('#where').textContent=
+    `${cave?.code||''} · Vrac · ${bulkLocationLabel(first.locationText)} · modification de ce lot uniquement`;
+
+  $('#save').textContent=lot.length>1
+    ? `Enregistrer ce lot (×${lot.length})`
+    : 'Enregistrer cette bouteille Vrac';
+
+  $('#bottleView').hidden=true;
+  $('#bottleEdit').hidden=false;
+  $('#viewActions').hidden=true;
+  $('#editActions').hidden=false;
+
+  if($('#bulkActionDialog').open) $('#bulkActionDialog').close();
+
+  if(dialogHistory) $('#dialog').showModal();
+  else showDialog($('#dialog'));
 }
 
 function editRef(x,r){
@@ -4798,6 +4833,47 @@ $('#save').addEventListener('click',()=>{
     const original=ref(originalId);
     if(!original) return alert('Référence introuvable.');
 
+    if(editScope==='bulklot'){
+      const wanted=new Set(bulkEditIds);
+      const targets=bulk.filter(x=>
+        wanted.has(x.id) &&
+        x.refId===originalId
+      );
+
+      if(!targets.length){
+        bulkEditIds=[];
+        editScope=null;
+        return alert('Ce lot Vrac n’est plus disponible.');
+      }
+
+      // Nouvelle référence propre à ce lot :
+      // aucune bouteille des autres caves n'est modifiée.
+      const lotRef={
+        ...original,
+        ...vals,
+        id:`r${Date.now()}_${Math.random().toString(36).slice(2,6)}`
+      };
+
+      refs.push(lotRef);
+      targets.forEach(x=>{ x.refId=lotRef.id; });
+      selected.refId=lotRef.id;
+
+      // Une fusion n'est faite que si une référence déjà existante
+      // est strictement identique après modification.
+      mergeFullyIdenticalReferences(lotRef.id);
+
+      bulkEditIds=[];
+      editScope=null;
+
+      persist();
+      render();
+
+      const updated=ref(selected.refId);
+      if(updated) showBottleView(updated);
+      else requestClose($('#dialog'));
+      return;
+    }
+
     const sameCount=
       inv.filter(p=>p.refId===originalId).length+
       bulk.filter(p=>p.refId===originalId).length;
@@ -4880,6 +4956,7 @@ $('#editAllBottles').addEventListener('click',()=>{
 });
 
 $('#cancelEdit').addEventListener('click',()=>{
+  bulkEditIds=[];
   editScope=null;
   if(selected?.refId){
     const r=ref(selected.refId);
@@ -5197,9 +5274,9 @@ $('#bulkActionSell').addEventListener('click',()=>{
 });
 $('#bulkActionMove').addEventListener('click',beginMoveBulkSelection);
 $('#bulkActionEdit').addEventListener('click',()=>{
-  const item=selectedBulkActionItems()[0];if(!item)return;
-  const r=ref(item.refId);if(!r)return;
-  $('#bulkActionDialog').close();editRef(item,r);
+  const items=selectedBulkActionItems();
+  if(!items.length) return;
+  editBulkLot(items);
 });
 $('#bulkActionClose').addEventListener('click',()=>requestClose($('#bulkActionDialog')));
 
@@ -5398,8 +5475,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:61500,
-    app:'ma-cave-configurable-v6.15',
+    version:61600,
+    app:'ma-cave-configurable-v6.16',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5490,7 +5567,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-15.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-16.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
