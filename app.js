@@ -6053,8 +6053,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:70600,
-    app:'ma-cave-configurable-v7.6',
+    version:70700,
+    app:'ma-cave-configurable-v7.7',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
