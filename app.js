@@ -4007,6 +4007,8 @@ function reconcileIdenticalWineMaturityAndReferences(){
 function showBottleEdit(r,scope='all'){
   editScope=scope;
   fill(r);
+  if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
+  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
 
   const sameCount=inv.filter(p=>p.refId===r.id).length+bulk.filter(p=>p.refId===r.id).length;
   if(scope==='single'){
@@ -4038,6 +4040,9 @@ function editBulkLot(items){
   editScope='bulklot';
 
   fill(r);
+
+  if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=false;
+  if($('#f_bulkLocation')) $('#f_bulkLocation').value=String(first.locationText||'');
 
   const cave=caveById(first.caveId);
   $('#dialogTitle').textContent=r.vin||'Vin';
@@ -4879,6 +4884,8 @@ $('#newRef').addEventListener('click',()=>{
   $('#addDialog').close();
   pendingAddRefId='';
   editScope='new';
+  if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
+  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
   $('#dialogTitle').textContent='Nouveau vin';
   $('#where').textContent=selected.emplacement+' · nouvelle référence';
   fill(null);
@@ -4929,9 +4936,15 @@ $('#save').addEventListener('click',()=>{
         id:`r${Date.now()}_${Math.random().toString(36).slice(2,6)}`
       };
 
+      const newBulkLocation=String($('#f_bulkLocation')?.value||'').trim();
+
       refs.push(lotRef);
-      targets.forEach(x=>{ x.refId=lotRef.id; });
+      targets.forEach(x=>{
+        x.refId=lotRef.id;
+        x.locationText=newBulkLocation;
+      });
       selected.refId=lotRef.id;
+      selected.locationText=newBulkLocation;
 
       // Une fusion n'est faite que si une référence déjà existante
       // est strictement identique après modification.
@@ -5032,6 +5045,8 @@ $('#editAllBottles').addEventListener('click',()=>{
 
 $('#cancelEdit').addEventListener('click',()=>{
   bulkEditIds=[];
+  if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
+  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
   editScope=null;
   if(selected?.refId){
     const r=ref(selected.refId);
@@ -5327,6 +5342,8 @@ $('#bulkNewRef').addEventListener('click',()=>{
   $('#bulkAddDialog').close();
   selected={bulk:true,caveId:v.caveId,refId:null,emplacement:`${caveById(v.caveId)?.code||''} · Vrac · ${v.location}`,locationText:v.location};
   editScope='newbulk';
+  if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
+  if($('#f_bulkLocation')) $('#f_bulkLocation').value='';
   $('#dialogTitle').textContent='Nouveau vin';
   $('#where').textContent=selected.emplacement+' · '+v.qty+' bouteille'+(v.qty>1?'s':'');
   fill(null);$('#bottleView').hidden=true;$('#bottleEdit').hidden=false;$('#viewActions').hidden=true;$('#editActions').hidden=false;
@@ -5563,8 +5580,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:61700,
-    app:'ma-cave-configurable-v6.17',
+    version:61800,
+    app:'ma-cave-configurable-v6.18',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5655,7 +5672,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-17.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-18.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.17</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.17">
+<title>Ma Cave à Vin – Configurable v6.18</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.18">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4166,11 +4166,25 @@ header .stock-filter.active{
   line-height:1.25;
 }
 
+
+/* =========================================================
+   V6.18 — emplacement modifiable pour un lot Vrac
+   ========================================================= */
+.bulk-edit-location-row{
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:8px;
+  padding:7px;
+  background:rgba(255,255,255,.035);
+}
+.bulk-edit-location-row[hidden]{
+  display:none!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.17</span>
+  <span class="app-version">v6.18</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4623,6 +4637,10 @@ header .stock-filter.active{
         </label>
         <label>Format<input id="f_format" placeholder="75 cl"></label>
         <label>Prix (€)<input id="f_prix" inputmode="decimal"></label>
+        <label id="bulkEditLocationRow" class="wide bulk-edit-location-row" hidden>
+          Emplacement Vrac
+          <input id="f_bulkLocation" maxlength="120" placeholder="Ex. Couloir, carton 2, étagère…">
+        </label>
         <label>Maturité : à partir de<input id="f_maturiteDebut" inputmode="numeric"></label>
         <label>À boire avant / jusqu'à<input id="f_maturiteFin" inputmode="numeric"></label>
         <div class="maturity-panel">
@@ -4818,7 +4836,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.17"></script>
+<script src="app.js?v=6.18"></script>
 \n\n
 </body>
 </html>
