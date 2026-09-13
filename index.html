@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.16</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.16">
+<title>Ma Cave à Vin – Configurable v6.17</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.17">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4118,11 +4118,59 @@ header .stock-filter.active{
   line-height:1.25;
 }
 
+
+/* =========================================================
+   V6.17 — stock restant depuis le classement des vins bus
+   ========================================================= */
+.ranking-card-clickable{
+  width:100%;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.ranking-card-clickable.stock-open{
+  outline:2px solid rgba(255,255,255,.35);
+}
+.ranking-stock-summary{
+  display:block!important;
+  margin-top:5px!important;
+  font-size:8px!important;
+  font-weight:800!important;
+}
+.ranking-stock-summary.has-stock{
+  color:#d7f0dd!important;
+}
+.ranking-stock-summary.no-stock{
+  color:#aaa!important;
+}
+.ranking-stock-detail{
+  display:block!important;
+  margin-top:6px!important;
+  padding:6px 7px;
+  border-radius:7px;
+  background:rgba(0,0,0,.24);
+  border:1px solid rgba(255,255,255,.18);
+}
+.ranking-stock-detail[hidden]{
+  display:none!important;
+}
+.ranking-stock-detail>b{
+  display:block;
+  margin-bottom:4px;
+  font-size:8px;
+}
+.ranking-stock-detail>span{
+  display:block!important;
+  margin-top:2px!important;
+  font-size:8px!important;
+  line-height:1.25;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.16</span>
+  <span class="app-version">v6.17</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4770,7 +4818,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.16"></script>
+<script src="app.js?v=6.17"></script>
 \n\n
 </body>
 </html>

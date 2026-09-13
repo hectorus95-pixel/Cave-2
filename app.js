@@ -2142,6 +2142,56 @@ function consumptionPeriodLabel(){
   return 'Période personnalisée';
 }
 
+function consumedRatingPoints(rating){
+  if(rating==='verygood') return 2;
+  if(rating==='good') return 1;
+  if(rating==='bad') return -1;
+  if(rating==='verybad') return -2;
+  return 0;
+}
+
+function rankingStockInfo(sample){
+  const positions=[];
+
+  inv.forEach(x=>{
+    if(!x?.refId) return;
+    const r=ref(x.refId);
+    if(!r || !sameWineIdentity(r,sample)) return;
+
+    const cave=caveById(x.caveId);
+    positions.push({
+      sort:[caveIndex(x.caveId),0,Number(x.casier)||0,Number(x.ligne)||0,Number(x.position)||0],
+      label:`${cave?.code||''} · Casier ${x.casier} · L${x.ligne}·P${x.position}`
+    });
+  });
+
+  bulk.forEach(x=>{
+    if(!x?.refId) return;
+    const r=ref(x.refId);
+    if(!r || !sameWineIdentity(r,sample)) return;
+
+    const cave=caveById(x.caveId);
+    const loc=String(x.locationText||'').trim();
+    positions.push({
+      sort:[caveIndex(x.caveId),1,0,0,0],
+      label:`${cave?.code||''} · Vrac${loc?` · ${loc}`:''}`
+    });
+  });
+
+  positions.sort((a,b)=>
+    a.sort[0]-b.sort[0] ||
+    a.sort[1]-b.sort[1] ||
+    a.sort[2]-b.sort[2] ||
+    a.sort[3]-b.sort[3] ||
+    a.sort[4]-b.sort[4]
+  );
+
+  return {
+    count:positions.length,
+    locations:positions.map(x=>x.label)
+  };
+}
+
 function consumedRankingData(){
   const items=consumed
     .slice()
@@ -2174,7 +2224,11 @@ function consumedRankingData(){
   });
 
   return [...groups.values()].map(g=>{
-    const raw=(g.verygood*2)+g.good-g.bad-(g.verybad*2);
+    const raw=
+      (g.verygood*consumedRatingPoints('verygood')) +
+      (g.good*consumedRatingPoints('good')) +
+      (g.bad*consumedRatingPoints('bad')) +
+      (g.verybad*consumedRatingPoints('verybad'));
     const score=g.total ? (raw/g.total)*100 : 0;
     return {...g,raw,score};
   }).sort((a,b)=>{
@@ -2207,26 +2261,47 @@ function renderConsumedRanking(){
     const mill=e.millesime ? ` · ${esc(e.millesime)}` : '';
     const isMagnum=/magnum|150\s*cl|1[.,]5\s*l/i.test(String(e.format||''));
     const format=isMagnum ? ' · Magnum' : '';
+    const stock=rankingStockInfo(e);
+    const detailId=`ranking-stock-${index}`;
 
     return `
-      <article class="ranking-card">
+      <button type="button"
+        class="ranking-card ranking-card-clickable"
+        data-ranking-stock-toggle="${detailId}"
+        aria-expanded="false">
+
         <div class="ranking-position">#${index+1}</div>
+
         <div class="ranking-main wine-color ${wineClass(e.couleur)}">
           <b>${esc(e.vin)}${mill}${format}</b>
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
+
           <span class="ranking-counts">
             ${g.total} bue${g.total>1?'s':''} · 👍👍 ${g.verygood} · 👍 ${g.good} · 👎 ${g.bad} · 👎👎 ${g.verybad} · neutre ${g.neutral}
           </span>
+
+          <span class="ranking-stock-summary ${stock.count?'has-stock':'no-stock'}">
+            ${stock.count
+              ? `🍾 ${stock.count} restante${stock.count>1?'s':''} · toucher pour voir où`
+              : 'Stock : aucune bouteille restante'}
+          </span>
+
+          <span id="${detailId}" class="ranking-stock-detail" hidden>
+            <b>Emplacements actuels</b>
+            ${stock.locations.length
+              ? stock.locations.map(loc=>`<span>${esc(loc)}</span>`).join('')
+              : '<span>Aucune bouteille en stock</span>'}
+          </span>
         </div>
+
         <div class="ranking-score ${scoreClass}">
           <b>${score>0?'+':''}${score}%</b>
           <span>score</span>
         </div>
-      </article>
+      </button>
     `;
   }).join('');
 }
-
 function saleRange(){
   const mode=$('#salesPeriod')?.value||'current';
   const now=new Date();
@@ -5335,6 +5410,19 @@ $('#openConsumedRanking').addEventListener('click',()=>{
   renderConsumedRanking();
   showDialog($('#rankingDialog'));
 });
+
+$('#rankingList').addEventListener('click',e=>{
+  const card=e.target.closest('[data-ranking-stock-toggle]');
+  if(!card) return;
+
+  const detail=document.getElementById(card.dataset.rankingStockToggle);
+  if(!detail) return;
+
+  const open=detail.hidden;
+  detail.hidden=!open;
+  card.setAttribute('aria-expanded',open?'true':'false');
+  card.classList.toggle('stock-open',open);
+});
 $('#rankingClose').addEventListener('click',()=>requestClose($('#rankingDialog')));
 $('#rankingDialog').addEventListener('click',backdropClose);
 
@@ -5475,8 +5563,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:61600,
-    app:'ma-cave-configurable-v6.16',
+    version:61700,
+    app:'ma-cave-configurable-v6.17',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5567,7 +5655,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-16.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-17.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
