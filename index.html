@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.3</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.3">
+<title>Ma Cave à Vin – Configurable v7.4</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.4">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5346,11 +5346,104 @@ dialog:focus{
   }
 }
 
+
+/* =========================================================
+   V7.4 — textes plus gros + boutons plus visibles
+   ========================================================= */
+
+/* Jauge des bouteilles bues : texte nettement plus lisible */
+.ranking-consumption-track{
+  height:46px!important;
+  padding:0 12px!important;
+}
+.ranking-consumption-text{
+  font-size:14px!important;
+  line-height:1.2!important;
+  font-weight:900!important;
+}
+.ranking-consumption-progress>small{
+  margin-top:7px!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  font-weight:750!important;
+}
+
+/* Bouton "Bu" dans la fiche bouteille */
+.consumed-btn{
+  min-height:48px!important;
+  border:2px solid rgba(255,255,255,.92)!important;
+  border-radius:10px!important;
+  background:#9A5D13!important;
+  color:#fff!important;
+  box-shadow:0 2px 0 rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.12) inset!important;
+  font-size:15px!important;
+  font-weight:900!important;
+}
+
+/* Bouton principal "Bouteilles bues" */
+#openConsumptionWindow{
+  min-height:52px!important;
+  border:2px solid rgba(255,255,255,.9)!important;
+  border-radius:11px!important;
+  background:#7A1F36!important;
+  color:#fff!important;
+  box-shadow:0 3px 0 rgba(0,0,0,.45)!important;
+  font-size:16px!important;
+  font-weight:900!important;
+}
+
+/* Classement des vins bus dans l'historique */
+#openConsumedRanking{
+  min-height:52px!important;
+  border:2px solid #E3B326!important;
+  border-radius:11px!important;
+  background:#5A3B08!important;
+  color:#fff!important;
+  box-shadow:0 3px 0 rgba(0,0,0,.45)!important;
+  font-size:15px!important;
+  font-weight:900!important;
+}
+
+/* Classement des vins par prix sur la page principale */
+#openPriceRanking{
+  min-height:52px!important;
+  border:2px solid #E3B326!important;
+  border-radius:11px!important;
+  background:#5A3B08!important;
+  color:#fff!important;
+  box-shadow:0 3px 0 rgba(0,0,0,.45)!important;
+  font-size:15px!important;
+  font-weight:900!important;
+}
+
+.price-ranking-launcher>small{
+  font-size:11px!important;
+  color:#c9c2c2!important;
+}
+
+@media(max-width:390px){
+  .ranking-consumption-track{
+    height:48px!important;
+  }
+  .ranking-consumption-text{
+    font-size:13px!important;
+  }
+  .ranking-consumption-progress>small{
+    font-size:10px!important;
+  }
+  #openConsumptionWindow,
+  #openConsumedRanking,
+  #openPriceRanking,
+  .consumed-btn{
+    font-size:14px!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v7.3</span>
+  <span class="app-version">v7.4</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -6053,7 +6146,7 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.3"></script>
+<script src="app.js?v=7.4"></script>
 \n\n
 </body>
 </html>

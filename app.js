@@ -6051,8 +6051,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:70300,
-    app:'ma-cave-configurable-v7.3',
+    version:70400,
+    app:'ma-cave-configurable-v7.4',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -6143,7 +6143,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v7-3.json';
+  const filename='sauvegarde-ma-cave-configurable-v7-4.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
