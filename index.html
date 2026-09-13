@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.5</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.5">
+<title>Ma Cave à Vin – Configurable v7.6</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.6">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5426,8 +5426,8 @@ dialog:focus{
 /* Le bouton de classement par prix reste lui aussi lisible */
 #openPriceRanking{
   min-height:50px!important;
-  border:2px solid #725e48!important;
-  background:#4b3829!important;
+  border:1px solid #514b4b!important;
+  background:#2c2622!important;
   color:#fff!important;
   font-size:14px!important;
   font-weight:900!important;
@@ -5455,7 +5455,7 @@ dialog:focus{
 
 
 /* =========================================================
-   V7.5 — classement par prix plus compact en hauteur
+   V7.6 — classement prix compact + mode lot corrigé
    ========================================================= */
 .price-ranking-inner{
   padding:10px!important;
@@ -5512,11 +5512,44 @@ dialog:focus{
   }
 }
 
+/* V7.6 — le format et le calcul du lot restent sur la même ligne.
+   Cela évite qu'un magnum crée une 5e ligne et déborde de sa carte. */
+.price-ranking-bottom{
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  min-width:0!important;
+  margin-top:3px!important;
+  white-space:nowrap!important;
+}
+.price-ranking-bottom .price-ranking-format,
+.price-ranking-bottom .price-ranking-calc{
+  margin-top:0!important;
+}
+.price-ranking-bottom .price-ranking-calc{
+  display:block!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.price-ranking-row.price-ranking-lot{
+  min-height:68px!important;
+}
+@media(max-width:390px){
+  .price-ranking-row.price-ranking-lot{
+    min-height:66px!important;
+  }
+  .price-ranking-bottom{
+    gap:5px!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v7.5</span>
+  <span class="app-version">v7.6</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -5743,7 +5776,7 @@ dialog:focus{
           <option value="3">3 derniers mois</option>
           <option value="6">6 derniers mois</option>
           <option value="12">12 derniers mois</option>
-          <option value="all">Tout l’historique</option>
+          <option value="all" selected>Tout l’historique</option>
           <option value="custom">Période personnalisée</option>
         </select>
       </label>
@@ -6219,7 +6252,7 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.5"></script>
+<script src="app.js?v=7.6"></script>
 \n\n
 </body>
 </html>

@@ -1751,7 +1751,7 @@ function renderPriceRanking(){
 
     return `
       <button type="button"
-        class="price-ranking-row wine-color ${wineClass(r.couleur)}"
+        class="price-ranking-row ${unitMode?'price-ranking-unit':'price-ranking-lot'} wine-color ${wineClass(r.couleur)}"
         data-price-ref="${esc(r.id)}">
 
         <span class="price-ranking-rank">${index+1}</span>
@@ -1767,8 +1767,10 @@ function renderPriceRanking(){
             <strong class="price-stock-count">×${count}</strong>
           </span>
 
-          ${format?`<span class="price-ranking-format">${esc(format)}</span>`:''}
-          ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
+          ${(format || !unitMode) ? `<span class="price-ranking-bottom">
+            ${format?`<span class="price-ranking-format">${esc(format)}</span>`:''}
+            ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
+          </span>` : ''}
         </span>
 
         <span class="price-ranking-side">
@@ -2198,7 +2200,7 @@ function localMonthValue(d=new Date()){
 }
 
 function consumptionRange(){
-  const mode=$('#consumptionPeriod')?.value||'current';
+  const mode=$('#consumptionPeriod')?.value||'all';
   const now=new Date();
   let start=null,end=null;
 
@@ -2311,7 +2313,7 @@ function setConsumedComment(id,comment){
 
 
 function consumptionPeriodLabel(){
-  const mode=$('#consumptionPeriod')?.value||'current';
+  const mode=$('#consumptionPeriod')?.value||'all';
   const labels={
     current:'Ce mois',
     previous:'Mois précédent',
@@ -6051,8 +6053,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:70500,
-    app:'ma-cave-configurable-v7.5',
+    version:70600,
+    app:'ma-cave-configurable-v7.6',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
