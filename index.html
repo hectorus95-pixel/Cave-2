@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.22</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.22">
+<title>Ma Cave à Vin – Configurable v6.24</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.24">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4658,11 +4658,117 @@ header .stock-filter.active{
   }
 }
 
+
+/* =========================================================
+   V6.23 — prix facultatif
+   ========================================================= */
+.optional-field{
+  color:#999;
+  font-size:8px;
+  font-weight:500;
+}
+
+
+/* =========================================================
+   V6.24 — Toutes caves + corrections lisibilité
+   ========================================================= */
+.cave-tabs .all-caves-tab{
+  min-width:96px;
+}
+.all-caves-grid-message{
+  grid-column:1/-1;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  margin:4px 0 8px;
+  padding:14px;
+  border:1px solid #565050;
+  border-radius:10px;
+  background:#211e1e;
+  color:#fff;
+}
+.all-caves-grid-message b{
+  font-size:15px;
+}
+.all-caves-grid-message span{
+  color:#bbb;
+  font-size:11px;
+  line-height:1.35;
+}
+
+/* Historique des bouteilles bues : le menu de vote fait désormais
+   grandir la ligne au lieu de recouvrir la fiche suivante. */
+#consumptionDialog .consumed-entry-top{
+  align-items:flex-start!important;
+}
+#consumptionDialog .consumed-entry-actions{
+  align-items:flex-start!important;
+}
+#consumptionDialog .vote-wrap{
+  position:static!important;
+}
+#consumptionDialog .vote-wrap .consumed-rating-edit:not([hidden]){
+  position:static!important;
+  top:auto!important;
+  right:auto!important;
+  z-index:auto!important;
+  margin-top:6px!important;
+  padding:5px!important;
+  flex-wrap:nowrap!important;
+}
+#consumptionDialog .consumed-rating-edit button{
+  min-width:34px!important;
+  height:34px!important;
+  font-size:15px!important;
+}
+#consumptionDialog .consumed-entry{
+  overflow:visible!important;
+}
+#consumptionDialog .consumed-card{
+  overflow:hidden!important;
+}
+
+/* Fenêtre Stock restant : texte nettement plus lisible. */
+.ranking-stock-dialog{
+  width:calc(100vw - 14px)!important;
+  max-width:620px!important;
+}
+.ranking-stock-dlg{
+  padding:16px!important;
+}
+.ranking-stock-head h2{
+  font-size:21px!important;
+}
+.ranking-stock-head small{
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+.ranking-stock-dialog-summary{
+  padding:11px 12px!important;
+  font-size:12px!important;
+}
+.ranking-stock-dialog-list{
+  gap:8px!important;
+}
+.ranking-stock-dialog-item{
+  padding:13px 14px!important;
+  font-size:14px!important;
+  line-height:1.3!important;
+}
+.ranking-stock-dialog-empty{
+  font-size:13px!important;
+}
+#rankingStockClose{
+  min-height:40px!important;
+  padding:8px 12px!important;
+  font-size:13px!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.22</span>
+  <span class="app-version">v6.24</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -5130,7 +5236,7 @@ header .stock-filter.active{
           </select>
         </label>
         <label>Format<input id="f_format" placeholder="75 cl"></label>
-        <label>Prix (€)<input id="f_prix" inputmode="decimal"></label>
+        <label>Prix (€) <small class="optional-field">facultatif</small><input id="f_prix" inputmode="decimal" placeholder="Laisser vide si inconnu"></label>
         <label id="bulkEditLocationRow" class="wide bulk-edit-location-row" hidden>
           Emplacement Vrac
           <select id="f_bulkLocationSelect" class="bulk-location-select"></select>
@@ -5361,7 +5467,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.22"></script>
+<script src="app.js?v=6.24"></script>
 \n\n
 </body>
 </html>
