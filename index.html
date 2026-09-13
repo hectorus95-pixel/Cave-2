@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.10</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.10">
+<title>Ma Cave à Vin – Configurable v7.11</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.11">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -1584,8 +1584,8 @@ header{
    ========================================================= */
 .cave-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 3px 7px;margin-top:9px;scrollbar-width:none}.cave-tabs::-webkit-scrollbar{display:none}
 .cave-tab{flex:0 0 92px;min-width:92px;padding:7px 5px;border:1px solid transparent;border-radius:10px;background:#ffffff12;color:#fff;text-align:center}
-.cave-tab b{display:block;font-size:14px}.cave-tab span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;opacity:.8}.cave-tab small{display:block;margin-top:2px;font-size:8px;opacity:.7}
-.cave-tab .cave-free{margin-top:1px;font-size:8.5px;line-height:1.1;opacity:.82;white-space:nowrap}
+.cave-tab b{display:block;font-size:16px}.cave-tab span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;opacity:.84}.cave-tab small{display:block;margin-top:3px;font-size:10px;opacity:.8}
+.cave-tab .cave-free{margin-top:2px;font-size:10px;line-height:1.15;opacity:.9;white-space:nowrap}
 .cave-tab.active{outline:2px solid rgba(255,255,255,.96);outline-offset:2px;box-shadow:0 0 0 2px rgba(0,0,0,.7)}
 #valueByCave{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:7px}#valueByCave div{background:#211e1e;border-radius:10px;padding:9px}#valueByCave span{display:block;font-size:10px;opacity:.72}#valueByCave b{font-size:14px}
 .cave-count-label{display:block;color:#bbb;font-size:11px}.cave-count-label input{width:100%;margin-top:4px;padding:10px;border:1px solid #686363;border-radius:8px;background:#292626;color:#fff;font:inherit}
@@ -5066,8 +5066,8 @@ header .stock-filter.active{
 .cave-tabs .all-caves-tab>small{
   font:inherit!important;
   margin-top:2px!important;
-  font-size:9px!important;
-  font-weight:500!important;
+  font-size:10px!important;
+  font-weight:600!important;
   line-height:1.15!important;
 }
 dialog:focus{
@@ -5548,12 +5548,8 @@ dialog:focus{
 </head>
 <body>
 <header>
-  <span class="app-version">v7.10</span>
+  <span class="app-version">v7.11</span>
   <h1>🍷 Ma Cave à Vin</h1>
-  <div class="topstats" hidden>
-    <div class="metric"><b id="count">—</b><span>contenants</span></div>
-    <div class="metric"><b id="free">—</b><span>places libres</span></div>
-  </div>
   <div id="caveTabs" class="cave-tabs" aria-label="Choisir une cave"></div>
   <div id="casierTabs" class="tabs top-casier-tabs" aria-label="Choisir un casier"></div>
   <div id="yearStats" class="yearbox" aria-label="Répartition par millésime"></div>
@@ -6251,6 +6247,6 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.10"></script>
+<script src="app.js?v=7.11"></script>
 </body>
 </html>
