@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.26</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.26">
+<title>Ma Cave à Vin – Configurable v7.1</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.1">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5042,11 +5042,164 @@ header .stock-filter.active{
   }
 }
 
+
+/* =========================================================
+   V6.27 — pas de clavier automatique + bouton Toutes uniforme
+   ========================================================= */
+.cave-tabs .all-caves-tab{
+  min-width:0!important;
+}
+.cave-tabs .all-caves-tab>b{
+  font:inherit!important;
+  font-size:16px!important;
+  font-weight:900!important;
+  line-height:1.1!important;
+}
+.cave-tabs .all-caves-tab>span{
+  font:inherit!important;
+  margin-top:2px!important;
+  font-size:10px!important;
+  font-weight:500!important;
+  line-height:1.15!important;
+}
+.cave-tabs .all-caves-tab>small{
+  font:inherit!important;
+  margin-top:2px!important;
+  font-size:9px!important;
+  font-weight:500!important;
+  line-height:1.15!important;
+}
+dialog:focus{
+  outline:none!important;
+}
+
+
+/* =========================================================
+   V7.1 — jauge stock corrigée + bilan des votes
+   ========================================================= */
+.ranking-card-clickable{
+  overflow:hidden!important;
+}
+.ranking-card-clickable .ranking-main{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  padding-bottom:12px!important;
+}
+.ranking-remaining-block{
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.ranking-remaining-line{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 34px!important;
+  align-items:center!important;
+  gap:7px!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.ranking-remaining-track{
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.ranking-remaining-line>strong{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  width:34px!important;
+  overflow:hidden!important;
+  text-align:right!important;
+  white-space:nowrap!important;
+}
+.ranking-remaining-block>small{
+  margin-top:5px!important;
+}
+
+.ranking-vote-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:12px 0 10px;
+}
+.ranking-vote-summary>div{
+  min-width:0;
+  padding:10px 8px;
+  border:1px solid #4d4747;
+  border-radius:9px;
+  background:#262222;
+  text-align:center;
+}
+.ranking-vote-summary span{
+  display:block;
+  color:#aaa;
+  font-size:10px;
+  line-height:1.15;
+}
+.ranking-vote-summary b{
+  display:block;
+  margin-top:5px;
+  font-size:18px;
+  line-height:1;
+}
+.ranking-vote-summary b.positive{color:#8fd89f}
+.ranking-vote-summary b.negative{color:#ff9999}
+.ranking-vote-summary b.neutral{color:#fff}
+
+.ranking-vote-breakdown{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:6px;
+  margin:0 0 12px;
+}
+.ranking-vote-breakdown>div{
+  min-width:0;
+  padding:8px 4px;
+  border:1px solid #474141;
+  border-radius:8px;
+  background:#211e1e;
+  text-align:center;
+}
+.ranking-vote-breakdown span,
+.ranking-vote-breakdown small,
+.ranking-vote-breakdown b{
+  display:block;
+}
+.ranking-vote-breakdown span{
+  min-height:24px;
+  color:#ddd;
+  font-size:9px;
+  line-height:1.15;
+}
+.ranking-vote-breakdown small{
+  margin-top:3px;
+  color:#999;
+  font-size:9px;
+}
+.ranking-vote-breakdown b{
+  margin-top:4px;
+  font-size:16px;
+}
+.ranking-stock-dialog-summary{
+  margin-top:2px!important;
+}
+@media(max-width:390px){
+  .ranking-vote-summary b{font-size:16px}
+  .ranking-vote-summary span{font-size:9px}
+  .ranking-vote-breakdown{gap:4px}
+  .ranking-vote-breakdown span{font-size:8px}
+  .ranking-vote-breakdown b{font-size:14px}
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.26</span>
+  <span class="app-version">v7.1</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -5722,11 +5875,15 @@ header .stock-filter.active{
   <div class="dlg ranking-stock-dlg">
     <div class="ranking-stock-head">
       <div>
-        <h2>🍾 Stock restant</h2>
+        <h2>📊 Bilan du vin</h2>
         <small id="rankingStockWine"></small>
       </div>
       <button id="rankingStockClose" type="button" class="secondary">Fermer</button>
     </div>
+
+    <div id="rankingVoteSummary" class="ranking-vote-summary"></div>
+    <div id="rankingVoteBreakdown" class="ranking-vote-breakdown"></div>
+
     <div id="rankingStockSummary" class="ranking-stock-dialog-summary"></div>
     <div id="rankingStockLocations" class="ranking-stock-dialog-list"></div>
   </div>
@@ -5745,7 +5902,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.26"></script>
+<script src="app.js?v=7.1"></script>
 \n\n
 </body>
 </html>

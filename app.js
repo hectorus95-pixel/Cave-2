@@ -2528,9 +2528,24 @@ function openRankingStockDialog(index){
 
   const e=g.sample;
   const stock=rankingStockInfo(e,consumedRankingCaveScope);
+  const score=Math.max(-200,Math.min(200,Math.round(g.score)));
 
   $('#rankingStockWine').textContent=
     `${e.vin||'Vin'}${e.millesime?` · ${e.millesime}`:''}${e.domaine?` · ${e.domaine}`:''}`;
+
+  $('#rankingVoteSummary').innerHTML=`
+    <div><span>Bouteilles bues</span><b>${g.total}</b></div>
+    <div><span>Points cumulés</span><b>${g.raw>0?'+':''}${g.raw}</b></div>
+    <div><span>Score</span><b class="${score>0?'positive':score<0?'negative':'neutral'}">${score>0?'+':''}${score}%</b></div>
+  `;
+
+  $('#rankingVoteBreakdown').innerHTML=`
+    <div><span>Très bon</span><small>+2</small><b>${g.verygood}</b></div>
+    <div><span>Bon</span><small>+1</small><b>${g.good}</b></div>
+    <div><span>Neutre</span><small>0</small><b>${g.neutral}</b></div>
+    <div><span>Mauvais</span><small>−1</small><b>${g.bad}</b></div>
+    <div><span>Très mauvais</span><small>−2</small><b>${g.verybad}</b></div>
+  `;
 
   $('#rankingStockSummary').textContent=stock.count
     ? `${stock.count} bouteille${stock.count>1?'s':''} actuellement en stock`
@@ -4074,6 +4089,41 @@ function render(){
   renderConsumption();
   if(moduleEnabled('sales')) renderSales();
 }
+
+function installNoAutoKeyboardOnDialogs(){
+  if(typeof HTMLDialogElement==='undefined') return;
+  if(HTMLDialogElement.prototype.__noAutoKeyboardInstalled) return;
+
+  const nativeShowModal=HTMLDialogElement.prototype.showModal;
+
+  HTMLDialogElement.prototype.showModal=function(...args){
+    const result=nativeShowModal.apply(this,args);
+
+    // Le navigateur mobile choisit parfois automatiquement le premier champ.
+    // On reprend immédiatement le focus sur la fenêtre elle-même.
+    if(!this.hasAttribute('tabindex')) this.setAttribute('tabindex','-1');
+
+    try{
+      this.focus({preventScroll:true});
+    }catch(e){}
+
+    const active=document.activeElement;
+    if(active && (
+      active.tagName==='INPUT' ||
+      active.tagName==='TEXTAREA' ||
+      active.tagName==='SELECT' ||
+      active.isContentEditable
+    )){
+      try{active.blur();}catch(e){}
+      try{this.focus({preventScroll:true});}catch(e){}
+    }
+
+    return result;
+  };
+
+  HTMLDialogElement.prototype.__noAutoKeyboardInstalled=true;
+}
+installNoAutoKeyboardOnDialogs();
 
 function pushDialogHistory(){
   if(dialogHistory) return;
@@ -6012,8 +6062,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:62600,
-    app:'ma-cave-configurable-v6.26',
+    version:70100,
+    app:'ma-cave-configurable-v7.1',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -6104,7 +6154,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-26.json';
+  const filename='sauvegarde-ma-cave-configurable-v7-1.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
