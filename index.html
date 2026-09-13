@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.18</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.18">
+<title>Ma Cave à Vin – Configurable v6.19</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.19">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4180,11 +4180,190 @@ header .stock-filter.active{
   display:none!important;
 }
 
+
+/* =========================================================
+   V6.19 — classement prix propre + fenêtre Emplacements
+   ========================================================= */
+.price-ranking-list{
+  gap:7px!important;
+}
+.price-ranking-row{
+  display:grid!important;
+  grid-template-columns:30px minmax(0,1fr) 82px!important;
+  align-items:center!important;
+  gap:8px!important;
+  width:100%!important;
+  min-height:72px!important;
+  padding:9px 10px!important;
+  overflow:hidden!important;
+  border:1px solid rgba(255,255,255,.26)!important;
+  border-radius:9px!important;
+  color:inherit!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+.price-ranking-rank{
+  align-self:center!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  text-align:center!important;
+}
+.price-ranking-main{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.price-ranking-main>b{
+  display:block!important;
+  overflow:hidden!important;
+  font-size:11px!important;
+  line-height:1.15!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.price-ranking-main>small{
+  display:block!important;
+  margin-top:2px!important;
+  overflow:hidden!important;
+  font-size:8px!important;
+  line-height:1.15!important;
+  opacity:.82!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.price-stock-line{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:min(175px,100%)!important;
+  margin-top:7px!important;
+}
+.price-stock-track{
+  position:relative!important;
+  display:block!important;
+  flex:1 1 auto!important;
+  height:8px!important;
+  overflow:hidden!important;
+  border:1px solid rgba(255,255,255,.45)!important;
+  border-radius:999px!important;
+  background:rgba(0,0,0,.27)!important;
+}
+.price-stock-fill{
+  display:block!important;
+  height:100%!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.82)!important;
+}
+.price-stock-count{
+  flex:0 0 auto!important;
+  min-width:24px!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  text-align:right!important;
+}
+.price-stock-icon,
+.price-stock-indicator,
+.price-ranking-locations{
+  display:none!important;
+}
+.price-ranking-side{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  justify-content:center!important;
+  gap:5px!important;
+  min-width:0!important;
+}
+.price-ranking-side>strong{
+  font-size:12px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.price-ranking-side>small{
+  font-size:7px!important;
+  font-weight:700!important;
+  opacity:.9!important;
+  white-space:nowrap!important;
+}
+.price-ranking-format{
+  margin-top:5px!important;
+}
+.price-ranking-calc{
+  margin-top:5px!important;
+  white-space:normal!important;
+}
+.price-location-dialog{
+  width:min(92vw,480px);
+}
+.price-location-inner{
+  padding:14px;
+}
+.price-location-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.price-location-head h2{
+  margin:0;
+  font-size:16px;
+}
+.price-location-head small{
+  display:block;
+  margin-top:3px;
+  color:#bbb;
+  font-size:9px;
+  line-height:1.25;
+}
+.price-location-head button{
+  flex:0 0 auto;
+}
+.price-location-summary{
+  margin:10px 0 7px;
+  padding:7px 9px;
+  border-radius:8px;
+  background:#223d2b;
+  color:#dff4e3;
+  font-size:9px;
+  font-weight:800;
+}
+.price-location-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:58vh;
+  overflow:auto;
+}
+.price-location-item{
+  padding:9px 10px;
+  border:1px solid #514b4b;
+  border-radius:8px;
+  background:#272323;
+  color:#fff;
+  font-size:10px;
+  line-height:1.25;
+}
+.price-location-empty{
+  padding:14px;
+  color:#aaa;
+  text-align:center;
+  font-size:10px;
+}
+@media(max-width:390px){
+  .price-ranking-row{
+    grid-template-columns:25px minmax(0,1fr) 72px!important;
+    gap:6px!important;
+    padding:8px!important;
+  }
+  .price-ranking-side>strong{
+    font-size:11px!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.18</span>
+  <span class="app-version">v6.19</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4343,6 +4522,20 @@ header .stock-filter.active{
     </div>
 
     <div id="priceRankingList" class="price-ranking-list"></div>
+  </div>
+</dialog>
+
+<dialog id="priceLocationDialog" class="price-location-dialog">
+  <div class="dlg price-location-inner">
+    <div class="price-location-head">
+      <div>
+        <h2>📍 Emplacements</h2>
+        <small id="priceLocationWine"></small>
+      </div>
+      <button id="priceLocationClose" type="button" class="secondary">Fermer</button>
+    </div>
+    <div id="priceLocationSummary" class="price-location-summary"></div>
+    <div id="priceLocationList" class="price-location-list"></div>
   </div>
 </dialog>
 
@@ -4836,7 +5029,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.18"></script>
+<script src="app.js?v=6.19"></script>
 \n\n
 </body>
 </html>
