@@ -1831,8 +1831,29 @@ function groupedResultItems(matches){
     );
 
     const first=positions[0];
-    const locations=positions
-      .map(p=>p.emplacement)
+
+    const gridLocations=[];
+    const bulkLocationGroups=new Map();
+
+    positions.forEach(p=>{
+      if(p.bulk){
+        const label=String(p.emplacement||'Emplacement Vrac non renseigné').trim();
+        const key=normalizeSearchText(label);
+        if(!bulkLocationGroups.has(key)){
+          bulkLocationGroups.set(key,{label,count:0});
+        }
+        bulkLocationGroups.get(key).count++;
+      }else{
+        gridLocations.push(String(p.emplacement||''));
+      }
+    });
+
+    const bulkLocations=[...bulkLocationGroups.values()].map(g=>
+      g.count>1 ? `${g.label} ×${g.count}` : g.label
+    );
+
+    const locations=[...gridLocations,...bulkLocations]
+      .filter(Boolean)
       .join(' · ');
 
     items.push({
@@ -2181,7 +2202,8 @@ function consumedRatingPoints(rating){
 }
 
 function rankingStockInfo(sample){
-  const positions=[];
+  const gridPositions=[];
+  const bulkGroups=new Map();
 
   inv.forEach(x=>{
     if(!x?.refId) return;
@@ -2189,9 +2211,10 @@ function rankingStockInfo(sample){
     if(!r || !sameWineIdentity(r,sample)) return;
 
     const cave=caveById(x.caveId);
-    positions.push({
+    gridPositions.push({
       sort:[caveIndex(x.caveId),0,Number(x.casier)||0,Number(x.ligne)||0,Number(x.position)||0],
-      label:`${cave?.code||''} · Casier ${x.casier} · L${x.ligne}·P${x.position}`
+      label:`${cave?.code||''} · Casier ${x.casier} · L${x.ligne}·P${x.position}`,
+      count:1
     });
   });
 
@@ -2202,13 +2225,26 @@ function rankingStockInfo(sample){
 
     const cave=caveById(x.caveId);
     const loc=String(x.locationText||'').trim();
-    positions.push({
-      sort:[caveIndex(x.caveId),1,0,0,0],
-      label:`${cave?.code||''} · Vrac${loc?` · ${loc}`:''}`
-    });
+    const key=`${x.caveId}|${normalizeSearchText(loc)||'__sans_emplacement__'}`;
+
+    if(!bulkGroups.has(key)){
+      bulkGroups.set(key,{
+        sort:[caveIndex(x.caveId),1,0,0,0],
+        caveCode:cave?.code||'',
+        location:loc,
+        count:0
+      });
+    }
+    bulkGroups.get(key).count++;
   });
 
-  positions.sort((a,b)=>
+  const bulkPositions=[...bulkGroups.values()].map(g=>({
+    sort:g.sort,
+    count:g.count,
+    label:`${g.caveCode} · Vrac${g.location?` · ${g.location}`:' · emplacement non renseigné'}${g.count>1?` · ×${g.count}`:''}`
+  }));
+
+  const positions=[...gridPositions,...bulkPositions].sort((a,b)=>
     a.sort[0]-b.sort[0] ||
     a.sort[1]-b.sort[1] ||
     a.sort[2]-b.sort[2] ||
@@ -2217,11 +2253,10 @@ function rankingStockInfo(sample){
   );
 
   return {
-    count:positions.length,
+    count:gridPositions.length+[...bulkGroups.values()].reduce((sum,g)=>sum+g.count,0),
     locations:positions.map(x=>x.label)
   };
 }
-
 function consumedRankingData(){
   const items=consumed
     .slice()
@@ -2292,17 +2327,15 @@ function renderConsumedRanking(){
     const isMagnum=/magnum|150\s*cl|1[.,]5\s*l/i.test(String(e.format||''));
     const format=isMagnum ? ' · Magnum' : '';
     const stock=rankingStockInfo(e);
-    const detailId=`ranking-stock-${index}`;
 
     return `
       <button type="button"
         class="ranking-card ranking-card-clickable"
-        data-ranking-stock-toggle="${detailId}"
-        aria-expanded="false">
+        data-ranking-stock-index="${index}">
 
-        <div class="ranking-position">#${index+1}</div>
+        <span class="ranking-position">#${index+1}</span>
 
-        <div class="ranking-main wine-color ${wineClass(e.couleur)}">
+        <span class="ranking-main wine-color ${wineClass(e.couleur)}">
           <b>${esc(e.vin)}${mill}${format}</b>
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
 
@@ -2315,22 +2348,38 @@ function renderConsumedRanking(){
               ? `🍾 ${stock.count} restante${stock.count>1?'s':''} · toucher pour voir où`
               : 'Stock : aucune bouteille restante'}
           </span>
+        </span>
 
-          <span id="${detailId}" class="ranking-stock-detail" hidden>
-            <b>Emplacements actuels</b>
-            ${stock.locations.length
-              ? stock.locations.map(loc=>`<span>${esc(loc)}</span>`).join('')
-              : '<span>Aucune bouteille en stock</span>'}
-          </span>
-        </div>
-
-        <div class="ranking-score ${scoreClass}">
+        <span class="ranking-score ${scoreClass}">
           <b>${score>0?'+':''}${score}%</b>
-          <span>score</span>
-        </div>
+          <small>${score<0?'score négatif':'score'}</small>
+        </span>
       </button>
     `;
   }).join('');
+}
+
+function openRankingStockDialog(index){
+  const data=consumedRankingData();
+  const g=data[Number(index)];
+  if(!g) return;
+
+  const e=g.sample;
+  const stock=rankingStockInfo(e);
+
+  $('#rankingStockWine').textContent=
+    `${e.vin||'Vin'}${e.millesime?` · ${e.millesime}`:''}${e.domaine?` · ${e.domaine}`:''}`;
+
+  $('#rankingStockSummary').textContent=stock.count
+    ? `${stock.count} bouteille${stock.count>1?'s':''} actuellement en stock`
+    : 'Aucune bouteille restante en stock';
+
+  $('#rankingStockLocations').innerHTML=stock.locations.length
+    ? stock.locations.map(loc=>`<div class="ranking-stock-dialog-item">${esc(loc)}</div>`).join('')
+    : '<div class="ranking-stock-dialog-empty">Aucun emplacement actuel.</div>';
+
+  const d=$('#rankingStockDialog');
+  if(!d.open) d.showModal();
 }
 function saleRange(){
   const mode=$('#salesPeriod')?.value||'current';
@@ -3854,7 +3903,7 @@ function closeDialogsFromPop(){
   const keepMove=preserveMoveOnNextPop && !!moveSource?.items?.length;
   preserveMoveOnNextPop=false;
 
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog'),$('#priceLocationDialog'),$('#moveSlotDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#rankingStockDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog'),$('#priceLocationDialog'),$('#moveSlotDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -4896,13 +4945,30 @@ Début : AAAA
 Fin : AAAA`;
 }
 
-function openMaturityGoogleAI(){
-  const r=selected?.refId ? ref(selected.refId) : null;
-  if(!r) return alert('Aucun vin sélectionné.');
+function openMaturityGoogleAIForWine(r){
+  if(!r || !String(r.vin||'').trim()){
+    return alert('Indique au moins la cuvée / le nom du vin avant de lancer la recherche.');
+  }
 
   const prompt=maturityGoogleAIPrompt(r);
   const url=`https://www.google.com/search?udm=50&q=${encodeURIComponent(prompt)}`;
   window.open(url,'_blank','noopener');
+}
+
+function openMaturityGoogleAI(){
+  const r=selected?.refId ? ref(selected.refId) : null;
+  if(!r) return alert('Aucun vin sélectionné.');
+  openMaturityGoogleAIForWine(r);
+}
+
+function openMaturityGoogleAIFromEdit(){
+  const draft={
+    vin:$('#f_vin')?.value.trim()||'',
+    domaine:$('#f_domaine')?.value.trim()||'',
+    millesime:$('#f_millesime')?.value.trim()||'',
+    couleur:$('#f_couleur')?.value.trim()||''
+  };
+  openMaturityGoogleAIForWine(draft);
 }
 
 
@@ -5169,6 +5235,7 @@ $('#save').addEventListener('click',()=>{
   }
 });
 $('#searchMaturityGoogleAI').addEventListener('click',openMaturityGoogleAI);
+$('#searchMaturityGoogleAIEdit').addEventListener('click',openMaturityGoogleAIFromEdit);
 
 $('#editOneBottle').addEventListener('click',()=>{
   if(!selected || !selected.refId) return;
@@ -5576,17 +5643,15 @@ $('#openConsumedRanking').addEventListener('click',()=>{
 });
 
 $('#rankingList').addEventListener('click',e=>{
-  const card=e.target.closest('[data-ranking-stock-toggle]');
+  const card=e.target.closest('[data-ranking-stock-index]');
   if(!card) return;
-
-  const detail=document.getElementById(card.dataset.rankingStockToggle);
-  if(!detail) return;
-
-  const open=detail.hidden;
-  detail.hidden=!open;
-  card.setAttribute('aria-expanded',open?'true':'false');
-  card.classList.toggle('stock-open',open);
+  openRankingStockDialog(card.dataset.rankingStockIndex);
 });
+
+$('#rankingStockClose').addEventListener('click',()=>{
+  if($('#rankingStockDialog').open) $('#rankingStockDialog').close();
+});
+$('#rankingStockDialog').addEventListener('click',backdropClose);
 $('#rankingClose').addEventListener('click',()=>requestClose($('#rankingDialog')));
 $('#rankingDialog').addEventListener('click',backdropClose);
 
@@ -5727,8 +5792,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:62000,
-    app:'ma-cave-configurable-v6.20',
+    version:62100,
+    app:'ma-cave-configurable-v6.21',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5819,7 +5884,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-20.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-21.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;

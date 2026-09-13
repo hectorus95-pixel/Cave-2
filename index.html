@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.20</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.20">
+<title>Ma Cave à Vin – Configurable v6.21</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.21">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4384,11 +4384,154 @@ header .stock-filter.active{
   display:none!important;
 }
 
+
+/* =========================================================
+   V6.21 — classement des vins bus propre + score négatif visible
+   ========================================================= */
+.ranking-card-clickable{
+  display:grid!important;
+  grid-template-columns:44px minmax(0,1fr) 82px!important;
+  width:100%!important;
+  min-height:86px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #4c4646!important;
+  border-radius:10px!important;
+  color:inherit!important;
+  text-align:left!important;
+}
+.ranking-card-clickable .ranking-position{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:0!important;
+  padding:8px 3px!important;
+  font-size:14px!important;
+}
+.ranking-card-clickable .ranking-main{
+  display:block!important;
+  min-width:0!important;
+  padding:9px 10px!important;
+  overflow:hidden!important;
+}
+.ranking-card-clickable .ranking-main>b{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.ranking-card-clickable .ranking-counts{
+  white-space:normal!important;
+  line-height:1.25!important;
+}
+.ranking-card-clickable .ranking-score{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:82px!important;
+  padding:8px 4px!important;
+}
+.ranking-card-clickable .ranking-score>b{
+  font-size:16px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.ranking-card-clickable .ranking-score>small{
+  display:block!important;
+  margin-top:4px!important;
+  font-size:7px!important;
+  opacity:.9!important;
+  white-space:nowrap!important;
+}
+.ranking-card-clickable .ranking-score.negative{
+  background:#8e3038!important;
+  color:#fff!important;
+}
+.ranking-card-clickable .ranking-score.positive{
+  background:#347b46!important;
+  color:#fff!important;
+}
+.ranking-card-clickable .ranking-score.neutral{
+  background:#555!important;
+  color:#fff!important;
+}
+.ranking-stock-detail{
+  display:none!important;
+}
+.ranking-stock-dialog{
+  width:min(92vw,500px);
+}
+.ranking-stock-dlg{
+  padding:14px;
+}
+.ranking-stock-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.ranking-stock-head h2{
+  margin:0;
+  font-size:16px;
+}
+.ranking-stock-head small{
+  display:block;
+  margin-top:3px;
+  color:#bbb;
+  font-size:9px;
+  line-height:1.25;
+}
+.ranking-stock-dialog-summary{
+  margin:10px 0 7px;
+  padding:8px 9px;
+  border-radius:8px;
+  background:#223d2b;
+  color:#dff4e3;
+  font-size:9px;
+  font-weight:800;
+}
+.ranking-stock-dialog-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:58vh;
+  overflow:auto;
+}
+.ranking-stock-dialog-item{
+  padding:9px 10px;
+  border:1px solid #514b4b;
+  border-radius:8px;
+  background:#272323;
+  color:#fff;
+  font-size:10px;
+}
+.ranking-stock-dialog-empty{
+  padding:14px;
+  color:#aaa;
+  text-align:center;
+  font-size:10px;
+}
+.maturity-ai-edit-btn{
+  width:100%;
+  margin-top:10px;
+}
+@media(max-width:390px){
+  .ranking-card-clickable{
+    grid-template-columns:38px minmax(0,1fr) 74px!important;
+  }
+  .ranking-card-clickable .ranking-score{
+    min-width:74px!important;
+  }
+  .ranking-card-clickable .ranking-score>b{
+    font-size:14px!important;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.20</span>
+  <span class="app-version">v6.21</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4868,6 +5011,13 @@ header .stock-filter.active{
           <div id="maturityBar" class="maturity-bar four-zone"></div>
           <small>La jauge évolue automatiquement avec la date du téléphone. Si tu modifies la maturité d’une seule bouteille, l’application proposera de l’appliquer aux bouteilles identiques.</small>
         </div>
+
+        <button type="button" id="searchMaturityGoogleAIEdit" class="google-ai-maturity-btn maturity-ai-edit-btn">
+          🔎 Rechercher la maturité avec Google IA
+        </button>
+        <small class="google-ai-maturity-hint">
+          Utilise les informations actuellement saisies, même avant l’enregistrement du vin.
+        </small>
       </div>
     </div>
 
@@ -5049,6 +5199,20 @@ header .stock-filter.active{
   </div>
 </dialog>
 
+<dialog id="rankingStockDialog" class="ranking-stock-dialog">
+  <div class="dlg ranking-stock-dlg">
+    <div class="ranking-stock-head">
+      <div>
+        <h2>🍾 Stock restant</h2>
+        <small id="rankingStockWine"></small>
+      </div>
+      <button id="rankingStockClose" type="button" class="secondary">Fermer</button>
+    </div>
+    <div id="rankingStockSummary" class="ranking-stock-dialog-summary"></div>
+    <div id="rankingStockLocations" class="ranking-stock-dialog-list"></div>
+  </div>
+</dialog>
+
 <dialog id="photoDialog" class="photo-dialog">
   <div class="photo-viewer">
     <div class="photo-viewer-head">
@@ -5062,7 +5226,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.20"></script>
+<script src="app.js?v=6.21"></script>
 \n\n
 </body>
 </html>
