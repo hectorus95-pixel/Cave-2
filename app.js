@@ -2489,12 +2489,12 @@ function renderConsumedRanking(){
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
 
           <span class="ranking-consumption-progress">
-            <span class="ranking-consumption-text">
-              ${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''} sur ${totalKnown}
-            </span>
             <span class="ranking-consumption-track"
                   aria-label="${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''} sur ${totalKnown}">
               <span class="ranking-consumption-fill" style="width:${drunkPct}%"></span>
+              <span class="ranking-consumption-text">
+                ${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''} sur ${totalKnown}
+              </span>
             </span>
             <small>${stock.count
               ? `${stock.count} restante${stock.count>1?'s':''} · toucher pour voir le détail`
@@ -6051,8 +6051,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:70200,
-    app:'ma-cave-configurable-v7.2',
+    version:70300,
+    app:'ma-cave-configurable-v7.3',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -6143,7 +6143,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v7-2.json';
+  const filename='sauvegarde-ma-cave-configurable-v7-3.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
