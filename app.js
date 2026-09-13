@@ -1510,6 +1510,44 @@ function priceRankingFormatLabel(r){
   return format;
 }
 
+function priceRankingLocations(refId){
+  const locations=[];
+
+  inv.forEach(x=>{
+    if(x?.refId!==refId) return;
+    const cave=caveById(x.caveId);
+    locations.push({
+      sort:[caveIndex(x.caveId),0,Number(x.casier)||0,Number(x.ligne)||0,Number(x.position)||0],
+      label:`${cave?.code||''} · Casier ${x.casier} · L${x.ligne}·P${x.position}`
+    });
+  });
+
+  bulk.forEach(x=>{
+    if(x?.refId!==refId) return;
+    const cave=caveById(x.caveId);
+    locations.push({
+      sort:[caveIndex(x.caveId),1,0,0,0],
+      label:`${cave?.code||''} · Vrac${String(x.locationText||'').trim()?` · ${String(x.locationText).trim()}`:''}`
+    });
+  });
+
+  return locations
+    .sort((a,b)=>
+      a.sort[0]-b.sort[0] ||
+      a.sort[1]-b.sort[1] ||
+      a.sort[2]-b.sort[2] ||
+      a.sort[3]-b.sort[3] ||
+      a.sort[4]-b.sort[4]
+    )
+    .map(x=>x.label);
+}
+
+function priceRankingStockPercent(count,maxCount){
+  const max=Math.max(1,Number(maxCount)||1);
+  const n=Math.max(0,Number(count)||0);
+  return Math.max(8,Math.min(100,(n/max)*100));
+}
+
 function priceRankingItems(){
   const counts=new Map();
 
@@ -1531,7 +1569,8 @@ function priceRankingItems(){
         r,
         count,
         unitPrice,
-        lotPrice:unitPrice*count
+        lotPrice:unitPrice*count,
+        locations:priceRankingLocations(r.id)
       };
     });
 
@@ -1571,20 +1610,51 @@ function renderPriceRanking(){
     return;
   }
 
-  list.innerHTML=items.map(({r,count,unitPrice,lotPrice},index)=>`
-    <div class="price-ranking-row wine-color ${wineClass(r.couleur)}">
-      <span class="price-ranking-rank">${index+1}</span>
-      <span class="price-ranking-main">
-        <b>${esc(r.vin||'Vin')}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
-        <small>${esc(r.domaine||'')}${count>1?` · ×${count}`:''}</small>
-        ${priceRankingFormatLabel(r)?`<span class="price-ranking-format">${esc(priceRankingFormatLabel(r))}</span>`:''}
-        ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
-      </span>
-      <strong>${unitMode ? euro(unitPrice) : euro(lotPrice)}</strong>
-    </div>
-  `).join('');
-}
+  const maxCount=Math.max(...items.map(x=>x.count),1);
 
+  list.innerHTML=items.map(({r,count,unitPrice,lotPrice,locations},index)=>{
+    const pct=priceRankingStockPercent(count,maxCount);
+    const locId=`price-loc-${String(r.id).replace(/[^a-zA-Z0-9_-]/g,'_')}`;
+
+    return `
+      <button type="button"
+        class="price-ranking-row wine-color ${wineClass(r.couleur)}"
+        data-price-location-toggle="${esc(locId)}"
+        aria-expanded="false">
+
+        <span class="price-ranking-rank">${index+1}</span>
+
+        <span class="price-ranking-main">
+          <b>${esc(r.vin||'Vin')}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
+          <small>${esc(r.domaine||'')}</small>
+
+          <span class="price-stock-indicator" title="${count} bouteille${count>1?'s':''} en stock">
+            <span class="price-stock-icon">🍾</span>
+            <span class="price-stock-track">
+              <span class="price-stock-fill" style="width:${pct}%"></span>
+            </span>
+            <span class="price-stock-count">×${count}</span>
+          </span>
+
+          ${priceRankingFormatLabel(r)?`<span class="price-ranking-format">${esc(priceRankingFormatLabel(r))}</span>`:''}
+          ${!unitMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
+
+          <span id="${esc(locId)}" class="price-ranking-locations" hidden>
+            <b>📍 Emplacements</b>
+            ${locations.length
+              ? locations.map(loc=>`<span>${esc(loc)}</span>`).join('')
+              : '<span>Emplacement non trouvé</span>'}
+          </span>
+        </span>
+
+        <span class="price-ranking-side">
+          <strong>${unitMode ? euro(unitPrice) : euro(lotPrice)}</strong>
+          <small>voir où</small>
+        </span>
+      </button>
+    `;
+  }).join('');
+}
 function openPriceRanking(){
   renderPriceRanking();
   showDialog($('#priceRankingDialog'));
@@ -5146,6 +5216,20 @@ $('#priceModeLot').addEventListener('click',()=>{
   renderPriceRanking();
 });
 
+$('#priceRankingList').addEventListener('click',e=>{
+  const row=e.target.closest('[data-price-location-toggle]');
+  if(!row) return;
+
+  const id=row.dataset.priceLocationToggle;
+  const detail=document.getElementById(id);
+  if(!detail) return;
+
+  const open=detail.hidden;
+  detail.hidden=!open;
+  row.setAttribute('aria-expanded',open?'true':'false');
+  row.classList.toggle('locations-open',open);
+});
+
 $('#openConsumptionWindow').addEventListener('click',()=>{
   $('#consumptionSearch').value='';
   renderConsumption();
@@ -5314,8 +5398,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:61400,
-    app:'ma-cave-configurable-v6.14',
+    version:61500,
+    app:'ma-cave-configurable-v6.15',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5406,7 +5490,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-14.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-15.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;

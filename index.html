@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.14</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.14">
+<title>Ma Cave à Vin – Configurable v6.15</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.15">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4023,11 +4023,94 @@ header .stock-filter.active{
   font-weight:900!important;
 }
 
+
+/* =========================================================
+   V6.15 — emplacements + quantité dans le classement prix
+   ========================================================= */
+.price-ranking-row{
+  width:100%;
+  cursor:pointer;
+  color:inherit;
+  text-align:left;
+}
+.price-ranking-row.locations-open{
+  outline:2px solid rgba(255,255,255,.35);
+}
+.price-ranking-side{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:3px;
+}
+.price-ranking-side strong{
+  font-size:12px;
+  white-space:nowrap;
+}
+.price-ranking-side small{
+  font-size:7px;
+  opacity:.75;
+  white-space:nowrap;
+}
+.price-stock-indicator{
+  display:grid!important;
+  grid-template-columns:auto minmax(42px,90px) auto;
+  align-items:center;
+  gap:5px;
+  width:min(170px,100%);
+  margin-top:5px!important;
+}
+.price-stock-icon{
+  font-size:11px!important;
+  line-height:1;
+}
+.price-stock-track{
+  position:relative;
+  display:block!important;
+  height:7px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(0,0,0,.28);
+  border:1px solid rgba(255,255,255,.28);
+}
+.price-stock-fill{
+  display:block!important;
+  height:100%;
+  border-radius:999px;
+  background:rgba(255,255,255,.78);
+}
+.price-stock-count{
+  font-size:8px!important;
+  font-weight:900!important;
+  white-space:nowrap;
+}
+.price-ranking-locations{
+  display:block!important;
+  margin-top:7px!important;
+  padding:6px 7px;
+  border-radius:7px;
+  background:rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.18);
+}
+.price-ranking-locations[hidden]{
+  display:none!important;
+}
+.price-ranking-locations>b{
+  display:block;
+  margin-bottom:4px;
+  font-size:8px;
+}
+.price-ranking-locations>span{
+  display:block!important;
+  margin-top:2px!important;
+  font-size:8px!important;
+  line-height:1.25;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.14</span>
+  <span class="app-version">v6.15</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4674,7 +4757,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.14"></script>
+<script src="app.js?v=6.15"></script>
 \n\n
 </body>
 </html>
