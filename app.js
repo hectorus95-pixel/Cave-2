@@ -5237,11 +5237,13 @@ function priceGoogleAIPrompt(r){
 
   return `${details}
 
-Fais une recherche web approfondie pour estimer le prix de vente actuel en France de cette bouteille, à l'unité et dans ce format précis.
+Fais une recherche web approfondie pour trouver le prix de vente actuel le moins cher en France pour cette bouteille, à l'unité et dans ce format précis.
 
-Compare plusieurs sources fiables : domaine/producteur lorsqu'un tarif est publié, cavistes français reconnus, marchands spécialisés et bases de données vin. Privilégie le même millésime et le même format. Écarte les prix manifestement aberrants, les enchères atypiques et les lots qui ne permettent pas de connaître un prix unitaire réaliste.
+Cherche d'abord exactement le même domaine, la même cuvée, le même millésime et le même format. Compare plusieurs vendeurs français réellement accessibles en ligne (domaine/producteur, cavistes, marchands spécialisés, boutiques vin). Retiens le prix affiché le plus bas pour une bouteille réellement proposée à la vente. Ne fais pas de moyenne et ne majore pas le prix.
 
-Si le millésime exact est introuvable, utilise les millésimes voisins pour produire une estimation raisonnable.
+Ignore les enchères, les prix de lots si le prix unitaire n'est pas clairement calculable, les bouteilles d'un autre format, les offres épuisées/non disponibles et les frais de port.
+
+Si le millésime exact est introuvable, cherche alors un millésime légèrement plus jeune, c'est-à-dire plus récent, en prenant d'abord l'année immédiatement suivante puis, si nécessaire, les suivantes les plus proches. Pour ce millésime de remplacement, retiens également le prix disponible le moins cher. N'utilise un millésime plus ancien qu'en dernier recours si aucun millésime plus jeune proche n'est trouvable.
 
 IMPORTANT : après ton analyse, n'affiche aucune source, aucune explication et aucune fourchette.
 
