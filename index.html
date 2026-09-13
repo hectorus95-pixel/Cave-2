@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.14</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.14">
+<title>Ma Cave à Vin – Configurable v7.15</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.15">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -524,7 +524,7 @@ button.result-item{
   text-align:center!important;
 }
 
-/* ---------------- 4 TYPES DE VIN ---------------- */
+/* ---------------- 5 TYPES DE VIN ---------------- */
 .wine-color.red{
   background-color:#A71930!important;
   color:#fff!important;
@@ -540,6 +540,10 @@ button.result-item{
 .wine-color.spark{
   background-color:#FFF2A6!important;
   color:#211800!important;
+}
+.wine-color.digestif{
+  background-color:#E7E0D1!important;
+  color:#2A2520!important;
 }
 .wine-color{
   background-image:none!important;
@@ -632,7 +636,9 @@ button.result-item{
 .slot-main.white .pos,.slot-main.white .name,.slot-main.white .domain,
 .result-main.white,.result-main.white b,.result-main.white small,.result-main.white .result-domain,
 .slot-main.spark .pos,.slot-main.spark .name,.slot-main.spark .domain,
-.result-main.spark,.result-main.spark b,.result-main.spark small,.result-main.spark .result-domain{
+.result-main.spark,.result-main.spark b,.result-main.spark small,.result-main.spark .result-domain,
+.slot-main.digestif .pos,.slot-main.digestif .name,.slot-main.digestif .domain,
+.result-main.digestif,.result-main.digestif b,.result-main.digestif small,.result-main.digestif .result-domain{
   color:#211800!important;
 }
 
@@ -835,7 +841,7 @@ button.result-item{
 }
 .consumption-types{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-columns:repeat(5,minmax(0,1fr));
   gap:5px;
   margin-top:8px;
 }
@@ -851,6 +857,7 @@ button.result-item{
 .consumption-type.rose{background:#F06A94;color:#241018}
 .consumption-type.white{background:#E6B92E;color:#211800}
 .consumption-type.spark{background:#FFF2A6;color:#211800}
+.consumption-type.digestif{background:#E7E0D1;color:#2A2520}
 .consumption-type small{
   display:block;
   margin-top:2px;
@@ -5365,6 +5372,9 @@ dialog:focus{
 .ranking-main.spark .ranking-consumption-track{
   background:#FFF2A6!important;
 }
+.ranking-main.digestif .ranking-consumption-track{
+  background:#E7E0D1!important;
+}
 
 /* La consommation progresse en noir */
 .ranking-consumption-fill{
@@ -5547,6 +5557,16 @@ dialog:focus{
 
 
 /* =========================================================
+   V7.15 — nouvelle catégorie Digestif
+   Ivoire / blanc cassé, distinct de l'effervescent
+   ========================================================= */
+.wine-color.digestif,
+.consumption-type.digestif{
+  background-color:#E7E0D1!important;
+  color:#2A2520!important;
+}
+
+/* =========================================================
    V7.14 — prix IA au prix web le moins cher + millésime plus jeune si besoin
    ========================================================= */
 .price-ranking-mode{
@@ -5583,7 +5603,7 @@ dialog:focus{
 </head>
 <body>
 <header>
-  <span class="app-version">v7.14</span>
+  <span class="app-version">v7.15</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <span id="count" hidden aria-hidden="true"></span>
   <span id="free" hidden aria-hidden="true"></span>
@@ -5975,6 +5995,7 @@ dialog:focus{
           <option value="Blanc">Blanc</option>
           <option value="Rosé">Rosé</option>
           <option value="Effervescent">Effervescent</option>
+          <option value="Digestif">Digestif</option>
         </select>
       </label>
       <label>Format<input id="voiceFormat" value="75 cl"></label>
@@ -6051,7 +6072,7 @@ dialog:focus{
         <label>Millésime<input id="f_millesime" inputmode="numeric"></label>
         <label>Couleur
           <select id="f_couleur">
-            <option>Rouge</option><option>Blanc</option><option>Rosé</option><option>Effervescent</option>
+            <option>Rouge</option><option>Blanc</option><option>Rosé</option><option>Effervescent</option><option>Digestif</option>
           </select>
         </label>
         <label>Format<input id="f_format" placeholder="75 cl"></label>
@@ -6295,6 +6316,6 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.14"></script>
+<script src="app.js?v=7.15"></script>
 </body>
 </html>

@@ -1166,6 +1166,12 @@ function priceLabel(v){
 }
 function wineClass(c){
   c=normalizeSearchText ? normalizeSearchText(c||'') : String(c||'').toLowerCase();
+  if(
+    c.includes('digestif') ||
+    c.includes('liqueur') ||
+    c.includes('spiritueux') ||
+    c.includes('eau de vie')
+  ) return 'digestif';
   if(c.includes('blanc')) return 'white';
   if(c.includes('rose')) return 'rose';
   if(
@@ -2895,7 +2901,7 @@ function renderConsumption(){
   $('#consumptionCount').textContent=items.length;
   $('#consumptionValue').textContent=euro(items.reduce((s,e)=>s+(Number(e.prix)||0),0));
 
-  const typeCounts={red:0,white:0,rose:0,spark:0};
+  const typeCounts={red:0,white:0,rose:0,spark:0,digestif:0};
   items.forEach(e=>{
     const wc=wineClass(e.couleur);
     if(typeCounts[wc]!==undefined) typeCounts[wc]++;
@@ -2906,6 +2912,7 @@ function renderConsumption(){
     <span class="consumption-type white">Blanc<small>${typeCounts.white}</small></span>
     <span class="consumption-type rose">Rosé<small>${typeCounts.rose}</small></span>
     <span class="consumption-type spark">Effervescent<small>${typeCounts.spark}</small></span>
+    <span class="consumption-type digestif">Digestif<small>${typeCounts.digestif}</small></span>
   `;
 
   const list=$('#consumptionList');
@@ -4785,7 +4792,10 @@ function normalizeVoiceColor(value){
     rouge:'Rouge',
     blanc:'Blanc',
     rose:'Rosé',
-    effervescent:'Effervescent'
+    effervescent:'Effervescent',
+    digestif:'Digestif',
+    liqueur:'Digestif',
+    spiritueux:'Digestif'
   };
   return allowed[c]||'';
 }
@@ -4877,7 +4887,7 @@ function parseVoicePartial(text){
     }else if(match.field==='color'){
       const color=normalizeVoiceColor(value);
       if(color) result.color=color;
-      else result.errors.push(`Couleur « ${value} » non reconnue (Rouge / Blanc / Rosé / Effervescent)`);
+      else result.errors.push(`Couleur « ${value} » non reconnue (Rouge / Blanc / Rosé / Effervescent / Digestif)`);
     }else if(match.field==='format'){
       const format=normalizeVoiceFormat(value);
       if(format) result.format=format;
@@ -4969,7 +4979,7 @@ function analyzeVoiceBottle(){
     data.cuvee &&
     /^\d{4}$/.test(data.year) &&
     data.price &&
-    ['Rouge','Blanc','Rosé','Effervescent'].includes(data.color) &&
+    ['Rouge','Blanc','Rosé','Effervescent','Digestif'].includes(data.color) &&
     data.format
   );
   $('#voiceContinue').disabled=!ready;
