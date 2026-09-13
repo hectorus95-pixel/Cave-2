@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.15</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.15">
+<title>Ma Cave à Vin – Configurable v7.16</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.16">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5558,6 +5558,7 @@ dialog:focus{
 
 /* =========================================================
    V7.15 — nouvelle catégorie Digestif
+   V7.16 — icône Cadeau et donateur par bouteille
    Ivoire / blanc cassé, distinct de l'effervescent
    ========================================================= */
 .wine-color.digestif,
@@ -5599,11 +5600,59 @@ dialog:focus{
     grid-template-columns:1fr 1fr;
   }
 }
+
+
+/* =========================================================
+   V7.16 — bouteilles cadeau
+   ========================================================= */
+.gift-badge{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:24px!important;
+  height:24px!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.94)!important;
+  border:1px solid rgba(0,0,0,.28)!important;
+  box-shadow:0 1px 4px rgba(0,0,0,.28)!important;
+  font-size:15px!important;
+  line-height:1!important;
+  cursor:pointer!important;
+  z-index:9!important;
+}
+.slot-gift-badge{
+  position:absolute!important;
+  top:4px!important;
+  right:4px!important;
+}
+.result-main{position:relative!important;}
+.result-gift-badge{
+  position:absolute!important;
+  top:6px!important;
+  right:7px!important;
+}
+.result-main:has(.result-gift-badge) b{padding-right:30px!important;}
+.bulk-gift-badge{
+  position:absolute!important;
+  top:7px!important;
+  right:36px!important;
+}
+.bulk-card:has(.bulk-gift-badge){padding-right:78px!important;}
+.gift-btn{
+  background:#805c20!important;
+  border:1px solid #c8a15e!important;
+  color:#fff!important;
+  font-weight:850!important;
+}
+.gift-btn.active{
+  background:#9c7026!important;
+  border-color:#f0c46f!important;
+}
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v7.15</span>
+  <span class="app-version">v7.16</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <span id="count" hidden aria-hidden="true"></span>
   <span id="free" hidden aria-hidden="true"></span>
@@ -6108,6 +6157,7 @@ dialog:focus{
     <div id="viewActions" class="dlgactions">
       <button id="editOneBottle" class="primary">✏️ Éditer cette bouteille</button>
       <button id="editAllBottles" class="primary">✏️ Éditer toutes les bouteilles</button>
+      <button id="giftBottle" class="gift-btn">🎁 Marquer comme cadeau</button>
       <button id="sellBottle" class="sell-btn">💶 Vendre</button>
       <button id="consumed" class="consumed-btn">🍷 Bue</button>
       <button id="moveBottle" class="move-btn">📦 Déplacer</button>
@@ -6243,6 +6293,7 @@ dialog:focus{
       <button id="bulkActionDrink" class="consumed-btn">🍷 Bue</button>
       <button id="bulkActionSell" class="sell-btn">💶 Vendre</button>
       <button id="bulkActionMove" class="move-btn">📦 Déplacer</button>
+      <button id="bulkActionGift" class="gift-btn">🎁 Cadeau</button>
       <button id="bulkActionEdit" class="primary">✏️ Éditer ce lot Vrac</button>
       <button id="bulkActionRemove" class="danger">Sortir sans vente</button>
       <button id="bulkActionClose" class="secondary">Fermer</button>
@@ -6316,6 +6367,6 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.15"></script>
+<script src="app.js?v=7.16"></script>
 </body>
 </html>

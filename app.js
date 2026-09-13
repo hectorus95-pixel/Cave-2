@@ -1985,13 +1985,20 @@ function showResultPanel(title,items){
     btn.innerHTML=`
       <span class="result-year-zone age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
       <span class="result-main wine-color ${wc}">
+        ${isGift(p)?`<span class="gift-badge result-gift-badge" title="Cadeau offert par ${esc(giftFrom(p))}" aria-label="Cadeau offert par ${esc(giftFrom(p))}">🎁</span>`:''}
         <b>${esc(r.vin)}${isMagnum?' · Magnum':''}</b>
         ${r.domaine?`<span class="result-domain">${esc(r.domaine)}</span>`:''}
         <small>${r._searchLocations?esc(r._searchLocations):p.emplacement}</small>
         <span class="result-gauge">${maturityGaugeHtml(r)}</span>
       </span>
     `;
-    btn.addEventListener('click',()=>{
+    btn.addEventListener('click',(e)=>{
+      if(e.target.closest('.gift-badge')){
+        e.preventDefault();
+        e.stopPropagation();
+        showGiftInfo(p,r);
+        return;
+      }
       if(p.bulk){
         mainAllCaves=false;
         activeCaveId=p.caveId;
@@ -2015,17 +2022,60 @@ function normalizeSearchText(value){
     .replace(/[\u0300-\u036f]/g,'')
     .toLowerCase();
 }
+
+function giftFrom(item){
+  return String(item?.giftFrom||'').trim();
+}
+function isGift(item){
+  return !!giftFrom(item);
+}
+function showGiftInfo(item,r=null){
+  const from=giftFrom(item);
+  if(!from) return;
+  const label=[r?.vin,r?.millesime,r?.domaine].filter(Boolean).join(' · ');
+  alert(`🎁 Cadeau${label?`\n${label}`:''}\nOffert par : ${from}`);
+}
+function updateGiftBottleButton(){
+  const btn=$('#giftBottle');
+  if(!btn) return;
+  const from=giftFrom(selected);
+  btn.classList.toggle('active',!!from);
+  btn.textContent=from ? `🎁 Offert par ${from}` : '🎁 Marquer comme cadeau';
+}
+function editSelectedGift(){
+  if(!selected?.refId) return;
+  const current=giftFrom(selected);
+  const value=prompt(
+    current
+      ? 'Qui a offert cette bouteille ?\nLaisse le champ vide pour retirer le statut cadeau.'
+      : 'Qui a offert cette bouteille ?',
+    current
+  );
+  if(value===null) return;
+  const from=String(value||'').trim();
+  selected.giftFrom=from;
+  persist();
+  render();
+  const r=ref(selected.refId);
+  if(r) showBottleView(r);
+}
+
 function groupedResultItems(matches){
   const grouped=new Map();
 
   matches.forEach(({r,p})=>{
-    const key=r.id || [
+    const baseKey=r.id || [
       r.vin||'',
       r.domaine||r.producteur||'',
       r.appellation||'',
       r.millesime||'',
       r.format||''
     ].join('|');
+    // Une bouteille offerte reste toujours indépendante : elle ne doit jamais
+    // être fusionnée visuellement dans un lot de bouteilles identiques.
+    const key=isGift(p)
+      ? `gift|${baseKey}|${p.bulk?(p.id||Math.random()):slotKey(p)}`
+      : baseKey;
 
     if(!grouped.has(key)){
       grouped.set(key,{r,positions:[]});
@@ -2273,6 +2323,7 @@ function consumedSnapshot(x,r){
     casier:Number(x.casier)||0,
     ligne:Number(x.ligne)||0,
     position:Number(x.position)||0,
+    giftFrom:giftFrom(x),
     rating:'neutral'
   };
 }
@@ -2761,10 +2812,14 @@ function confirmSale(){
       costPrice,costKnown,salePrice,profit:costKnown?salePrice-costPrice:null,
       caveId:x.caveId,caveName:cave?.name||'',caveCode:cave?.code||'',
       casier:x.casier||0,ligne:x.ligne||0,position:x.position||0,emplacement:x.emplacement,
+      giftFrom:giftFrom(x),
       bulk:!!x.bulk,bulkLocation:x.locationText||''
     });
     if(x.bulk) soldBulkIds.push(x.id);
-    else x.refId=null;
+    else{
+      x.refId=null;
+      x.giftFrom='';
+    }
   });
   if(soldBulkIds.length) removeBulkIds(soldBulkIds);
   const n=data.length;
@@ -3015,6 +3070,7 @@ function restoreConsumedBottle(id){
         ? String(entry.bulkLocation||'').trim()
         : String(entry.emplacement||'').replace(/^.*?Vrac\s*·?\s*/i,'').replace(/^Emplacement non renseigné$/i,'').trim(),
       addedAt:new Date().toISOString(),
+      giftFrom:String(entry.giftFrom||'').trim(),
       bulk:true
     });
     consumed=consumed.filter(e=>e.id!==id);
@@ -3044,6 +3100,7 @@ function restoreConsumedBottle(id){
   if(!confirm(message)) return;
 
   target.refId=ensureRefForConsumed(entry);
+  target.giftFrom=String(entry.giftFrom||'').trim();
   consumed=consumed.filter(e=>e.id!==id);
   activeCaveId=target.caveId;
   activeCasier=target.casier;
@@ -3156,7 +3213,8 @@ function readBulkLocationPicker(selectId,inputId){
 }
 
 function bulkGroupKey(x){
-  return `${x.caveId}|${x.refId}|${normalizeSearchText(x.locationText||'')||'__sans_emplacement__'}`;
+  const base=`${x.caveId}|${x.refId}|${normalizeSearchText(x.locationText||'')||'__sans_emplacement__'}`;
+  return isGift(x) ? `${base}|gift|${x.id}` : base;
 }
 
 function renderBulk(){
@@ -3190,6 +3248,7 @@ function renderBulk(){
   list.innerHTML=[...groups.values()].map(({sample,items})=>{
     const r=ref(sample.refId);
     return `<button type="button" class="bulk-card wine-color ${wineClass(r.couleur)}" data-bulk-open="${esc(sample.id)}">
+      ${isGift(sample)?`<span class="gift-badge bulk-gift-badge" data-gift-bulk="${esc(sample.id)}" title="Cadeau offert par ${esc(giftFrom(sample))}" aria-label="Cadeau offert par ${esc(giftFrom(sample))}">🎁</span>`:''}
       <span class="bulk-qty">×${items.length}</span>
       <b>${esc(r.vin)}${r.millesime?` · ${esc(r.millesime)}`:''}</b>
       ${isMagnumFormat(r.format)?'<em class="magnum-badge bulk-magnum-badge">Magnum</em>':''}
@@ -3274,7 +3333,34 @@ function openBulkGroup(id){
   $('#bulkActionQty').max=ids.length;
   $('#bulkActionQty').value=ids.length;
   $('#bulkActionSell').hidden=!moduleEnabled('sales');
+  const giftBtn=$('#bulkActionGift');
+  if(giftBtn){
+    const from=giftFrom(seed);
+    giftBtn.classList.toggle('active',!!from);
+    giftBtn.textContent=from ? `🎁 Offert par ${from}` : '🎁 Cadeau';
+  }
   showDialog($('#bulkActionDialog'));
+}
+
+function editBulkGiftSelection(){
+  const items=selectedBulkActionItems();
+  if(!items.length) return;
+  const current=items.length===1 ? giftFrom(items[0]) : '';
+  const value=prompt(
+    current
+      ? 'Qui a offert cette bouteille ?\nLaisse le champ vide pour retirer le statut cadeau.'
+      : (items.length>1
+          ? `Qui a offert ces ${items.length} bouteilles ?`
+          : 'Qui a offert cette bouteille ?'),
+    current
+  );
+  if(value===null) return;
+  const from=String(value||'').trim();
+  items.forEach(item=>{ item.giftFrom=from; });
+  persist();
+  render();
+  bulkActionIds=[];
+  requestClose($('#bulkActionDialog'));
 }
 
 function selectedBulkActionItems(){
@@ -3338,6 +3424,7 @@ function finalizeDrinkRating(rating='neutral'){
 
     if(!item.bulk){
       item.refId=null;
+      item.giftFrom='';
     }
   });
 
@@ -3579,15 +3666,22 @@ function moveSourcesToGrid(targets){
   const assignments=sources.map((s,i)=>({
     source:s,
     target:validTargets[i],
-    refId:s.item.refId
+    refId:s.item.refId,
+    giftFrom:giftFrom(s.item)
   }));
 
-  assignments.forEach(a=>{ a.target.refId=a.refId; });
+  assignments.forEach(a=>{
+    a.target.refId=a.refId;
+    a.target.giftFrom=a.giftFrom;
+  });
 
   const bulkIds=[];
   assignments.forEach(a=>{
     if(a.source.descriptor.type==='bulk') bulkIds.push(a.source.item.id);
-    else a.source.item.refId=null;
+    else{
+      a.source.item.refId=null;
+      a.source.item.giftFrom='';
+    }
   });
   if(bulkIds.length) removeBulkIds(bulkIds);
 
@@ -3876,9 +3970,11 @@ function completeMoveToBulk(){
         refId:item.refId,
         locationText:location,
         addedAt:new Date().toISOString(),
+        giftFrom:giftFrom(item),
         bulk:true
       });
       item.refId=null;
+      item.giftFrom='';
     }
   });
 
@@ -4142,6 +4238,7 @@ function render(){
         <span class="vintage-strip age-color ${ac}">${esc(r.millesime||'Sans année')}</span>
         <span class="slot-main wine-color ${wc}">
           <span class="pos">${moveSource?.items?.length?`C${shownCasier}·`:``}L${x.ligne}·P${x.position}</span>
+          ${isGift(x)?`<span class="gift-badge slot-gift-badge" title="Cadeau offert par ${esc(giftFrom(x))}" aria-label="Cadeau offert par ${esc(giftFrom(x))}">🎁</span>`:''}
           ${isMagnumFormat(r.format)?'<span class="magnum-badge">Magnum</span>':''}
           <span class="name">${esc(r.vin)}</span>
           ${r.domaine?`<span class="domain">${esc(r.domaine)}</span>`:''}
@@ -4158,7 +4255,15 @@ function render(){
           : (isMultiSelected?'✓ Sélectionnée':'＋ Vide')}</span>
       `;
     }
-    b.addEventListener('click',()=>r?handleOccupiedSlotClick(x,r):handleEmptySlotClick(x));
+    b.addEventListener('click',(e)=>{
+      if(r && e.target.closest('.gift-badge')){
+        e.preventDefault();
+        e.stopPropagation();
+        showGiftInfo(x,r);
+        return;
+      }
+      r?handleOccupiedSlotClick(x,r):handleEmptySlotClick(x);
+    });
     g.appendChild(b);
   });
   $$('.tab').forEach(b=>b.classList.toggle('active',Number(b.dataset.c)===shownCasier));
@@ -4318,6 +4423,7 @@ function showBottleView(r){
   const sameCount=inv.filter(p=>p.refId===r.id).length+bulk.filter(p=>p.refId===r.id).length;
   $('#editAllBottles').hidden=sameCount<2;
   $('#editAllBottles').textContent=`✏️ Toutes les bouteilles (×${sameCount})`;
+  updateGiftBottleButton();
 
   $('#bottleView').hidden=false;
   $('#bottleEdit').hidden=true;
@@ -5641,6 +5747,8 @@ $('#cancelEdit').addEventListener('click',()=>{
   }
 });
 
+$('#giftBottle').addEventListener('click',editSelectedGift);
+
 $('#sellBottle').addEventListener('click',()=>{
   if(!moduleEnabled('sales')||!selected||!selected.refId)return;
   saleTargets=[selected?.bulk?bulkTarget(selected):selected];
@@ -5958,7 +6066,18 @@ $('#bulkNewRef').addEventListener('click',()=>{
   $('#dialog').showModal();
 });
 $('#bulkAddCancel').addEventListener('click',()=>requestClose($('#bulkAddDialog')));
-$('#bulkList').addEventListener('click',e=>{const b=e.target.closest('[data-bulk-open]');if(b)openBulkGroup(b.dataset.bulkOpen);});
+$('#bulkList').addEventListener('click',e=>{
+  const gift=e.target.closest('[data-gift-bulk]');
+  if(gift){
+    e.preventDefault();
+    e.stopPropagation();
+    const item=bulk.find(x=>x.id===gift.dataset.giftBulk);
+    if(item) showGiftInfo(item,ref(item.refId));
+    return;
+  }
+  const b=e.target.closest('[data-bulk-open]');
+  if(b)openBulkGroup(b.dataset.bulkOpen);
+});
 $('#bulkActionDrink').addEventListener('click',drinkBulkSelection);
 $$('[data-drink-rating]').forEach(btn=>btn.addEventListener('click',()=>finalizeDrinkRating(btn.dataset.drinkRating)));
 $('#drinkLater').addEventListener('click',()=>finalizeDrinkRating('neutral'));
@@ -5973,6 +6092,7 @@ $('#bulkActionSell').addEventListener('click',()=>{
   $('#bulkActionDialog').close();openSaleDialog(items.map(bulkTarget),true);
 });
 $('#bulkActionMove').addEventListener('click',beginMoveBulkSelection);
+$('#bulkActionGift').addEventListener('click',editBulkGiftSelection);
 $('#bulkActionEdit').addEventListener('click',()=>{
   const items=selectedBulkActionItems();
   if(!items.length) return;
