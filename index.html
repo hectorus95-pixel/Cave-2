@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.7</title>
-<link rel="manifest" href="manifest.webmanifest?v=7.7">
+<title>Ma Cave à Vin – Configurable v7.9</title>
+<link rel="manifest" href="manifest.webmanifest?v=7.9">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -5385,11 +5385,7 @@ dialog:focus{
   font-weight:900!important;
   line-height:1.2!important;
   text-align:center!important;
-  text-shadow:
-    0 1px 2px #000,
-    1px 0 1px #000,
-    -1px 0 1px #000,
-    0 -1px 1px #000!important;
+  text-shadow:none!important;
 }
 .ranking-consumption-progress>small{
   margin-top:6px!important;
@@ -5426,11 +5422,13 @@ dialog:focus{
 /* Le bouton de classement par prix reste lui aussi lisible */
 #openPriceRanking{
   min-height:50px!important;
-  border:1px solid #514b4b!important;
-  background:#2c2622!important;
+  border:2px solid #c89a45!important;
+  border-radius:11px!important;
+  background:#8a5a12!important;
   color:#fff!important;
   font-size:14px!important;
   font-weight:900!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.35)!important;
 }
 
 @media(max-width:390px){
@@ -5549,7 +5547,7 @@ dialog:focus{
 </head>
 <body>
 <header>
-  <span class="app-version">v7.7</span>
+  <span class="app-version">v7.9</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -6252,6 +6250,6 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.7"></script>
+<script src="app.js?v=7.9"></script>
 </body>
 </html>
