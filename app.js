@@ -2459,28 +2459,23 @@ function renderConsumedRanking(){
     return;
   }
 
-  const rows=data.map(g=>({
-    g,
-    stock:rankingStockInfo(g.sample,consumedRankingCaveScope)
-  }));
-
-  const maxRemaining=Math.max(...rows.map(x=>x.stock.count),1);
-
-  list.innerHTML=rows.map(({g,stock},index)=>{
+  list.innerHTML=data.map((g,index)=>{
     const e=g.sample;
+    const stock=rankingStockInfo(e,consumedRankingCaveScope);
 
-    // Le barème va de -2 à +2 par bouteille,
-    // donc le score final va naturellement de -200 % à +200 %.
+    // Total de référence pour la jauge = bouteilles déjà bues + bouteilles encore en stock.
+    // Exemple : 3 bues + 12 restantes = 3 bues sur 15.
+    const totalKnown=g.total+stock.count;
+    const drunkPct=totalKnown>0
+      ? Math.max(0,Math.min(100,(g.total/totalKnown)*100))
+      : 0;
+
     const score=Math.max(-200,Math.min(200,Math.round(g.score)));
     const scoreClass=score>0?'positive':score<0?'negative':'neutral';
 
     const mill=e.millesime ? ` · ${esc(e.millesime)}` : '';
     const isMagnum=/magnum|150\s*cl|1[.,]5\s*l/i.test(String(e.format||''));
     const format=isMagnum ? ' · Magnum' : '';
-
-    const remainingPct=stock.count
-      ? Math.max(5,Math.min(100,(stock.count/maxRemaining)*100))
-      : 0;
 
     return `
       <button type="button"
@@ -2493,23 +2488,17 @@ function renderConsumedRanking(){
           <b>${esc(e.vin)}${mill}${format}</b>
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
 
-          <span class="ranking-drunk-count">
-            ${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''}
-          </span>
-
-          <span class="ranking-remaining-block">
-            <span class="ranking-remaining-label">
-              ${stock.count
-                ? `${stock.count} bouteille${stock.count>1?'s':''} restante${stock.count>1?'s':''}`
-                : 'Aucune bouteille restante'}
+          <span class="ranking-consumption-progress">
+            <span class="ranking-consumption-text">
+              ${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''} sur ${totalKnown}
             </span>
-            <span class="ranking-remaining-line">
-              <span class="ranking-remaining-track" aria-label="${stock.count} bouteille${stock.count>1?'s':''} restante${stock.count>1?'s':''}">
-                <span class="ranking-remaining-fill" style="width:${remainingPct}%"></span>
-              </span>
-              <strong>×${stock.count}</strong>
+            <span class="ranking-consumption-track"
+                  aria-label="${g.total} bouteille${g.total>1?'s':''} bue${g.total>1?'s':''} sur ${totalKnown}">
+              <span class="ranking-consumption-fill" style="width:${drunkPct}%"></span>
             </span>
-            <small>${stock.count?'Toucher pour voir où':'Stock épuisé'}</small>
+            <small>${stock.count
+              ? `${stock.count} restante${stock.count>1?'s':''} · toucher pour voir le détail`
+              : 'Stock épuisé · toucher pour voir le bilan'}</small>
           </span>
         </span>
 
@@ -6062,8 +6051,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:70100,
-    app:'ma-cave-configurable-v7.1',
+    version:70200,
+    app:'ma-cave-configurable-v7.2',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -6154,7 +6143,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v7-1.json';
+  const filename='sauvegarde-ma-cave-configurable-v7-2.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
