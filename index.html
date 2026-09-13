@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v6.21</title>
-<link rel="manifest" href="manifest.webmanifest?v=6.21">
+<title>Ma Cave à Vin – Configurable v6.22</title>
+<link rel="manifest" href="manifest.webmanifest?v=6.22">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
 body{margin:0;background:#0d0b0b;color:#fff}
@@ -4527,11 +4527,142 @@ header .stock-filter.active{
   }
 }
 
+
+/* =========================================================
+   V6.22 — classements plein écran + filtre cave
+   ========================================================= */
+.price-ranking-dialog,
+.ranking-dialog{
+  width:calc(100vw - 10px)!important;
+  max-width:none!important;
+  height:calc(100dvh - 18px)!important;
+  max-height:calc(100dvh - 18px)!important;
+  margin:auto!important;
+}
+.price-ranking-inner,
+.ranking-dlg{
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
+  height:100%!important;
+  padding:14px!important;
+  overflow:hidden!important;
+}
+.price-ranking-list,
+.ranking-list{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow-y:auto!important;
+}
+.ranking-cave-filter{
+  display:flex;
+  gap:7px;
+  width:100%;
+  margin:0 0 10px;
+  padding:1px 0 3px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.ranking-cave-filter::-webkit-scrollbar{
+  display:none;
+}
+.ranking-cave-filter button{
+  flex:1 0 86px;
+  min-height:48px;
+  padding:7px 10px;
+  border:1px solid #5b5555;
+  border-radius:9px;
+  background:#2b2727;
+  color:#bbb;
+  text-align:center;
+}
+.ranking-cave-filter button.active{
+  border-color:#fff;
+  background:#641a34;
+  color:#fff;
+  box-shadow:0 0 0 1px #fff inset;
+}
+.ranking-cave-filter b,
+.ranking-cave-filter small{
+  display:block;
+}
+.ranking-cave-filter b{
+  font-size:12px;
+}
+.ranking-cave-filter small{
+  margin-top:2px;
+  font-size:9px;
+}
+.price-ranking-head h2,
+.ranking-head h2{
+  font-size:18px!important;
+}
+.price-ranking-head small,
+.ranking-head small{
+  font-size:10px!important;
+}
+.price-ranking-row{
+  min-height:82px!important;
+}
+.price-ranking-main>b{
+  font-size:13px!important;
+}
+.price-ranking-main>small{
+  font-size:10px!important;
+}
+.price-ranking-side>strong{
+  font-size:14px!important;
+}
+.price-ranking-side>small{
+  font-size:9px!important;
+}
+.price-stock-count{
+  font-size:10px!important;
+}
+.ranking-card-clickable{
+  min-height:96px!important;
+}
+.ranking-card-clickable .ranking-main>b{
+  font-size:13px!important;
+}
+.ranking-card-clickable .ranking-domain{
+  font-size:10px!important;
+}
+.ranking-card-clickable .ranking-counts{
+  font-size:10px!important;
+}
+.ranking-stock-summary{
+  font-size:9px!important;
+}
+.ranking-card-clickable .ranking-score>b{
+  font-size:17px!important;
+}
+.ranking-help{
+  font-size:10px!important;
+}
+@media(max-width:390px){
+  .price-ranking-dialog,
+  .ranking-dialog{
+    width:calc(100vw - 6px)!important;
+    height:calc(100dvh - 10px)!important;
+    max-height:calc(100dvh - 10px)!important;
+  }
+  .price-ranking-inner,
+  .ranking-dlg{
+    padding:11px!important;
+  }
+  .ranking-cave-filter button{
+    flex-basis:78px;
+  }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v6.21</span>
+  <span class="app-version">v6.22</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <div class="topstats">
     <div class="metric"><b id="count">—</b><span>contenants</span></div>
@@ -4688,6 +4819,8 @@ header .stock-filter.active{
       <button id="priceModeUnit" type="button" class="active">Prix individuel</button>
       <button id="priceModeLot" type="button">Prix du lot</button>
     </div>
+
+    <div id="priceRankingCaveFilter" class="ranking-cave-filter" aria-label="Filtrer le classement par cave"></div>
 
     <div id="priceRankingList" class="price-ranking-list"></div>
   </div>
@@ -5195,6 +5328,8 @@ header .stock-filter.active{
       Score = somme des notes (−2 à +2) ÷ bouteilles bues × 100
     </div>
 
+    <div id="consumedRankingCaveFilter" class="ranking-cave-filter" aria-label="Filtrer le classement par cave"></div>
+
     <div id="rankingList" class="ranking-list"></div>
   </div>
 </dialog>
@@ -5226,7 +5361,7 @@ header .stock-filter.active{
   </div>
 </dialog>
 
-<script src="app.js?v=6.21"></script>
+<script src="app.js?v=6.22"></script>
 \n\n
 </body>
 </html>

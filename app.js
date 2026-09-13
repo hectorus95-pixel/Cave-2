@@ -103,6 +103,8 @@ let voiceSimilarRefId='';
 let dialogHistory=false;
 let preserveMoveOnNextPop=false;
 let priceRankingMode='unit';
+let priceRankingCaveScope='';
+let consumedRankingCaveScope='';
 
 if(config){
   inv=buildInventory(config,inv);
@@ -1511,11 +1513,59 @@ function priceRankingFormatLabel(r){
   return format;
 }
 
-function priceRankingLocations(refId){
+const RANKING_ALL_CAVES='__all_caves__';
+
+function rankingCaveMatches(caveId,scope){
+  return scope===RANKING_ALL_CAVES || !scope || caveId===scope;
+}
+
+function historyEntryMatchesRankingCave(entry,scope){
+  if(scope===RANKING_ALL_CAVES || !scope) return true;
+  if(entry?.caveId) return entry.caveId===scope;
+
+  const cave=caveById(scope);
+  if(!cave) return false;
+
+  return (
+    normalizeSearchText(entry?.caveCode||'')===normalizeSearchText(cave.code||'') ||
+    normalizeSearchText(entry?.caveName||'')===normalizeSearchText(cave.name||'')
+  );
+}
+
+function rankingCaveLabel(scope){
+  if(scope===RANKING_ALL_CAVES) return 'Toutes caves';
+  const cave=caveById(scope);
+  return cave ? `${cave.code} · ${cave.name}` : 'Toutes caves';
+}
+
+function renderRankingCaveFilter(containerId,scope){
+  const box=$('#'+containerId);
+  if(!box) return;
+
+  const buttons=config.caves.map(c=>`
+    <button type="button"
+      class="${scope===c.id?'active':''}"
+      data-ranking-cave="${esc(c.id)}">
+      <b>${esc(c.code)}</b>
+      <small>${esc(c.name)}</small>
+    </button>
+  `).join('');
+
+  box.innerHTML=
+    buttons+
+    `<button type="button"
+      class="${scope===RANKING_ALL_CAVES?'active':''}"
+      data-ranking-cave="${RANKING_ALL_CAVES}">
+      <b>Toutes</b>
+      <small>caves</small>
+    </button>`;
+}
+
+function priceRankingLocations(refId,scope=priceRankingCaveScope){
   const locations=[];
 
   inv.forEach(x=>{
-    if(x?.refId!==refId) return;
+    if(x?.refId!==refId || !rankingCaveMatches(x.caveId,scope)) return;
     const cave=caveById(x.caveId);
     locations.push({
       sort:[caveIndex(x.caveId),0,Number(x.casier)||0,Number(x.ligne)||0,Number(x.position)||0],
@@ -1526,7 +1576,7 @@ function priceRankingLocations(refId){
 
   const bulkGroups=new Map();
   bulk.forEach(x=>{
-    if(x?.refId!==refId) return;
+    if(x?.refId!==refId || !rankingCaveMatches(x.caveId,scope)) return;
     const cave=caveById(x.caveId);
     const loc=String(x.locationText||'').trim();
     const key=`${x.caveId}|${normalizeSearchText(loc)||'__sans_emplacement__'}`;
@@ -1569,11 +1619,11 @@ function priceRankingItems(){
   const counts=new Map();
 
   inv.forEach(x=>{
-    if(!x?.refId || !ref(x.refId)) return;
+    if(!x?.refId || !ref(x.refId) || !rankingCaveMatches(x.caveId,priceRankingCaveScope)) return;
     counts.set(x.refId,(counts.get(x.refId)||0)+1);
   });
   bulk.forEach(x=>{
-    if(!x?.refId || !ref(x.refId)) return;
+    if(!x?.refId || !ref(x.refId) || !rankingCaveMatches(x.caveId,priceRankingCaveScope)) return;
     counts.set(x.refId,(counts.get(x.refId)||0)+1);
   });
 
@@ -1587,7 +1637,7 @@ function priceRankingItems(){
         count,
         unitPrice,
         lotPrice:unitPrice*count,
-        locations:priceRankingLocations(r.id)
+        locations:priceRankingLocations(r.id,priceRankingCaveScope)
       };
     });
 
@@ -1614,11 +1664,14 @@ function renderPriceRanking(){
   if(unitBtn) unitBtn.classList.toggle('active',unitMode);
   if(lotBtn) lotBtn.classList.toggle('active',!unitMode);
 
+  renderRankingCaveFilter('priceRankingCaveFilter',priceRankingCaveScope);
+
   const subtitle=$('#priceRankingSubtitle');
   if(subtitle){
-    subtitle.textContent=unitMode
-      ? 'Classement par prix unitaire décroissant'
-      : 'Classement par valeur totale du lot décroissante';
+    const modeLabel=unitMode
+      ? 'Prix unitaire décroissant'
+      : 'Valeur totale du lot décroissante';
+    subtitle.textContent=`${modeLabel} · ${rankingCaveLabel(priceRankingCaveScope)}`;
   }
 
   const items=priceRankingItems();
@@ -1667,10 +1720,10 @@ function openPriceLocationDialog(refId){
   const r=ref(refId);
   if(!r) return;
 
-  const locations=priceRankingLocations(refId);
+  const locations=priceRankingLocations(refId,priceRankingCaveScope);
   const count=
-    inv.filter(x=>x.refId===refId).length +
-    bulk.filter(x=>x.refId===refId).length;
+    inv.filter(x=>x.refId===refId && rankingCaveMatches(x.caveId,priceRankingCaveScope)).length +
+    bulk.filter(x=>x.refId===refId && rankingCaveMatches(x.caveId,priceRankingCaveScope)).length;
 
   $('#priceLocationWine').textContent=
     `${r.vin||'Vin'}${r.millesime?` · ${r.millesime}`:''}${r.domaine?` · ${r.domaine}`:''}`;
@@ -1687,6 +1740,7 @@ function openPriceLocationDialog(refId){
 }
 
 function openPriceRanking(){
+  priceRankingCaveScope=activeCaveId||RANKING_ALL_CAVES;
   renderPriceRanking();
   showDialog($('#priceRankingDialog'));
 }
@@ -2201,12 +2255,12 @@ function consumedRatingPoints(rating){
   return 0;
 }
 
-function rankingStockInfo(sample){
+function rankingStockInfo(sample,scope=consumedRankingCaveScope){
   const gridPositions=[];
   const bulkGroups=new Map();
 
   inv.forEach(x=>{
-    if(!x?.refId) return;
+    if(!x?.refId || !rankingCaveMatches(x.caveId,scope)) return;
     const r=ref(x.refId);
     if(!r || !sameWineIdentity(r,sample)) return;
 
@@ -2219,7 +2273,7 @@ function rankingStockInfo(sample){
   });
 
   bulk.forEach(x=>{
-    if(!x?.refId) return;
+    if(!x?.refId || !rankingCaveMatches(x.caveId,scope)) return;
     const r=ref(x.refId);
     if(!r || !sameWineIdentity(r,sample)) return;
 
@@ -2259,6 +2313,7 @@ function rankingStockInfo(sample){
 }
 function consumedRankingData(){
   const items=consumed
+    .filter(e=>historyEntryMatchesRankingCave(e,consumedRankingCaveScope))
     .slice()
     .sort((a,b)=>new Date(b.drunkAt)-new Date(a.drunkAt));
   const groups=new Map();
@@ -2311,7 +2366,8 @@ function renderConsumedRanking(){
   const list=$('#rankingList');
   if(!list) return;
 
-  $('#rankingPeriodLabel').textContent='Tout l’historique';
+  renderRankingCaveFilter('consumedRankingCaveFilter',consumedRankingCaveScope);
+  $('#rankingPeriodLabel').textContent=`Tout l’historique · ${rankingCaveLabel(consumedRankingCaveScope)}`;
   const data=consumedRankingData();
 
   if(!data.length){
@@ -2326,7 +2382,7 @@ function renderConsumedRanking(){
     const mill=e.millesime ? ` · ${esc(e.millesime)}` : '';
     const isMagnum=/magnum|150\s*cl|1[.,]5\s*l/i.test(String(e.format||''));
     const format=isMagnum ? ' · Magnum' : '';
-    const stock=rankingStockInfo(e);
+    const stock=rankingStockInfo(e,consumedRankingCaveScope);
 
     return `
       <button type="button"
@@ -2365,7 +2421,7 @@ function openRankingStockDialog(index){
   if(!g) return;
 
   const e=g.sample;
-  const stock=rankingStockInfo(e);
+  const stock=rankingStockInfo(e,consumedRankingCaveScope);
 
   $('#rankingStockWine').textContent=
     `${e.vin||'Vin'}${e.millesime?` · ${e.millesime}`:''}${e.domaine?` · ${e.domaine}`:''}`;
@@ -5603,6 +5659,20 @@ $('#priceModeLot').addEventListener('click',()=>{
   renderPriceRanking();
 });
 
+$('#priceRankingCaveFilter').addEventListener('click',e=>{
+  const b=e.target.closest('[data-ranking-cave]');
+  if(!b) return;
+  priceRankingCaveScope=b.dataset.rankingCave;
+  renderPriceRanking();
+});
+
+$('#consumedRankingCaveFilter').addEventListener('click',e=>{
+  const b=e.target.closest('[data-ranking-cave]');
+  if(!b) return;
+  consumedRankingCaveScope=b.dataset.rankingCave;
+  renderConsumedRanking();
+});
+
 $('#priceRankingList').addEventListener('click',e=>{
   const row=e.target.closest('[data-price-ref]');
   if(!row) return;
@@ -5638,6 +5708,7 @@ $('#salesList').addEventListener('click',e=>{
 });
 
 $('#openConsumedRanking').addEventListener('click',()=>{
+  consumedRankingCaveScope=activeCaveId||RANKING_ALL_CAVES;
   renderConsumedRanking();
   showDialog($('#rankingDialog'));
 });
@@ -5792,8 +5863,8 @@ async function saveBackupFileOnDevice(json,filename){
 
 function makeBackupPayload(){
   return {
-    version:62100,
-    app:'ma-cave-configurable-v6.21',
+    version:62200,
+    app:'ma-cave-configurable-v6.22',
     exportedAt:new Date().toISOString(),
     config,inv,refs,consumed,sales,bulk
   };
@@ -5884,7 +5955,7 @@ function applyRestoredBackup(d,sourceLabel='Sauvegarde'){
 $('#export').addEventListener('click',async ()=>{
   const payload=makeBackupPayload();
   const json=JSON.stringify(payload,null,2);
-  const filename='sauvegarde-ma-cave-configurable-v6-21.json';
+  const filename='sauvegarde-ma-cave-configurable-v6-22.json';
 
   // Copie 1 : sauvegarde interne du navigateur.
   let internalSaved=false;
