@@ -1488,6 +1488,13 @@ function showAllCavesOverview(){
 function renderCaveTabs(s){
   const tabs=$('#caveTabs');
 
+  // V7.17 : avec une seule cave configurée, le bouton « Toutes caves »
+  // n'apporte aucune information supplémentaire. On reste directement sur la cave.
+  if(config.caves.length===1){
+    mainAllCaves=false;
+    activeCaveId=config.caves[0].id;
+  }
+
   const caveBottleCounts={};
   const caveGridCounts={};
   config.caves.forEach(c=>{
@@ -1527,14 +1534,16 @@ function renderCaveTabs(s){
     </button>
   `).join('');
 
-  tabs.innerHTML=
-    `<button class="cave-tab all-caves-tab ${mainAllCaves?'active':''}" data-cave-id="${MAIN_ALL_CAVES}" title="Toutes les caves">
-      <b>Toutes</b>
-      <span>caves</span>
-      <small>${total} bt</small>
-      ${hasFreeInfo?`<small class="cave-free">${totalFree} place${totalFree>1?'s':''} libre${totalFree>1?'s':''}</small>`:''}
-    </button>`+
-    caveButtons;
+  const allCavesButton=config.caves.length>1
+    ? `<button class="cave-tab all-caves-tab ${mainAllCaves?'active':''}" data-cave-id="${MAIN_ALL_CAVES}" title="Toutes les caves">
+        <b>Toutes</b>
+        <span>caves</span>
+        <small>${total} bt</small>
+        ${hasFreeInfo?`<small class="cave-free">${totalFree} place${totalFree>1?'s':''} libre${totalFree>1?'s':''}</small>`:''}
+      </button>`
+    : '';
+
+  tabs.innerHTML=allCavesButton+caveButtons;
 
   scheduleTabCentering();
 }
