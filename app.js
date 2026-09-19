@@ -1860,6 +1860,8 @@ function renderPriceRanking(){
             <strong class="price-stock-count">×${count}</strong>
           </span>
 
+          ${maturityGaugeHtml(r)?`<span class="price-ranking-maturity">${maturityGaugeHtml(r)}</span>`:''}
+
           ${(format || lotMode) ? `<span class="price-ranking-bottom">
             ${format?`<span class="price-ranking-format">${esc(format)}</span>`:''}
             ${lotMode ? `<small class="price-ranking-calc">${count} × ${euro(unitPrice)} = ${euro(lotPrice)}</small>` : ''}
@@ -2487,11 +2489,13 @@ function consumedRatingPoints(rating){
 function rankingStockInfo(sample,scope=consumedRankingCaveScope){
   const gridPositions=[];
   const bulkGroups=new Map();
+  let maturityRef=null;
 
   inv.forEach(x=>{
     if(!x?.refId || !rankingCaveMatches(x.caveId,scope)) return;
     const r=ref(x.refId);
     if(!r || !sameWineIdentity(r,sample)) return;
+    if(!maturityRef) maturityRef=r;
 
     const cave=caveById(x.caveId);
     gridPositions.push({
@@ -2505,6 +2509,7 @@ function rankingStockInfo(sample,scope=consumedRankingCaveScope){
     if(!x?.refId || !rankingCaveMatches(x.caveId,scope)) return;
     const r=ref(x.refId);
     if(!r || !sameWineIdentity(r,sample)) return;
+    if(!maturityRef) maturityRef=r;
 
     const cave=caveById(x.caveId);
     const loc=String(x.locationText||'').trim();
@@ -2537,7 +2542,8 @@ function rankingStockInfo(sample,scope=consumedRankingCaveScope){
 
   return {
     count:gridPositions.length+[...bulkGroups.values()].reduce((sum,g)=>sum+g.count,0),
-    locations:positions.map(x=>x.label)
+    locations:positions.map(x=>x.label),
+    maturityRef
   };
 }
 function consumedRankingData(){
@@ -2633,6 +2639,10 @@ function renderConsumedRanking(){
         <span class="ranking-main wine-color ${wineClass(e.couleur)}">
           <b>${esc(e.vin)}${mill}${format}</b>
           ${e.domaine?`<span class="ranking-domain">${esc(e.domaine)}</span>`:''}
+
+          ${stock.count && stock.maturityRef && maturityGaugeHtml(stock.maturityRef)
+            ? `<span class="ranking-stock-maturity">${maturityGaugeHtml(stock.maturityRef)}</span>`
+            : ''}
 
           <span class="ranking-consumption-progress">
             <span class="ranking-consumption-track"

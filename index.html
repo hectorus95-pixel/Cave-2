@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4b0d1b">
-<title>Ma Cave à Vin – Configurable v7.17</title>
+<title>Ma Cave à Vin – Configurable v7.18</title>
 <link rel="manifest" href="manifest.webmanifest?v=7.17">
 <style>:root{font-family:system-ui,-apple-system,sans-serif;background:#0d0b0b;color:#fff}
 *{box-sizing:border-box}
@@ -5649,11 +5649,64 @@ dialog:focus{
   background:#9c7026!important;
   border-color:#f0c46f!important;
 }
+
+
+/* =========================================================
+   V7.18 — jauge de maturité dans les classements
+   ========================================================= */
+/* Classement par prix : une seule petite ligne supplémentaire. */
+.price-ranking-maturity{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.price-ranking-maturity .maturity-gauge{
+  width:100%!important;
+  height:8px!important;
+  margin-top:4px!important;
+}
+.price-ranking-maturity .maturity-gauge i{
+  height:8px!important;
+}
+.price-ranking-row{
+  min-height:76px!important;
+}
+.price-ranking-row.price-ranking-lot{
+  min-height:78px!important;
+}
+@media(max-width:390px){
+  .price-ranking-row{
+    min-height:74px!important;
+  }
+  .price-ranking-row.price-ranking-lot{
+    min-height:76px!important;
+  }
+}
+
+/* Classement des bouteilles bues : la maturité n'est affichée que
+   lorsqu'il reste au moins une bouteille actuellement en stock. */
+.ranking-stock-maturity{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.ranking-stock-maturity .maturity-gauge{
+  width:100%!important;
+  height:8px!important;
+  margin-top:6px!important;
+}
+.ranking-stock-maturity .maturity-gauge i{
+  height:8px!important;
+}
+.ranking-stock-maturity + .ranking-consumption-progress{
+  margin-top:7px!important;
+}
+
 </style>
 </head>
 <body>
 <header>
-  <span class="app-version">v7.17</span>
+  <span class="app-version">v7.18</span>
   <h1>🍷 Ma Cave à Vin</h1>
   <span id="count" hidden aria-hidden="true"></span>
   <span id="free" hidden aria-hidden="true"></span>
@@ -6368,6 +6421,6 @@ dialog:focus{
   </div>
 </dialog>
 
-<script src="app.js?v=7.17"></script>
+<script src="app.js?v=7.18"></script>
 </body>
 </html>
