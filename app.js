@@ -86,6 +86,7 @@ let moveSlotDialogCasier=1;
 let pendingAddRefId='';
 let editScope=null; // 'single' | 'all' | 'new' | 'bulklot'
 let bulkEditIds=[];
+let selectionEditKeys=[];
 let selectedEmptyKeys=new Set();
 let selectedOccupiedKeys=new Set();
 let addTargets=[];
@@ -4062,6 +4063,17 @@ function handleOccupiedSlotClick(x,r){
   },280);
   occupiedTapTimers.set(key,timer);
 }
+function batchSelectionIsIdentical(items){
+  const list=(items||[]).filter(x=>x?.refId);
+  if(list.length<2) return false;
+  const first=ref(list[0].refId);
+  if(!first) return false;
+  return list.every(x=>{
+    const r=ref(x.refId);
+    return !!r && sameWineIdentity(r,first);
+  });
+}
+
 function openBatchExitDialog(x){
   prepareExitTargets(x);
   const items=exitTargets.map(p=>{
@@ -4070,6 +4082,7 @@ function openBatchExitDialog(x){
   }).join('');
   $('#batchExitCount').textContent=`${exitTargets.length} bouteille${exitTargets.length>1?'s':''} sélectionnée${exitTargets.length>1?'s':''}`;
   $('#batchExitList').innerHTML=items;
+  if($('#batchEdit')) $('#batchEdit').hidden=!batchSelectionIsIdentical(exitTargets);
   showDialog($('#batchExitDialog'));
 }
 
@@ -4622,7 +4635,11 @@ function showBottleEdit(r,scope='all'){
   if($('#f_bulkLocation')){$('#f_bulkLocation').value='';$('#f_bulkLocation').hidden=true;}
 
   const sameCount=inv.filter(p=>p.refId===r.id).length+bulk.filter(p=>p.refId===r.id).length;
-  if(scope==='single'){
+  if(scope==='selection'){
+    const count=selectionEditKeys.length;
+    $('#where').textContent=`Modification des ${count} bouteilles sélectionnées uniquement`;
+    $('#save').textContent=`Enregistrer les ${count} bouteilles sélectionnées`;
+  }else if(scope==='single'){
     $('#where').textContent=(selected?.bulk?bulkTarget(selected).emplacement:selected.emplacement)+' · modification de cette bouteille uniquement';
     $('#save').textContent='Enregistrer cette bouteille';
   }else{
@@ -5668,6 +5685,38 @@ $('#save').addEventListener('click',()=>{
       return;
     }
 
+    if(editScope==='selection'){
+      const wanted=new Set(selectionEditKeys);
+      const targets=inv.filter(x=>wanted.has(slotKey(x)) && x.refId && ref(x.refId));
+
+      if(targets.length<2 || !batchSelectionIsIdentical(targets)){
+        selectionEditKeys=[];
+        editScope=null;
+        return alert('La sélection a changé ou les bouteilles ne sont plus identiques.');
+      }
+
+      const selectionRef={
+        ...original,
+        ...vals,
+        id:`r${Date.now()}_${Math.random().toString(36).slice(2,6)}`
+      };
+      refs.push(selectionRef);
+      targets.forEach(x=>{ x.refId=selectionRef.id; });
+      selected=targets[0];
+
+      maturityChanged=
+        String(original.maturiteDebut||'')!==String(vals.maturiteDebut||'') ||
+        String(original.maturiteFin||'')!==String(vals.maturiteFin||'');
+      sameIdentityBeforeSave=identityUnchanged(original,vals);
+
+      if(maturityChanged && sameIdentityBeforeSave){
+        applyMaturityToIdenticalBottles(vals,vals.maturiteDebut,vals.maturiteFin);
+      }
+
+      selectionEditKeys=[];
+      clearOccupiedSelection();
+    }else{
+
     const sameCount=
       inv.filter(p=>p.refId===originalId).length+
       bulk.filter(p=>p.refId===originalId).length;
@@ -5703,6 +5752,7 @@ $('#save').addEventListener('click',()=>{
         vals.maturiteDebut,
         vals.maturiteFin
       );
+    }
     }
   }else{
     vals.id='r'+Date.now();
@@ -5754,6 +5804,7 @@ $('#editAllBottles').addEventListener('click',()=>{
 
 $('#cancelEdit').addEventListener('click',()=>{
   bulkEditIds=[];
+  selectionEditKeys=[];
   if($('#bulkEditLocationRow')) $('#bulkEditLocationRow').hidden=true;
   if($('#f_bulkLocationSelect')) $('#f_bulkLocationSelect').innerHTML='';
   if($('#f_bulkLocation')){$('#f_bulkLocation').value='';$('#f_bulkLocation').hidden=true;}
@@ -5775,6 +5826,20 @@ $('#sellBottle').addEventListener('click',()=>{
   openSaleDialog(saleTargets,true);
 });
 
+$('#batchEdit').addEventListener('click',()=>{
+  const targets=occupiedTargetsFromSelection();
+  if(targets.length<2 || !batchSelectionIsIdentical(targets)){
+    return alert('Sélectionne au moins deux bouteilles identiques pour les modifier ensemble.');
+  }
+  selectionEditKeys=targets.map(slotKey);
+  selected=targets[0];
+  const r=ref(selected.refId);
+  if(!r) return;
+  $('#batchExitDialog').close();
+  $('#dialogTitle').textContent=r.vin||'Vin';
+  showBottleEdit(r,'selection');
+  showDialog($('#dialog'));
+});
 $('#batchMove').addEventListener('click',beginMoveBatch);
 $('#batchSell').addEventListener('click',()=>{
   const targets=exitTargets.slice();
