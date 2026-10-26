@@ -96,6 +96,8 @@ let pendingBulkRefId='';
 let bulkDraft=null;
 let bulkActionIds=[];
 let drinkTargets=[];
+let batchDrinkPendingTargets=[];
+let drinkSession=null; // {steps,index,results,totalCount}
 let emptyTapTimers=new Map();
 let occupiedTapTimers=new Map();
 let voiceRecognition=null;
@@ -3394,16 +3396,73 @@ function removeBulkIds(ids){
   bulk=bulk.filter(x=>!set.has(x.id));
 }
 
+function drinkIdentityGroups(targets){
+  const groups=[];
+  (targets||[]).forEach(target=>{
+    const r=ref(target?.item?.refId);
+    if(!r) return;
+    let group=groups.find(g=>{
+      const gr=ref(g[0]?.item?.refId);
+      return gr && sameWineIdentity(gr,r);
+    });
+    if(!group){ group=[]; groups.push(group); }
+    group.push(target);
+  });
+  return groups;
+}
+
+function openBatchDrinkModeDialog(targets){
+  batchDrinkPendingTargets=(targets||[]).filter(t=>t?.item?.refId&&ref(t.item.refId));
+  if(!batchDrinkPendingTargets.length) return;
+  if(batchDrinkPendingTargets.length===1){
+    drinkSession=null;
+    openDrinkRatingDialog(batchDrinkPendingTargets);
+    batchDrinkPendingTargets=[];
+    return;
+  }
+
+  const groups=drinkIdentityGroups(batchDrinkPendingTargets);
+  const hasRepeated=groups.some(g=>g.length>1);
+  $('#batchDrinkCount').textContent=`${batchDrinkPendingTargets.length} bouteilles sélectionnées`;
+  $('#batchDrinkGrouped').hidden=!hasRepeated;
+  $('#batchDrinkGrouped').textContent=groups.length===1
+    ? `🍷 Une note commune pour les ${batchDrinkPendingTargets.length} bouteilles`
+    : '🍷 Une note commune par vin identique';
+  $('#batchDrinkGroupedInfo').hidden=!hasRepeated;
+  $('#batchDrinkGroupedInfo').textContent=groups.length===1
+    ? 'La même note sera enregistrée pour toutes les bouteilles sélectionnées.'
+    : 'Les exemplaires identiques recevront la même note ; les différents vins seront proposés successivement.';
+  showDialog($('#batchDrinkModeDialog'));
+}
+
+function startDrinkSession(mode){
+  const targets=batchDrinkPendingTargets.slice();
+  if(!targets.length) return;
+  const steps=mode==='grouped'
+    ? drinkIdentityGroups(targets)
+    : targets.map(t=>[t]);
+  drinkSession={steps,index:0,results:[],totalCount:targets.length};
+  batchDrinkPendingTargets=[];
+  if($('#batchDrinkModeDialog').open) $('#batchDrinkModeDialog').close();
+  openDrinkRatingDialog(steps[0]);
+}
+
 function openDrinkRatingDialog(targets){
   drinkTargets=(targets||[]).filter(t=>t?.item?.refId&&ref(t.item.refId));
   if(!drinkTargets.length) return;
 
   const firstRef=ref(drinkTargets[0].item.refId);
-  const sameWine=drinkTargets.every(t=>t.item.refId===drinkTargets[0].item.refId);
+  const sameWine=drinkTargets.every(t=>{
+    const r=ref(t.item.refId);
+    return r && firstRef && sameWineIdentity(r,firstRef);
+  });
+  const progress=drinkSession?.steps?.length>1
+    ? ` · ${drinkSession.index+1}/${drinkSession.steps.length}`
+    : '';
 
   $('#drinkRatingTitle').textContent=drinkTargets.length>1
-    ? `🍷 ${drinkTargets.length} bouteilles bues`
-    : '🍷 Bouteille bue';
+    ? `🍷 ${drinkTargets.length} bouteilles${progress}`
+    : `🍷 Bouteille bue${progress}`;
 
   $('#drinkRatingInfo').textContent=drinkTargets.length===1
     ? [firstRef?.vin,firstRef?.millesime,firstRef?.domaine].filter(Boolean).join(' · ')
@@ -3414,45 +3473,52 @@ function openDrinkRatingDialog(targets){
   // On ferme la fiche précédente, mais on conserve l'état d'historique Android.
   if($('#dialog').open) $('#dialog').close();
   if($('#bulkActionDialog').open) $('#bulkActionDialog').close();
+  if($('#batchExitDialog').open) $('#batchExitDialog').close();
 
-  if(dialogHistory) $('#drinkRatingDialog').showModal();
-  else showDialog($('#drinkRatingDialog'));
+  if(!$('#drinkRatingDialog').open){
+    if(dialogHistory) $('#drinkRatingDialog').showModal();
+    else showDialog($('#drinkRatingDialog'));
+  }
 }
 
-function finalizeDrinkRating(rating='neutral'){
-  if(!drinkTargets.length) return;
-
-  const validRating=['verygood','good','bad','verybad'].includes(rating)?rating:'neutral';
+function commitDrinkResults(results){
   const bulkIds=[];
+  let n=0;
 
-  drinkTargets.forEach(({item})=>{
-    const r=ref(item.refId);
-    if(!r) return;
+  (results||[]).forEach(entry=>{
+    const validRating=['verygood','good','bad','verybad'].includes(entry.rating)?entry.rating:'neutral';
+    (entry.targets||[]).forEach(({item})=>{
+      const r=ref(item?.refId);
+      if(!r) return;
 
-    const source=item.bulk?bulkTarget(item):item;
-    const snap=consumedSnapshot(source,r);
-    snap.rating=validRating;
-    snap.comment='';
+      const source=item.bulk?bulkTarget(item):item;
+      const snap=consumedSnapshot(source,r);
+      snap.rating=validRating;
+      snap.comment='';
 
-    if(item.bulk){
-      snap.bulk=true;
-      snap.bulkLocation=String(item.locationText||'').trim();
-      bulkIds.push(item.id);
-    }
+      if(item.bulk){
+        snap.bulk=true;
+        snap.bulkLocation=String(item.locationText||'').trim();
+        bulkIds.push(item.id);
+      }
 
-    consumed.push(snap);
+      consumed.push(snap);
+      n++;
 
-    if(!item.bulk){
-      item.refId=null;
-      item.giftFrom='';
-    }
+      if(!item.bulk){
+        item.refId=null;
+        item.giftFrom='';
+      }
+    });
   });
 
   if(bulkIds.length) removeBulkIds(bulkIds);
-
-  const n=drinkTargets.length;
   drinkTargets=[];
+  batchDrinkPendingTargets=[];
+  drinkSession=null;
   bulkActionIds=[];
+  clearOccupiedSelection();
+  exitTargets=[];
   persist();
   render();
 
@@ -3460,10 +3526,31 @@ function finalizeDrinkRating(rating='neutral'){
   setTimeout(()=>alert(`${n} bouteille${n>1?'s':''} enregistrée${n>1?'s':''} comme bue${n>1?'s':''}.`),80);
 }
 
+function finalizeDrinkRating(rating='neutral'){
+  if(!drinkTargets.length) return;
+  const validRating=['verygood','good','bad','verybad'].includes(rating)?rating:'neutral';
+
+  if(drinkSession){
+    drinkSession.results.push({targets:drinkTargets.slice(),rating:validRating});
+    drinkTargets=[];
+    drinkSession.index++;
+    if(drinkSession.index<drinkSession.steps.length){
+      openDrinkRatingDialog(drinkSession.steps[drinkSession.index]);
+      return;
+    }
+    commitDrinkResults(drinkSession.results);
+    return;
+  }
+
+  commitDrinkResults([{targets:drinkTargets.slice(),rating:validRating}]);
+}
+
 function drinkBulkSelection(){
   const items=selectedBulkActionItems();
   if(!items.length) return;
-  openDrinkRatingDialog(items.map(item=>({item})));
+  const targets=items.map(item=>({item}));
+  if(items.length>1) openBatchDrinkModeDialog(targets);
+  else openDrinkRatingDialog(targets);
 }
 
 function removeBulkSelection(){
@@ -4351,7 +4438,7 @@ function closeDialogsFromPop(){
   const keepMove=preserveMoveOnNextPop && !!moveSource?.items?.length;
   preserveMoveOnNextPop=false;
 
-  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#rankingStockDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog'),$('#priceLocationDialog'),$('#moveSlotDialog')].forEach(d=>{ if(d.open) d.close(); });
+  [$('#dialog'),$('#addDialog'),$('#voiceDialog'),$('#rankingDialog'),$('#rankingStockDialog'),$('#photoDialog'),$('#configDialog'),$('#batchExitDialog'),$('#saleDialog'),$('#bulkAddDialog'),$('#bulkActionDialog'),$('#consumptionDialog'),$('#salesHistoryDialog'),$('#batchDrinkModeDialog'),$('#drinkRatingDialog'),$('#moveBulkDialog'),$('#moveConfirmDialog'),$('#undoHistoryDialog'),$('#priceRankingDialog'),$('#priceLocationDialog'),$('#moveSlotDialog')].forEach(d=>{ if(d.open) d.close(); });
   dialogHistory=false;
   selected=null;
   pendingAddRefId='';
@@ -4359,7 +4446,7 @@ function closeDialogsFromPop(){
   addTargets=[];
   exitTargets=[];
   saleTargets=[];
-  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];bulkEditIds=[];drinkTargets=[];
+  pendingBulkRefId='';bulkDraft=null;bulkActionIds=[];bulkEditIds=[];drinkTargets=[];batchDrinkPendingTargets=[];drinkSession=null;
   if(!keepMove){
     moveSource=null;
     moveTargetKeys.clear();
@@ -5840,6 +5927,12 @@ $('#batchEdit').addEventListener('click',()=>{
   showBottleEdit(r,'selection');
   showDialog($('#dialog'));
 });
+$('#batchDrink').addEventListener('click',()=>{
+  const targets=exitTargets.filter(x=>x.refId&&ref(x.refId)).map(item=>({item}));
+  if(!targets.length) return;
+  if($('#batchExitDialog').open) $('#batchExitDialog').close();
+  openBatchDrinkModeDialog(targets);
+});
 $('#batchMove').addEventListener('click',beginMoveBatch);
 $('#batchSell').addEventListener('click',()=>{
   const targets=exitTargets.slice();
@@ -6167,9 +6260,24 @@ $$('[data-drink-rating]').forEach(btn=>btn.addEventListener('click',()=>finalize
 $('#drinkLater').addEventListener('click',()=>finalizeDrinkRating('neutral'));
 $('#drinkRatingCancel').addEventListener('click',()=>{
   drinkTargets=[];
+  drinkSession=null;
+  batchDrinkPendingTargets=[];
   requestClose($('#drinkRatingDialog'));
 });
 $('#drinkRatingDialog').addEventListener('click',backdropClose);
+$('#batchDrinkGrouped').addEventListener('click',()=>startDrinkSession('grouped'));
+$('#batchDrinkIndividual').addEventListener('click',()=>startDrinkSession('individual'));
+$('#batchDrinkCancel').addEventListener('click',()=>{
+  batchDrinkPendingTargets=[];
+  drinkSession=null;
+  requestClose($('#batchDrinkModeDialog'));
+});
+$('#batchDrinkModeDialog').addEventListener('click',e=>{
+  if(e.target!==$('#batchDrinkModeDialog')) return;
+  batchDrinkPendingTargets=[];
+  drinkSession=null;
+  backdropClose(e);
+});
 $('#bulkActionRemove').addEventListener('click',removeBulkSelection);
 $('#bulkActionSell').addEventListener('click',()=>{
   const items=selectedBulkActionItems();if(!items.length||!moduleEnabled('sales'))return;
